@@ -35,7 +35,13 @@ const Register: React.FC = () => {
     try {
       const res = await registerUser(formData);
       login(res.data);
-      navigate('/dashboard');
+
+      // Redirect based on role
+      if (formData.role === "buyer") {
+        navigate('/');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Registration failed');
     }
@@ -48,7 +54,7 @@ const Register: React.FC = () => {
           <div className="mb-6">
             <Link to="/" className="inline-flex items-center text-gray-600 hover:text-gray-800 mb-4">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Dashboard
+              Home
             </Link>
 
             <div className="flex items-center justify-between mb-2">

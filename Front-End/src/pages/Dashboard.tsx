@@ -1,5 +1,6 @@
-
-import React from 'react';
+import React, { useContext, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../contexts/AuthContext'; // Adjust path if needed
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { BarChart3, Clock, Users, Package, Plus } from 'lucide-react';
@@ -8,6 +9,26 @@ import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 
 const Dashboard = () => {
+  const { user } = useContext(AuthContext); // Get logged-in user from context
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user) {
+      // Not logged in, redirect to login page
+      navigate('/login');
+      return;
+    }
+    if (user.role === 'buyer') {
+      // Buyers are NOT allowed here, redirect to homepage or other page
+      navigate('/');
+    }
+  }, [user, navigate]);
+
+  // Optional: show loading or nothing while redirecting
+  if (!user || user.role === 'buyer') {
+    return null;
+  }
+
   return (
     <DashboardLayout currentPage="dashboard">
       <div className="space-y-6">
