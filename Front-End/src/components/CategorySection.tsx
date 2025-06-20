@@ -1,102 +1,76 @@
 
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { getCategories, Category } from '@/api/categories';
+
 const CategorySection = () => {
-  const categories = [
-    {
-      title: "Cosmetics and Personal Products",
-      color: "bg-pink-100",
-      textColor: "text-pink-800",
-      image: "/Cosmetics.jpeg"
-    },
-    {
-      title: "Clothes",
-      color: "bg-yellow-100",
-      textColor: "text-yellow-800",
-      image: "/Clothing.jpeg"
-    },
-    {
-      title: "Made In Rwanda",
-      color: "bg-purple-100",
-      textColor: "text-purple-800",
-      image: "/Made in Rwanda shirts.jpeg"
-    },
-    {
-      title: "Household Products",
-      color: "bg-gray-100",
-      textColor: "text-gray-800",
-      image: "/House.jpeg"
-    },
-    {
-      title: "Shoes",
-      color: "bg-green-100",
-      textColor: "text-green-800",
-      image: "/Shoes.jpeg"
-    }
-  ];
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoading(true);
+        const response = await getCategories();
+        setCategories(response.data.slice(0, 4)); // Show only first 4 categories
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  if (loading) {
+    return (
+      <section className="py-16 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <div className="text-center">
+            <div className="text-lg text-gray-600">Loading categories...</div>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="py-16 bg-gray-50">
       <div className="container mx-auto px-4">
         <h2 className="text-3xl font-bold text-center mb-12 text-gray-900">
-          BROWSE BY CATEGORIES
+          BROWSE BY CATEGORY
         </h2>
         
-        {/* First row - 2 categories */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-          {categories.slice(0, 2).map((category, index) => (
-            <div 
-              key={index}
-              className={`${category.color} rounded-3xl p-8 hover:scale-105 transition-all duration-300 cursor-pointer group animate-fade-in relative overflow-hidden h-64`}
-              style={{ animationDelay: `${index * 0.1}s` }}
-            >
-              <div className="flex items-center justify-between h-full">
-                <div className="z-10 relative">
-                  <h3 className={`font-bold text-2xl ${category.textColor} mb-4`}>
-                    {category.title}
+        {categories.length === 0 ? (
+          <div className="text-center">
+            <p className="text-gray-600">No categories available at the moment.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">
+            {categories.map((category) => (
+              <Link
+                key={category.id}
+                to={`/categories/${category.id}`}
+                className="group text-center"
+              >
+                <div className="bg-white rounded-2xl p-8 shadow-sm group-hover:shadow-md transition-all duration-300 group-hover:scale-105">
+                  <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-purple-200 transition-colors">
+                    <span className="text-2xl font-bold text-purple">
+                      {category.name.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <h3 className="font-semibold text-gray-900 group-hover:text-purple transition-colors">
+                    {category.name}
                   </h3>
-                  <button className={`${category.textColor} opacity-80 hover:opacity-100 text-lg font-semibold`}>
-                    Shop Now →
-                  </button>
+                  {category.description && (
+                    <p className="text-sm text-gray-600 mt-2">{category.description}</p>
+                  )}
                 </div>
-                <div className="absolute right-4 top-4 w-40 h-40 rounded-2xl overflow-hidden shadow-lg">
-                  <img 
-                    src={category.image} 
-                    alt={category.title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                  />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Second row - 3 categories */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {categories.slice(2).map((category, index) => (
-            <div 
-              key={index + 2}
-              className={`${category.color} rounded-3xl p-6 hover:scale-105 transition-all duration-300 cursor-pointer group animate-fade-in relative overflow-hidden h-56`}
-              style={{ animationDelay: `${(index + 2) * 0.1}s` }}
-            >
-              <div className="flex flex-col justify-between h-full">
-                <div className="z-10 relative">
-                  <h3 className={`font-bold text-lg ${category.textColor} mb-3`}>
-                    {category.title}
-                  </h3>
-                  <button className={`${category.textColor} opacity-80 hover:opacity-100 text-sm font-semibold`}>
-                    Shop Now →
-                  </button>
-                </div>
-                <div className="absolute right-2 bottom-2 w-40 h-40 rounded-xl overflow-hidden shadow-md">
-                  <img 
-                    src={category.image} 
-                    alt={category.title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                  />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

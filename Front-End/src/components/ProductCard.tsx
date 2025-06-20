@@ -1,10 +1,14 @@
 
+import React, { useContext, useState } from 'react';
 import { Star, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+import { AuthContext } from '@/contexts/AuthContext';
+import { addToCart } from '@/api/orders';
+import { useToast } from '@/hooks/use-toast';
 
 interface ProductCardProps {
-  id?: string;
+  id: string;
   image: string;
   title: string;
   price: string;
@@ -12,7 +16,42 @@ interface ProductCardProps {
   rating?: number;
 }
 
-const ProductCard = ({ id = '1', image, title, price, originalPrice, rating = 5 }: ProductCardProps) => {
+const ProductCard = ({ id, image, title, price, originalPrice, rating = 5 }: ProductCardProps) => {
+  const auth = useContext(AuthContext);
+  const { toast } = useToast();
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+
+  const handleAddToCart = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!auth?.user) {
+      toast({
+        title: "Login Required",
+        description: "Please login to add items to cart",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsAddingToCart(true);
+      await addToCart(parseInt(id), 1);
+      toast({
+        title: "Added to cart",
+        description: `${title} has been added to your cart.`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || "Failed to add to cart",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAddingToCart(false);
+    }
+  };
+
   return (
     <Link to={`/product/${id}`} className="block">
       <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 group hover:scale-105">
@@ -46,14 +85,10 @@ const ProductCard = ({ id = '1', image, title, price, originalPrice, rating = 5 
             <Button 
               size="sm" 
               className="bg-purple hover:bg-purple-600 text-white"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                // Handle add to cart functionality here
-                console.log('Added to cart:', title);
-              }}
+              onClick={handleAddToCart}
+              disabled={isAddingToCart}
             >
-              Add to Cart
+              {isAddingToCart ? 'Adding...' : 'Add to Cart'}
             </Button>
           </div>
         </div>

@@ -1,44 +1,61 @@
 
+import React, { useState, useEffect } from 'react';
 import ProductCard from './ProductCard';
+import { getProducts, Product } from '@/api/products';
 
-const RelatedProducts = () => {
-  const relatedProducts = [
-    {
-      id: "related-1",
-      image: "https://images.unsplash.com/photo-1594736797933-d0c56ba4faa0?q=80&w=300&h=300&fit=crop",
-      title: "T-shirt with Details",
-      price: "5000 Rwf",
-      rating: 5
-    },
-    {
-      id: "related-2",
-      image: "https://images.unsplash.com/photo-1551698618-1dfe5d97d256?q=80&w=300&h=300&fit=crop",
-      title: "T-shirt with Details",
-      price: "5000 Rwf",
-      rating: 4
-    },
-    {
-      id: "related-3",
-      image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=300&h=300&fit=crop",
-      title: "T-shirt with Details",
-      price: "5000 Rwf",
-      rating: 5
-    },
-    {
-      id: "related-4",
-      image: "https://images.unsplash.com/photo-1594736797933-d0c56ba4faa0?q=80&w=300&h=300&fit=crop",
-      title: "T-shirt with Details",
-      price: "5000 Rwf",
-      rating: 4
-    }
-  ];
+interface RelatedProductsProps {
+  categoryId: number;
+  currentProductId: number;
+}
+
+const RelatedProducts = ({ categoryId, currentProductId }: RelatedProductsProps) => {
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRelatedProducts = async () => {
+      try {
+        setLoading(true);
+        const response = await getProducts();
+        const filtered = response.data
+          .filter(product => product.categoryId === categoryId && product.id !== currentProductId)
+          .slice(0, 4);
+        setRelatedProducts(filtered);
+      } catch (error) {
+        console.error('Error fetching related products:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRelatedProducts();
+  }, [categoryId, currentProductId]);
+
+  if (loading) {
+    return (
+      <div className="text-center py-8">
+        <div className="text-lg text-gray-600">Loading related products...</div>
+      </div>
+    );
+  }
+
+  if (relatedProducts.length === 0) {
+    return null;
+  }
 
   return (
-    <section className="py-8">
+    <section>
       <h2 className="text-2xl font-bold mb-8">You might also like</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {relatedProducts.map((product) => (
-          <ProductCard key={product.id} {...product} />
+          <ProductCard
+            key={product.id}
+            id={product.id.toString()}
+            image={product.coverImage}
+            title={product.name}
+            price={`${product.price.toLocaleString()} Rwf`}
+            rating={5}
+          />
         ))}
       </div>
     </section>

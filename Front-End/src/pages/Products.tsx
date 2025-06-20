@@ -1,73 +1,42 @@
-import { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Filter, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ProductCard from '@/components/ProductCard';
+import { getProducts, Product } from '@/api/products';
+import { getCategories, Category } from '@/api/categories';
 
 const Products = () => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>('');
   const [priceRange, setPriceRange] = useState([5000, 3000000]);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
 
-  const products = [
-    {
-      id: "1",
-      image: "/Head Phone.jpeg",
-      title: "Wireless Headphones",
-      price: "15,000 Rwf",
-      rating: 5
-    },
-    {
-      id: "2",
-      image: "/Jordan1.jpeg",
-      title: "Jordan 1 Shoes",
-      price: "25,000 Rwf",
-      rating: 5
-    },
-    {
-      id: "3",
-      image: "/Shoulder Bag.jpeg",
-      title: "Shoulder Bag",
-      price: "18,000 Rwf",
-      rating: 5
-    },
-    {
-      id: "4",
-      image: "/BRUCEGAO.jpeg",
-      title: "BRUCEGAO's Alligator Bag",
-      price: "20,000 Rwf",
-      rating: 5
-    },
-    {
-      id: "5",
-      image: "/Trivet Set.jpeg",
-      title: "Trivet Set",
-      price: "45,000 Rwf",
-      rating: 5
-    },
-    {
-      id: "6",
-      image: "/Dress.jpeg",
-      title: "Dress",
-      price: "30,000 Rwf",
-      rating: 5
-    },
-    {
-      id: "7",
-      image: "/Samba.jpeg",
-      title: "Samba",
-      price: "12,000 Rwf",
-      rating: 5
-    },
-    {
-      id: "8",
-      image: "/flat shoes.jpeg",
-      title: "Flat Shoes",
-      price: "5,000 Rwf",
-      rating: 5
-    }
-  ];
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [productsResponse, categoriesResponse] = await Promise.all([
+          getProducts(),
+          getCategories()
+        ]);
+        setProducts(productsResponse.data);
+        setCategories(categoriesResponse.data);
+      } catch (err: any) {
+        setError('Failed to load data');
+        console.error('Error fetching data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
@@ -78,6 +47,30 @@ const Products = () => {
         : [...prev, size]
     );
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white">
+        <Header />
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-lg text-gray-600">Loading products...</div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-white">
+        <Header />
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-lg text-red-600">{error}</div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -97,18 +90,14 @@ const Products = () => {
               <div className="mb-6">
                 <h3 className="font-medium mb-3">Category</h3>
                 <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span>T-shirt</span>
-                    <span className="text-gray-500">3</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Dress</span>
-                    <span className="text-gray-500">2</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Shoes</span>
-                    <span className="text-gray-500">1</span>
-                  </div>
+                  {categories.map((category) => (
+                    <div key={category.id} className="flex items-center justify-between">
+                      <span>{category.name}</span>
+                      <span className="text-gray-500">
+                        {products.filter(p => p.categoryId === category.id).length}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -168,39 +157,48 @@ const Products = () => {
 
           {/* Products Grid */}
           <div className="flex-1">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {products.map((product) => (
-                <ProductCard key={product.id} {...product} />
-              ))}
-            </div>
+            {products.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-600">No products found.</p>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                  {products.map((product) => (
+                    <ProductCard 
+                      key={product.id} 
+                      id={product.id.toString()}
+                      image={product.coverImage}
+                      title={product.name}
+                      price={`${product.price.toLocaleString()} Rwf`}
+                      rating={5}
+                    />
+                  ))}
+                </div>
 
-            {/* Pagination */}
-            <div className="flex items-center justify-center gap-2">
-              <button className="px-3 py-2 text-sm text-gray-500 hover:text-purple">
-                Previous
-              </button>
-              
-              <button className="w-8 h-8 bg-purple text-white text-sm rounded">
-                1
-              </button>
-              <button className="w-8 h-8 text-sm text-gray-700 hover:text-purple">
-                2
-              </button>
-              <button className="w-8 h-8 text-sm text-gray-700 hover:text-purple">
-                3
-              </button>
-              <span className="px-2 text-gray-500">...</span>
-              <button className="w-8 h-8 text-sm text-gray-700 hover:text-purple">
-                67
-              </button>
-              <button className="w-8 h-8 text-sm text-gray-700 hover:text-purple">
-                68
-              </button>
-              
-              <button className="px-3 py-2 text-sm text-gray-500 hover:text-purple">
-                Next
-              </button>
-            </div>
+                {/* Pagination */}
+                <div className="flex items-center justify-center gap-2">
+                  <button className="px-3 py-2 text-sm text-gray-500 hover:text-purple">
+                    Previous
+                  </button>
+                  
+                  <button className="w-8 h-8 bg-purple text-white text-sm rounded">
+                    1
+                  </button>
+                  <button className="w-8 h-8 text-sm text-gray-700 hover:text-purple">
+                    2
+                  </button>
+                  <button className="w-8 h-8 text-sm text-gray-700 hover:text-purple">
+                    3
+                  </button>
+                  <span className="px-2 text-gray-500">...</span>
+                  
+                  <button className="px-3 py-2 text-sm text-gray-500 hover:text-purple">
+                    Next
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

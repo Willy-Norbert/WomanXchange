@@ -1,12 +1,21 @@
+
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api/',
-  withCredentials: true, // ✅ Important if backend sets cookies
+  baseURL: 'http://localhost:5000/api',
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
-    // Authorization: `Bearer ${token}`, // Uncomment and insert token if you're using JWT
   }
+});
+
+// Add token to requests if available
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
 });
 
 export default api;

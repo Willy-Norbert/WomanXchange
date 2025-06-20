@@ -1,17 +1,12 @@
 
+import React from 'react';
 import ProductCard from './ProductCard';
-import {Link} from "react-router-dom";
+import { Link } from "react-router-dom";
+import { Product } from '@/api/products';
 
 interface ProductSectionProps {
   title: string;
-  products: Array<{
-    id?: string;
-    image: string;
-    title: string;
-    price: string;
-    originalPrice?: string;
-    rating?: number;
-  }>;
+  products: Product[];
 }
 
 const ProductSection = ({ title, products }: ProductSectionProps) => {
@@ -21,18 +16,32 @@ const ProductSection = ({ title, products }: ProductSectionProps) => {
         <h2 className="text-3xl font-bold text-center mb-12 text-gray-900">
           {title}
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
-          {products.map((product, index) => (
-            <div key={product.id || index} className="animate-fade-in" style={{ animationDelay: `${index * 0.1}s` }}>
-              <ProductCard {...product} id={product.id || String(index + 1)} />
-            </div>
-          ))}
-        </div>
+        
+        {products.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-600">No products available at the moment.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+            {products.map((product, index) => (
+              <div key={product.id} className="animate-fade-in" style={{ animationDelay: `${index * 0.1}s` }}>
+                <ProductCard 
+                  id={product.id.toString()}
+                  image={product.coverImage}
+                  title={product.name}
+                  price={`${product.price.toLocaleString()} Rwf`}
+                  rating={5}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+        
         <div className="text-center mt-8">
           <Link to="/products">
-        <button className="text-black hover:text-purple-700 border border-gray-400 rounded-md px-4 py-2 transition-all duration-300 transform hover:scale-105">
-        View More
-      </button>
+            <button className="text-black hover:text-purple-700 border border-gray-400 rounded-md px-4 py-2 transition-all duration-300 transform hover:scale-105">
+              View More
+            </button>
           </Link>
         </div>
       </div>
