@@ -1,4 +1,3 @@
-
 import React, { useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
@@ -27,9 +26,10 @@ const Customers = () => {
     }
   }, [user, loading, navigate]);
 
+  // Fix: Use correct auth route for users
   const { data: usersData, isLoading, error } = useQuery({
     queryKey: ['customers'],
-    queryFn: () => api.get('/users'),
+    queryFn: () => api.get('/auth/users'),
     enabled: !!user && user.role === 'admin'
   });
 

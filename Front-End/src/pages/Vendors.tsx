@@ -1,4 +1,3 @@
-
 import React, { useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
@@ -24,9 +23,10 @@ const Vendors = () => {
     }
   }, [user, navigate]);
 
+  // Fix: Use correct auth route for users
   const { data: usersData, isLoading, error } = useQuery({
     queryKey: ['vendors'],
-    queryFn: () => api.get('/users')
+    queryFn: () => api.get('/auth/users')
   });
 
   const vendors = usersData?.data?.filter((u: any) => u.role === 'seller') || [];

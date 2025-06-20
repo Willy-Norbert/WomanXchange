@@ -9,11 +9,13 @@ export const useDashboardData = () => {
     queryFn: getAllOrders
   });
 
+  // Fix: Use correct auth route for users
   const { data: usersData, isLoading: usersLoading, error: usersError } = useQuery({
     queryKey: ['dashboard-users'],
-    queryFn: () => api.get('/users')
+    queryFn: () => api.get('/auth/users')
   });
 
+  // Fix: Use correct products route
   const { data: productsData, isLoading: productsLoading, error: productsError } = useQuery({
     queryKey: ['dashboard-products'],
     queryFn: () => api.get('/products')

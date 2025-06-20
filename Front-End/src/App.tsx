@@ -22,6 +22,8 @@ import Cart from "./pages/Cart";
 import OrderComplete from "./pages/OrderComplete";
 import Checkout from "./pages/Checkout";
 import NotFound from "./pages/NotFound";
+import Profile from "./pages/Profile";
+import CommunityChat from "./pages/CommunityChat";
 import { AuthProvider } from './contexts/AuthContext'; 
 
 const queryClient = new QueryClient();
@@ -45,6 +47,7 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/community-chat" element={<CommunityChat />} />
 
             <Route path="/seller-request" element={<SellerRequest />} />
             <Route path="/orders" element={<Orders />} />
