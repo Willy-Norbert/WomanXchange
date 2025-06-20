@@ -43,7 +43,7 @@ const App = () => (
             
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/vendor-dashboard" element={<VendorDashboard />} />
+            <Route path="/vendors" element={<VendorDashboard />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/profile" element={<Profile />} />
@@ -52,7 +52,7 @@ const App = () => (
             <Route path="/seller-request" element={<SellerRequest />} />
             <Route path="/orders" element={<Orders />} />
             <Route path="/customers" element={<Customers />} />
-            <Route path="/vendors" element={<Vendors />} />
+            <Route path="/vendorss" element={<Vendors />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/checkout" element={<Checkout />} />
