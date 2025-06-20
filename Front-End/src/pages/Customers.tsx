@@ -11,25 +11,39 @@ import { useQuery } from '@tanstack/react-query';
 import api from '@/api/api';
 
 const Customers = () => {
-  const { user } = useContext(AuthContext);
+  const { user, loading } = useContext(AuthContext);
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (loading) return;
+    
     if (!user) {
       navigate('/login');
       return;
     }
     if (user.role !== 'admin') {
-      navigate('/');
+      navigate('/dashboard');
+      return;
     }
-  }, [user, navigate]);
+  }, [user, loading, navigate]);
 
   const { data: usersData, isLoading, error } = useQuery({
     queryKey: ['customers'],
-    queryFn: () => api.get('/users')
+    queryFn: () => api.get('/users'),
+    enabled: !!user && user.role === 'admin'
   });
 
   const customers = usersData?.data?.filter((u: any) => u.role === 'buyer') || [];
+
+  if (loading) {
+    return (
+      <DashboardLayout currentPage="customers">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-lg text-gray-600">Loading...</div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (!user || user.role !== 'admin') {
     return null;

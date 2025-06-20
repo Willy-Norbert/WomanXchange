@@ -1,11 +1,55 @@
 
-import React from 'react';
+import React, { useContext, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../contexts/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, TrendingDown, BarChart3, PieChart, Download, Eye } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { getAllOrders } from '@/api/orders';
+import api from '@/api/api';
 
 const Reports = () => {
+  const { user } = useContext(AuthContext);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    if (user.role === 'buyer') {
+      navigate('/');
+    }
+  }, [user, navigate]);
+
+  const { data: ordersData } = useQuery({
+    queryKey: ['orders'],
+    queryFn: getAllOrders
+  });
+
+  const { data: usersData } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => api.get('/users')
+  });
+
+  const orders = ordersData?.data || [];
+  const users = usersData?.data || [];
+  
+  const totalRevenue = orders.reduce((sum: number, order: any) => sum + order.totalPrice, 0);
+  const totalCustomers = users.filter((u: any) => u.role === 'buyer').length;
+  const totalVendors = users.filter((u: any) => u.role === 'seller').length;
+  const monthlyRevenue = orders.filter((order: any) => {
+    const orderDate = new Date(order.createdAt);
+    const currentMonth = new Date().getMonth();
+    return orderDate.getMonth() === currentMonth;
+  }).reduce((sum: number, order: any) => sum + order.totalPrice, 0);
+
+  if (!user || user.role === 'buyer') {
+    return null;
+  }
+
   return (
     <DashboardLayout currentPage="reports">
       <div className="space-y-6">
@@ -31,7 +75,7 @@ const Reports = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="text-3xl font-bold text-gray-900">306.6K</div>
+                <div className="text-3xl font-bold text-gray-900">{totalCustomers.toLocaleString()}</div>
                 <div className="flex items-center text-green-600 text-sm font-medium">
                   <TrendingUp className="w-4 h-4 mr-1" />
                   +12.5%
@@ -41,22 +85,13 @@ const Reports = () => {
                 <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10"></div>
                 <TrendingUp className="w-8 h-8 text-purple-500 relative z-10" />
               </div>
-              <div className="flex justify-between items-center pt-2">
-                <Button variant="link" className="p-0 h-auto text-sm text-purple-600 hover:text-purple-700">
-                  View Details →
-                </Button>
-                <Button variant="outline" size="sm" className="text-xs">
-                  <Download className="w-3 h-3 mr-1" />
-                  Export
-                </Button>
-              </div>
             </CardContent>
           </Card>
 
           {/* Products Report */}
           <Card className="bg-white shadow-lg border-0 hover:shadow-xl transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between pb-3">
-              <CardTitle className="text-lg font-semibold text-gray-800">Product Performance</CardTitle>
+              <CardTitle className="text-lg font-semibold text-gray-800">Vendor Performance</CardTitle>
               <Button variant="outline" size="sm" className="border-purple-200 text-purple-600 hover:bg-purple-50">
                 <Eye className="w-4 h-4 mr-1" />
                 View
@@ -64,24 +99,15 @@ const Reports = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="text-3xl font-bold text-gray-900">2,000</div>
-                <div className="flex items-center text-red-600 text-sm font-medium">
-                  <TrendingDown className="w-4 h-4 mr-1" />
-                  -3.2%
+                <div className="text-3xl font-bold text-gray-900">{totalVendors}</div>
+                <div className="flex items-center text-green-600 text-sm font-medium">
+                  <TrendingUp className="w-4 h-4 mr-1" />
+                  +3.2%
                 </div>
               </div>
               <div className="h-20 bg-gradient-to-r from-blue-100 via-indigo-50 to-purple-100 rounded-lg flex items-center justify-center relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10"></div>
                 <BarChart3 className="w-8 h-8 text-blue-500 relative z-10" />
-              </div>
-              <div className="flex justify-between items-center pt-2">
-                <Button variant="link" className="p-0 h-auto text-sm text-purple-600 hover:text-purple-700">
-                  View Details →
-                </Button>
-                <Button variant="outline" size="sm" className="text-xs">
-                  <Download className="w-3 h-3 mr-1" />
-                  Export
-                </Button>
               </div>
             </CardContent>
           </Card>
@@ -97,7 +123,7 @@ const Reports = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="text-3xl font-bold text-gray-900">$89.5K</div>
+                <div className="text-3xl font-bold text-gray-900">{totalRevenue.toLocaleString()} Rwf</div>
                 <div className="flex items-center text-green-600 text-sm font-medium">
                   <TrendingUp className="w-4 h-4 mr-1" />
                   +8.7%
@@ -116,19 +142,10 @@ const Reports = () => {
                   ))}
                 </div>
               </div>
-              <div className="flex justify-between items-center pt-2">
-                <Button variant="link" className="p-0 h-auto text-sm text-purple-600 hover:text-purple-700">
-                  View Details →
-                </Button>
-                <Button variant="outline" size="sm" className="text-xs">
-                  <Download className="w-3 h-3 mr-1" />
-                  Export
-                </Button>
-              </div>
             </CardContent>
           </Card>
 
-          {/* Revenue Report */}
+          {/* Monthly Revenue Report */}
           <Card className="bg-white shadow-lg border-0 hover:shadow-xl transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between pb-3">
               <CardTitle className="text-lg font-semibold text-gray-800">Monthly Revenue</CardTitle>
@@ -139,7 +156,7 @@ const Reports = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="text-3xl font-bold text-gray-900">$45.2K</div>
+                <div className="text-3xl font-bold text-gray-900">{monthlyRevenue.toLocaleString()} Rwf</div>
                 <div className="flex items-center text-green-600 text-sm font-medium">
                   <TrendingUp className="w-4 h-4 mr-1" />
                   +15.3%
@@ -148,15 +165,6 @@ const Reports = () => {
               <div className="h-20 bg-gradient-to-r from-orange-100 via-amber-50 to-yellow-100 rounded-lg flex items-center justify-center relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 to-yellow-500/10"></div>
                 <PieChart className="w-8 h-8 text-orange-500 relative z-10" />
-              </div>
-              <div className="flex justify-between items-center pt-2">
-                <Button variant="link" className="p-0 h-auto text-sm text-purple-600 hover:text-purple-700">
-                  View Details →
-                </Button>
-                <Button variant="outline" size="sm" className="text-xs">
-                  <Download className="w-3 h-3 mr-1" />
-                  Export
-                </Button>
               </div>
             </CardContent>
           </Card>
@@ -172,7 +180,7 @@ const Reports = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="text-3xl font-bold text-gray-900">1,245</div>
+                <div className="text-3xl font-bold text-gray-900">{orders.length}</div>
                 <div className="flex items-center text-green-600 text-sm font-medium">
                   <TrendingUp className="w-4 h-4 mr-1" />
                   +6.8%
@@ -181,15 +189,6 @@ const Reports = () => {
               <div className="h-20 bg-gradient-to-r from-pink-100 via-rose-50 to-red-100 rounded-lg flex items-center justify-center relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-r from-pink-500/10 to-red-500/10"></div>
                 <BarChart3 className="w-8 h-8 text-pink-500 relative z-10" />
-              </div>
-              <div className="flex justify-between items-center pt-2">
-                <Button variant="link" className="p-0 h-auto text-sm text-purple-600 hover:text-purple-700">
-                  View Details →
-                </Button>
-                <Button variant="outline" size="sm" className="text-xs">
-                  <Download className="w-3 h-3 mr-1" />
-                  Export
-                </Button>
               </div>
             </CardContent>
           </Card>
@@ -207,11 +206,11 @@ const Reports = () => {
                 <div className="text-sm text-gray-600">Customer Satisfaction</div>
               </div>
               <div className="text-center p-4 bg-white rounded-lg shadow-sm">
-                <div className="text-2xl font-bold text-green-600">$2.4M</div>
+                <div className="text-2xl font-bold text-green-600">{totalRevenue.toLocaleString()} Rwf</div>
                 <div className="text-sm text-gray-600">Total Revenue</div>
               </div>
               <div className="text-center p-4 bg-white rounded-lg shadow-sm">
-                <div className="text-2xl font-bold text-blue-600">12.5K</div>
+                <div className="text-2xl font-bold text-blue-600">{totalCustomers}</div>
                 <div className="text-sm text-gray-600">Active Users</div>
               </div>
               <div className="text-center p-4 bg-white rounded-lg shadow-sm">

@@ -1,81 +1,49 @@
 
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { getAllOrders } from '@/api/orders';
-import { getProducts } from '@/api/products';
-
-interface DashboardStats {
-  totalSales: number;
-  dailySales: number;
-  dailyUsers: number;
-  totalProducts: number;
-  recentOrders: any[];
-  loading: boolean;
-  error: string | null;
-}
+import api from '@/api/api';
 
 export const useDashboardData = () => {
-  const [data, setData] = useState<DashboardStats>({
-    totalSales: 0,
-    dailySales: 0,
-    dailyUsers: 0,
-    totalProducts: 0,
-    recentOrders: [],
-    loading: true,
-    error: null,
+  const { data: ordersData, isLoading: ordersLoading, error: ordersError } = useQuery({
+    queryKey: ['dashboard-orders'],
+    queryFn: getAllOrders
   });
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setData(prev => ({ ...prev, loading: true, error: null }));
-        
-        const [ordersResponse, productsResponse] = await Promise.all([
-          getAllOrders(),
-          getProducts()
-        ]);
+  const { data: usersData, isLoading: usersLoading, error: usersError } = useQuery({
+    queryKey: ['dashboard-users'],
+    queryFn: () => api.get('/users')
+  });
 
-        const orders = ordersResponse.data;
-        const products = productsResponse.data;
+  const { data: productsData, isLoading: productsLoading, error: productsError } = useQuery({
+    queryKey: ['dashboard-products'],
+    queryFn: () => api.get('/products')
+  });
 
-        // Calculate total sales
-        const totalSales = orders.reduce((sum: number, order: any) => sum + order.totalPrice, 0);
-        
-        // Calculate daily sales (orders from today)
-        const today = new Date().toDateString();
-        const dailyOrders = orders.filter((order: any) => 
-          new Date(order.createdAt).toDateString() === today
-        );
-        const dailySales = dailyOrders.reduce((sum: number, order: any) => sum + order.totalPrice, 0);
+  const orders = ordersData?.data || [];
+  const users = usersData?.data || [];
+  const products = productsData?.data || [];
 
-        // Get unique users from orders
-        const uniqueUsers = new Set(orders.map((order: any) => order.userId)).size;
-        
-        // Get recent orders (last 10)
-        const recentOrders = orders
-          .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-          .slice(0, 10);
+  const totalSales = Math.round(orders.reduce((sum: number, order: any) => sum + order.totalPrice, 0) / 1000);
+  const dailySales = orders.filter((order: any) => {
+    const orderDate = new Date(order.createdAt);
+    const today = new Date();
+    return orderDate.toDateString() === today.toDateString();
+  }).length;
+  
+  const dailyUsers = users.filter((user: any) => user.role === 'buyer').length;
+  const totalProducts = products.length;
+  const recentOrders = orders.slice(0, 10);
 
-        setData({
-          totalSales: Math.floor(totalSales / 1000), // Convert to thousands for display
-          dailySales: dailyOrders.length,
-          dailyUsers: uniqueUsers,
-          totalProducts: products.length,
-          recentOrders,
-          loading: false,
-          error: null,
-        });
-      } catch (error: any) {
-        console.error('Dashboard data fetch error:', error);
-        setData(prev => ({
-          ...prev,
-          loading: false,
-          error: error.response?.data?.message || 'Failed to fetch dashboard data'
-        }));
-      }
-    };
+  const loading = ordersLoading || usersLoading || productsLoading;
+  const error = ordersError || usersError || productsError;
 
-    fetchDashboardData();
-  }, []);
-
-  return data;
+  return {
+    totalSales,
+    dailySales,
+    dailyUsers,
+    totalProducts,
+    recentOrders,
+    loading,
+    error: error ? 'Failed to load dashboard data' : null
+  };
 };
