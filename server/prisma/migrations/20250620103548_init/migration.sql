@@ -21,7 +21,7 @@ CREATE TABLE "Product" (
     "description" TEXT,
     "price" DOUBLE PRECISION NOT NULL,
     "stock" INTEGER NOT NULL DEFAULT 0,
-    "coverImage" TEXT NOT NULL DEFAULT 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQinI_44p5jN05YioLyPBhn_1j5tsl7q85rfA&s',
+    "coverImage" TEXT NOT NULL DEFAULT 'https://aannet.org/global_graphics/default-store-350x350.jpg',
     "categoryId" INTEGER NOT NULL,
     "createdById" INTEGER,
     "averageRating" DOUBLE PRECISION NOT NULL DEFAULT 0,

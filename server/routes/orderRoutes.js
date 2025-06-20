@@ -20,7 +20,7 @@ orderRouter.route('/')
   .post(protect, placeOrder)
   .get(protect, getUserOrders);
 orderRouter.route('/all')
-  .get(protect, authorizeRoles('admin'), getAllOrders);
+  .get(protect, authorizeRoles('admin','seller'), getAllOrders);
 orderRouter.route('/:id/status')
-  .put(protect, authorizeRoles('admin'), updateOrderStatus);
+  .put(protect, authorizeRoles('admin','seller'), updateOrderStatus);
 export default orderRouter;

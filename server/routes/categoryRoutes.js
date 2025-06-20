@@ -12,12 +12,12 @@ import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
 
 const categoryRouter = express.Router();
 categoryRouter.route('/')
-  .post(protect, authorizeRoles('admin'), createCategory)
+  .post(protect, authorizeRoles('admin','seller'), createCategory)
   .get(getAllCategories);
 categoryRouter.route('/:id')
   .get(getCategoryById)
-  .put(protect, authorizeRoles('admin'), updateCategory)
-  .delete(protect, authorizeRoles('admin'), deleteCategory);
+  .put(protect, authorizeRoles('admin','seller'), updateCategory)
+  .delete(protect, authorizeRoles('admin','seller'), deleteCategory);
 categoryRouter.route('/:id/products')
   .get(getProductsByCategory);
 export default categoryRouter;

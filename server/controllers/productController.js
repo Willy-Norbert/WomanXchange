@@ -4,7 +4,7 @@ import { notify } from '../utils/notify.js';  // Import notify
 
 export const createProduct = asyncHandler(async (req, res) => {
   const { name, description, price, stock, categoryId,coverImage } = req.body;
-
+   coverImage = req.body.coverImage || 'https://aannet.org/global_graphics/default-store-350x350.jpg';
   const product = await prisma.product.create({
     data: {
       name,
@@ -12,7 +12,7 @@ export const createProduct = asyncHandler(async (req, res) => {
       price,
       stock,
       categoryId,
-      coverImage,
+      coverImage:coverImage || 'https://aannet.org/global_graphics/default-store-350x350.jpg',
       createdById: req.user.id,
     },
   });

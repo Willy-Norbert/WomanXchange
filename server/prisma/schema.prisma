@@ -21,6 +21,7 @@ model User {
   orders    Order[]
   cart      Cart?
   notifications Notification[]
+  chatMessages  ChatMessage[]
 }
 
 enum Role {
@@ -36,7 +37,7 @@ model Product {
   price        Float
   stock        Int       @default(0)
   category     Category  @relation(fields: [categoryId], references: [id])
-  coverImage  String   @default("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQinI_44p5jN05YioLyPBhn_1j5tsl7q85rfA&s")
+  coverImage  String   @default("https://aannet.org/global_graphics/default-store-350x350.jpg")
   categoryId   Int
   createdBy    User?     @relation(fields: [createdById], references: [id])
   createdById  Int?
@@ -139,4 +140,11 @@ model Notification {
   relatedOrderId Int?
   isRead         Boolean   @default(false)
   createdAt      DateTime  @default(now())
+}
+model ChatMessage {
+  id        Int      @id @default(autoincrement())
+  message   String
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
 }
