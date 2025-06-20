@@ -1,19 +1,59 @@
 
-import React from 'react';
+import React, { useContext, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../contexts/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, Plus, Edit } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import api from '@/api/api';
 
 const Customers = () => {
-  const customers = [
-    { id: 1, name: 'Mugish Gentil', location: 'Kigali Gasibo', orders: 3, paid: '300.00 rwf', avatar: 'MG' },
-    { id: 2, name: 'Beritha', location: 'Nyarugenge', orders: 0, paid: '300.00 rwf', avatar: 'B' },
-    { id: 3, name: 'Willy', location: 'Rwamagana', orders: 6, paid: '300.00 rwf', avatar: 'W' },
-    { id: 4, name: 'Britney', location: 'Nyanza', orders: 0, paid: '300.00 rwf', avatar: 'B' },
-    { id: 5, name: 'Bubola', location: 'Rulindo', orders: 0, paid: '300.00 rwf', avatar: 'B' },
-  ];
+  const { user } = useContext(AuthContext);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    if (user.role !== 'admin') {
+      navigate('/');
+    }
+  }, [user, navigate]);
+
+  const { data: usersData, isLoading, error } = useQuery({
+    queryKey: ['customers'],
+    queryFn: () => api.get('/users')
+  });
+
+  const customers = usersData?.data?.filter((u: any) => u.role === 'buyer') || [];
+
+  if (!user || user.role !== 'admin') {
+    return null;
+  }
+
+  if (isLoading) {
+    return (
+      <DashboardLayout currentPage="customers">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-lg text-gray-600">Loading customers...</div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout currentPage="customers">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-lg text-red-600">Failed to load customers</div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout currentPage="customers">
@@ -30,7 +70,7 @@ const Customers = () => {
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <Input 
-            placeholder="Search" 
+            placeholder="Search customers..." 
             className="pl-10 bg-gray-50 border-gray-200"
           />
         </div>
@@ -38,10 +78,9 @@ const Customers = () => {
         {/* Filter Tabs */}
         <Tabs defaultValue="all" className="w-full">
           <TabsList className="bg-gray-100">
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="accepts">Accepts Marketing</TabsTrigger>
-            <TabsTrigger value="prospect">Prospect</TabsTrigger>
-            <TabsTrigger value="returning">Returning</TabsTrigger>
+            <TabsTrigger value="all">All ({customers.length})</TabsTrigger>
+            <TabsTrigger value="active">Active</TabsTrigger>
+            <TabsTrigger value="inactive">Inactive</TabsTrigger>
           </TabsList>
           
           <TabsContent value="all" className="mt-6">
@@ -54,14 +93,6 @@ const Customers = () => {
                     <Button variant="outline" size="sm">Export</Button>
                   </div>
                 </div>
-                
-                <div className="mt-4 relative max-w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <Input 
-                    placeholder="Search customers" 
-                    className="pl-10"
-                  />
-                </div>
               </div>
 
               <table className="w-full">
@@ -70,37 +101,51 @@ const Customers = () => {
                     <th className="px-6 py-3 text-left">
                       <input type="checkbox" className="rounded" />
                     </th>
-                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">CUSTOMERS</th>
-                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">LOCATION</th>
-                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">ORDERS</th>
-                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">PAID</th>
+                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">CUSTOMER</th>
+                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">EMAIL</th>
+                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">JOINED</th>
+                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">STATUS</th>
                     <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">ACTIONS</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {customers.map((customer) => (
-                    <tr key={customer.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <input type="checkbox" className="rounded" />
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-purple-400 rounded-full flex items-center justify-center text-white font-medium">
-                            {customer.avatar}
+                  {customers.length > 0 ? (
+                    customers.map((customer: any) => (
+                      <tr key={customer.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4">
+                          <input type="checkbox" className="rounded" />
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-purple-400 rounded-full flex items-center justify-center text-white font-medium">
+                              {customer.name.charAt(0).toUpperCase()}
+                            </div>
+                            <span className="font-medium">{customer.name}</span>
                           </div>
-                          <span className="font-medium">{customer.name}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-gray-900">{customer.location}</td>
-                      <td className="px-6 py-4 text-gray-900">{customer.orders}</td>
-                      <td className="px-6 py-4 text-gray-900">{customer.paid}</td>
-                      <td className="px-6 py-4">
-                        <Button variant="ghost" size="sm">
-                          <Edit className="w-4 h-4" />
-                        </Button>
+                        </td>
+                        <td className="px-6 py-4 text-gray-900">{customer.email}</td>
+                        <td className="px-6 py-4 text-gray-900">
+                          {new Date(customer.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
+                            Active
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <Button variant="ghost" size="sm">
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                        No customers found
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>

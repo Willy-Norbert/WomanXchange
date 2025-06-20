@@ -1,32 +1,59 @@
 
-import React from 'react';
+import React, { useContext, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../contexts/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Search, Plus, Trash2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import api from '@/api/api';
 
 const Vendors = () => {
-  const vendors = [
-    { id: 1, name: 'Mugish Gentil', location: 'Kigali Gasibo', orders: 3, sales: '300.00 rwf', status: 'REJECTED', avatar: 'MG' },
-    { id: 2, name: 'Beritha', location: 'Nyarugenge', orders: 0, sales: '300.00 rwf', status: 'PUBLISHED', avatar: 'B' },
-    { id: 3, name: 'Willy', location: 'Rwamagana', orders: 6, sales: '300.00 rwf', status: 'PUBLISHED', avatar: 'W' },
-    { id: 4, name: 'Britney', location: 'Nyanza', orders: 0, sales: '300.00 rwf', status: 'PENDING', avatar: 'B' },
-    { id: 5, name: 'Bubola', location: 'Rulindo', orders: 0, sales: '300.00 rwf', status: 'PUBLISHED', avatar: 'B' },
-  ];
+  const { user } = useContext(AuthContext);
+  const navigate = useNavigate();
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'PUBLISHED':
-        return 'text-green-600';
-      case 'REJECTED':
-        return 'text-red-600';
-      case 'PENDING':
-        return 'text-blue-600';
-      default:
-        return 'text-gray-600';
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+      return;
     }
-  };
+    if (user.role !== 'admin') {
+      navigate('/');
+    }
+  }, [user, navigate]);
+
+  const { data: usersData, isLoading, error } = useQuery({
+    queryKey: ['vendors'],
+    queryFn: () => api.get('/users')
+  });
+
+  const vendors = usersData?.data?.filter((u: any) => u.role === 'seller') || [];
+
+  if (!user || user.role !== 'admin') {
+    return null;
+  }
+
+  if (isLoading) {
+    return (
+      <DashboardLayout currentPage="vendors">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-lg text-gray-600">Loading vendors...</div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout currentPage="vendors">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-lg text-red-600">Failed to load vendors</div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout currentPage="vendors">
@@ -44,7 +71,7 @@ const Vendors = () => {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input 
-              placeholder="Search" 
+              placeholder="Search vendors..." 
               className="pl-10 bg-gray-50 border-gray-200"
             />
           </div>
@@ -52,19 +79,12 @@ const Vendors = () => {
           {/* Total Vendor Card */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Vendor</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600">Total Vendors</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">23</p>
+              <p className="text-2xl font-bold">{vendors.length}</p>
             </CardContent>
           </Card>
-        </div>
-
-        {/* Filter */}
-        <div className="flex space-x-4">
-          <Button variant="outline" size="sm" className="bg-gray-100">
-            All
-          </Button>
         </div>
 
         {/* Vendors Table */}
@@ -77,14 +97,6 @@ const Vendors = () => {
                 <Button variant="outline" size="sm">Export</Button>
               </div>
             </div>
-            
-            <div className="mt-4 relative max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input 
-                placeholder="Search Vendors" 
-                className="pl-10"
-              />
-            </div>
           </div>
 
           <table className="w-full">
@@ -93,42 +105,51 @@ const Vendors = () => {
                 <th className="px-6 py-3 text-left">
                   <input type="checkbox" className="rounded" />
                 </th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">VENDORS</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">LOCATION</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">ORDERS</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">SALES</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">VENDOR</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">EMAIL</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">JOINED</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">STATUS</th>
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">ACTIONS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {vendors.map((vendor) => (
-                <tr key={vendor.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <input type="checkbox" className="rounded" />
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-purple-400 rounded-full flex items-center justify-center text-white font-medium">
-                        {vendor.avatar}
+              {vendors.length > 0 ? (
+                vendors.map((vendor: any) => (
+                  <tr key={vendor.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <input type="checkbox" className="rounded" />
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-purple-400 rounded-full flex items-center justify-center text-white font-medium">
+                          {vendor.name.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="font-medium">{vendor.name}</span>
                       </div>
-                      <span className="font-medium">{vendor.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-gray-900">{vendor.location}</td>
-                  <td className="px-6 py-4 text-gray-900">{vendor.orders}</td>
-                  <td className="px-6 py-4 text-gray-900">{vendor.sales}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center space-x-3">
+                    </td>
+                    <td className="px-6 py-4 text-gray-900">{vendor.email}</td>
+                    <td className="px-6 py-4 text-gray-900">
+                      {new Date(vendor.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm font-medium text-green-600">
+                        ACTIVE
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
                       <Button variant="ghost" size="sm">
                         <Trash2 className="w-4 h-4" />
                       </Button>
-                      <span className={`text-sm font-medium ${getStatusColor(vendor.status)}`}>
-                        {vendor.status}
-                      </span>
-                    </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                    No vendors found
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>

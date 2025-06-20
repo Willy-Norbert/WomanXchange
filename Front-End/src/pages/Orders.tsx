@@ -1,20 +1,57 @@
 
-import React from 'react';
+import React, { useContext, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../contexts/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { getAllOrders } from '@/api/orders';
 
 const Orders = () => {
-  const orders = [
-    { id: 1, customer: 'Gentil Mugisha', product: 'Shirt', date: '20/1/25', time: '12:00 AM', price: '4000Frw' },
-    { id: 2, customer: 'Gentil Mugisha', product: 'Shirt', date: '20/1/25', time: '12:00 AM', price: '4000Frw' },
-    { id: 3, customer: 'Gentil Mugisha', product: 'Shirt', date: '20/1/25', time: '12:00 AM', price: '4000Frw' },
-    { id: 4, customer: 'Gentil Mugisha', product: 'Shirt', date: '20/1/25', time: '12:00 AM', price: '4000Frw' },
-    { id: 5, customer: 'Gentil Mugisha', product: 'Shirt', date: '20/1/25', time: '12:00 AM', price: '4000Frw' },
-    { id: 6, customer: 'Gentil Mugisha', product: 'Shirt', date: '20/1/25', time: '12:00 AM', price: '4000Frw' },
-    { id: 7, customer: 'Gentil Mugisha', product: 'Shirt', date: '20/1/25', time: '12:00 AM', price: '4000Frw' },
-    { id: 8, customer: 'Gentil Mugisha', product: 'Shirt', date: '20/1/25', time: '12:00 AM', price: '4000Frw' },
-  ];
+  const { user } = useContext(AuthContext);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    if (user.role === 'buyer') {
+      navigate('/');
+    }
+  }, [user, navigate]);
+
+  const { data: ordersData, isLoading, error } = useQuery({
+    queryKey: ['orders'],
+    queryFn: getAllOrders
+  });
+
+  const orders = ordersData?.data || [];
+
+  if (!user || user.role === 'buyer') {
+    return null;
+  }
+
+  if (isLoading) {
+    return (
+      <DashboardLayout currentPage="orders">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-lg text-gray-600">Loading orders...</div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout currentPage="orders">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-lg text-red-600">Failed to load orders</div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout currentPage="orders">
@@ -25,7 +62,7 @@ const Orders = () => {
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <Input 
-            placeholder="Search" 
+            placeholder="Search orders..." 
             className="pl-10 bg-gray-50 border-gray-200"
           />
         </div>
@@ -35,30 +72,45 @@ const Orders = () => {
           <table className="w-full">
             <thead className="bg-gray-900 text-white">
               <tr>
-                <th className="px-6 py-4 text-left text-sm font-medium">Id</th>
-                <th className="px-6 py-4 text-left text-sm font-medium">Customer Name</th>
-                <th className="px-6 py-4 text-left text-sm font-medium">Product Name</th>
+                <th className="px-6 py-4 text-left text-sm font-medium">Order ID</th>
+                <th className="px-6 py-4 text-left text-sm font-medium">Customer</th>
+                <th className="px-6 py-4 text-left text-sm font-medium">Total Price</th>
+                <th className="px-6 py-4 text-left text-sm font-medium">Status</th>
                 <th className="px-6 py-4 text-left text-sm font-medium">Date</th>
-                <th className="px-6 py-4 text-left text-sm font-medium">Price</th>
-                <th className="px-6 py-4 text-left text-sm font-medium">Picture</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {orders.map((order) => (
-                <tr key={order.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm text-gray-900">{order.id}</td>
-                  <td className="px-6 py-4 text-sm text-gray-900">{order.customer}</td>
-                  <td className="px-6 py-4 text-sm text-gray-900">{order.product}</td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    <div>{order.date}</div>
-                    <div className="text-gray-500">{order.time}</div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">{order.price}</td>
-                  <td className="px-6 py-4">
-                    <div className="w-10 h-10 bg-gray-300 rounded"></div>
+              {orders.length > 0 ? (
+                orders.map((order: any) => (
+                  <tr key={order.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 text-sm text-gray-900">#{order.id}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {order.user?.name || 'Unknown Customer'}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {order.totalPrice.toLocaleString()} Rwf
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        order.isPaid 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {order.isPaid ? 'Paid' : 'Pending'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {new Date(order.createdAt).toLocaleDateString()}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                    No orders found
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
