@@ -73,7 +73,7 @@ const Products = () => {
             <div className="bg-white p-6 rounded-lg border">
               <div className="flex items-center gap-2 mb-6">
                 <Filter className="w-5 h-5" />
-                <h2 className="text-lg font-semibold">{t('products.filters')}</h2>
+                <h2 className="text-lg font-semibold">{t('translation.filters')}</h2>
               </div>
 
               {/* Search Filter */}

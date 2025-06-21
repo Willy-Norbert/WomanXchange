@@ -104,12 +104,7 @@ const Dashboard = () => {
           <h1 className="text-2xl font-bold text-gray-900">
             {user.role === 'ADMIN' || user.role === 'admin' ? 'Admin Dashboard' : 'Seller Dashboard'}
           </h1>
-          <Link to="/products">
-            <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Product
-            </Button>
-          </Link>
+       
         </div>
         
         {/* Stats Cards */}
@@ -142,12 +137,7 @@ const Dashboard = () => {
 
         {/* Secondary Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatsCard
-            title="Daily Orders"
-            value={dailySales.toString()}
-            icon={Clock}
-            color="text-blue-500"
-          />
+      
           <StatsCard
             title="Products"
             value={totalProducts.toString()}

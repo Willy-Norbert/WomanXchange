@@ -1,4 +1,3 @@
-
 import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
@@ -19,7 +18,7 @@ interface CreateCustomerData {
   name: string;
   email: string;
   password: string;
-  role: 'seller';
+  role: 'buyer';
 }
 
 const Customers = () => {
@@ -35,20 +34,20 @@ const Customers = () => {
       name: '',
       email: '',
       password: '',
-      role: 'seller',
+      role: 'buyer',
     },
   });
 
   useEffect(() => {
     if (loading) return;
-    
+
     if (!user) {
       navigate('/login');
       return;
     }
-    
-    // Allow both ADMIN and sellers to access customers
-    if (user.role !== 'ADMIN' && user.role !== 'seller') {
+
+    // Allow ADMIN, buyer, and seller to access the customers page
+    if (!['ADMIN', 'buyer', 'seller'].includes(user.role)) {
       navigate('/dashboard');
       return;
     }
@@ -57,20 +56,16 @@ const Customers = () => {
   const { data: usersData, isLoading, error, refetch } = useQuery({
     queryKey: ['customers'],
     queryFn: async () => {
-      console.log('Fetching customers data...');
       const response = await api.get('/auth/users');
-      console.log('Customers API response:', response.data);
       return response;
     },
-    enabled: !!user && (user.role === 'ADMIN' || user.role === 'seller'),
-    refetchInterval: 5000, // Refetch every 5 seconds for live updates
+    enabled: !!user && ['ADMIN', 'buyer', 'seller'].includes(user.role),
+    refetchInterval: 5000,
   });
 
   const createCustomerMutation = useMutation({
     mutationFn: async (data: CreateCustomerData) => {
-      console.log('Creating customer:', data);
       const response = await api.post('/auth/register', data);
-      console.log('Customer created response:', response);
       return response;
     },
     onSuccess: () => {
@@ -78,28 +73,22 @@ const Customers = () => {
       setIsCreateModalOpen(false);
       form.reset();
       toast({
-        title: "Success",
-        description: "Customer (seller) created successfully.",
+        title: 'Success',
+        description: 'Customer (buyer) created successfully.',
       });
     },
     onError: (error: any) => {
       const errorMessage = error.response?.data?.message || error.message || 'Failed to create customer';
       toast({
-        title: "Error",
+        title: 'Error',
         description: errorMessage,
-        variant: "destructive",
+        variant: 'destructive',
       });
-    }
+    },
   });
 
-  // Filter customers (buyers) from the users data
   const allUsers = usersData?.data || [];
-  const customers = allUsers.filter((u: any) => {
-    const userRole = u.role?.toLowerCase();
-    return userRole === 'buyer';
-  });
-
-  console.log('All users:', allUsers.length, 'Customers found:', customers.length);
+  const customers = allUsers.filter((u: any) => u.role?.toLowerCase() === 'buyer');
 
   const onSubmit = (data: CreateCustomerData) => {
     createCustomerMutation.mutate(data);
@@ -120,12 +109,11 @@ const Customers = () => {
     );
   }
 
-  if (!user || (user.role !== 'ADMIN' && user.role !== 'seller')) {
+  if (!user || !['ADMIN', 'buyer', 'seller'].includes(user.role)) {
     return null;
   }
 
   if (error) {
-    console.error('Customers fetch error:', error);
     return (
       <DashboardLayout currentPage="customers">
         <div className="flex items-center justify-center min-h-[400px]">
@@ -143,119 +131,97 @@ const Customers = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">{t('customers.title')}</h1>
-          <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-            <DialogTrigger asChild>
-              <Button 
-                className="bg-blue-600 hover:bg-blue-700"
-                onClick={() => resetForm()}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                {t('customers.add_customer')}
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>Add New Customer (Seller)</DialogTitle>
-              </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    rules={{ required: 'Name is required' }}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Full Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter full name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    rules={{ 
-                      required: 'Email is required',
-                      pattern: {
-                        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                        message: 'Invalid email address'
-                      }
-                    }}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email Address</FormLabel>
-                        <FormControl>
-                          <Input type="email" placeholder="Enter email address" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    rules={{ 
-                      required: 'Password is required',
-                      minLength: {
-                        value: 6,
-                        message: 'Password must be at least 6 characters'
-                      }
-                    }}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="Enter password" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div className="flex gap-2 pt-4">
-                    <Button 
-                      type="submit" 
-                      disabled={createCustomerMutation.isPending}
-                      className="flex-1"
-                    >
-                      {createCustomerMutation.isPending ? 'Creating...' : 'Create Customer'}
-                    </Button>
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      onClick={resetForm}
-                      className="flex-1"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
-        </div>
-        
-        {/* Search */}
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <Input 
-            placeholder={t('customers.search_customers')} 
-            className="pl-10 bg-gray-50 border-gray-200"
-          />
+          {user.role === 'ADMIN' && (
+            <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => resetForm()}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  {t('customers.add_customer')}
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Add New Customer (buyer)</DialogTitle>
+                </DialogHeader>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      rules={{ required: 'Name is required' }}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Full Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter full name" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="email"
+                      rules={{
+                        required: 'Email is required',
+                        pattern: {
+                          value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                          message: 'Invalid email address',
+                        },
+                      }}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email Address</FormLabel>
+                          <FormControl>
+                            <Input type="email" placeholder="Enter email address" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="password"
+                      rules={{
+                        required: 'Password is required',
+                        minLength: { value: 6, message: 'Password must be at least 6 characters' },
+                      }}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Password</FormLabel>
+                          <FormControl>
+                            <Input type="password" placeholder="Enter password" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="flex gap-2 pt-4">
+                      <Button type="submit" disabled={createCustomerMutation.isPending} className="flex-1">
+                        {createCustomerMutation.isPending ? 'Creating...' : 'Create Customer'}
+                      </Button>
+                      <Button type="button" variant="outline" onClick={resetForm} className="flex-1">
+                        Cancel
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
-        {/* Filter Tabs */}
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Input placeholder={t('customers.search_customers')} className="pl-10 bg-gray-50 border-gray-200" />
+        </div>
+
         <Tabs defaultValue="all" className="w-full">
           <TabsList className="bg-gray-100">
             <TabsTrigger value="all">{t('customers.all_customers')} ({customers.length})</TabsTrigger>
             <TabsTrigger value="active">{t('customers.active')}</TabsTrigger>
             <TabsTrigger value="inactive">{t('customers.inactive')}</TabsTrigger>
           </TabsList>
-          
           <TabsContent value="all" className="mt-6">
             <div className="bg-white rounded-lg shadow-sm border">
               <div className="p-6 border-b">
@@ -267,13 +233,10 @@ const Customers = () => {
                   </div>
                 </div>
               </div>
-
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left">
-                      <input type="checkbox" className="rounded" />
-                    </th>
+                    <th className="px-6 py-3"><input type="checkbox" className="rounded" /></th>
                     <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t('customers.customer').toUpperCase()}</th>
                     <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t('customers.email').toUpperCase()}</th>
                     <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t('customers.joined').toUpperCase()}</th>
@@ -285,9 +248,7 @@ const Customers = () => {
                   {customers.length > 0 ? (
                     customers.map((customer: any) => (
                       <tr key={customer.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4">
-                          <input type="checkbox" className="rounded" />
-                        </td>
+                        <td className="px-6 py-4"><input type="checkbox" className="rounded" /></td>
                         <td className="px-6 py-4">
                           <div className="flex items-center space-x-3">
                             <div className="w-10 h-10 bg-purple-400 rounded-full flex items-center justify-center text-white font-medium">
