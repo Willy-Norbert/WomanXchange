@@ -15,7 +15,7 @@ const menuItems = [
 ];
 
 const managementItems = [
-  { label: 'Products', path: '/products', roles: ['admin', 'seller'] },
+  { label: 'Products', path: '/admin-products', roles: ['admin', 'seller'] },
   { label: 'Orders', path: '/orders', roles: ['admin', 'seller'] },
   { label: 'Vendors', path: '/vendors', roles: ['admin'] },
   { label: 'Reports', path: '/reports', roles: ['admin', 'seller'] },

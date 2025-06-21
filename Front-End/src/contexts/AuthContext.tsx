@@ -1,6 +1,7 @@
 
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { UserResponse } from '../api/auth';
+import api from '../api/api';
 
 interface AuthContextType {
   user: UserResponse | null;
@@ -20,20 +21,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const userData = localStorage.getItem('user');
-    const token = localStorage.getItem('token');
-    
-    if (userData && token) {
-      try {
-        const parsedUser = JSON.parse(userData);
-        setUser(parsedUser);
-      } catch (error) {
-        console.error('Error parsing user data:', error);
-        localStorage.removeItem('user');
-        localStorage.removeItem('token');
+    const initializeAuth = async () => {
+      const userData = localStorage.getItem('user');
+      const token = localStorage.getItem('token');
+      
+      if (userData && token) {
+        try {
+          const parsedUser = JSON.parse(userData);
+          
+          // Verify token is still valid by making a test request
+          try {
+            await api.get('/auth/verify-token');
+            setUser(parsedUser);
+          } catch (error) {
+            // Token is invalid, clear stored data
+            console.error('Token verification failed:', error);
+            localStorage.removeItem('user');
+            localStorage.removeItem('token');
+            setUser(null);
+          }
+        } catch (error) {
+          console.error('Error parsing user data:', error);
+          localStorage.removeItem('user');
+          localStorage.removeItem('token');
+          setUser(null);
+        }
       }
-    }
-    setLoading(false);
+      setLoading(false);
+    };
+
+    initializeAuth();
   }, []);
 
   const login = (userData: UserResponse) => {
