@@ -22,36 +22,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     const initializeAuth = async () => {
-      console.log('🔄 AuthContext: Initializing authentication...');
+      console.log('🚀 AuthContext: Starting authentication initialization...');
       
-      const userData = localStorage.getItem('user');
-      const token = localStorage.getItem('token');
-      
-      console.log('📦 AuthContext: Stored user data:', userData ? 'EXISTS' : 'MISSING');
-      console.log('🔑 AuthContext: Stored token:', token ? 'EXISTS' : 'MISSING');
-      
-      if (!userData || !token) {
-        console.log('❌ AuthContext: No stored auth data found, user not logged in');
-        setLoading(false);
-        return;
-      }
-
       try {
+        const userData = localStorage.getItem('user');
+        const token = localStorage.getItem('token');
+        
+        console.log('📦 AuthContext: localStorage user:', userData ? 'EXISTS' : 'MISSING');
+        console.log('🔑 AuthContext: localStorage token:', token ? 'EXISTS' : 'MISSING');
+        
+        if (!userData || !token) {
+          console.log('❌ AuthContext: No stored auth data found');
+          setLoading(false);
+          return;
+        }
+
         const parsedUser = JSON.parse(userData);
-        console.log('👤 AuthContext: Parsed user data:', parsedUser);
+        console.log('👤 AuthContext: Parsed user from localStorage:', parsedUser);
         
-        // Set the token in axios defaults BEFORE making the request
+        // Set the authorization header BEFORE making the verification request
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        console.log('🔧 AuthContext: Set token in axios defaults');
+        console.log('🔧 AuthContext: Set Authorization header in axios defaults');
         
-        // Verify token is still valid
-        console.log('🔍 AuthContext: Verifying token with server...');
+        console.log('🔍 AuthContext: Making token verification request...');
         const response = await api.get('/auth/verify-token');
         console.log('✅ AuthContext: Token verification response:', response.data);
         
         if (response.data.success && response.data.user) {
-          // Update user data with fresh data from server
-          const freshUserData = {
+          const verifiedUser = {
             id: response.data.user.id,
             name: response.data.user.name,
             email: response.data.user.email,
@@ -59,43 +57,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             token: token // Keep the original token
           };
           
-          console.log('🔄 AuthContext: Updating user data with fresh server data:', freshUserData);
+          console.log('🔄 AuthContext: Setting verified user data:', verifiedUser);
           
-          // Update localStorage with fresh user data
-          localStorage.setItem('user', JSON.stringify(freshUserData));
+          // Update localStorage with fresh data
+          localStorage.setItem('user', JSON.stringify(verifiedUser));
           
-          // Set user state - THIS IS CRITICAL
-          setUser(freshUserData);
-          console.log('✅ AuthContext: User successfully restored and logged in');
+          // Set user state - THIS IS THE CRITICAL PART
+          setUser(verifiedUser);
+          console.log('✅ AuthContext: User state successfully set, user is logged in');
         } else {
-          console.log('❌ AuthContext: Invalid token verification response format');
-          clearAuthData();
+          console.log('❌ AuthContext: Invalid token verification response');
+          throw new Error('Invalid token verification response');
         }
       } catch (error) {
         console.error('❌ AuthContext: Token verification failed:', error);
         console.log('🧹 AuthContext: Clearing invalid auth data');
-        clearAuthData();
+        
+        // Clear all auth data
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        delete api.defaults.headers.common['Authorization'];
+        setUser(null);
+      } finally {
+        setLoading(false);
+        console.log('🏁 AuthContext: Authentication initialization completed');
       }
-      
-      setLoading(false);
-      console.log('✅ AuthContext: Authentication initialization complete');
     };
 
     initializeAuth();
   }, []);
 
-  const clearAuthData = () => {
-    console.log('🧹 AuthContext: Clearing all authentication data');
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-    delete api.defaults.headers.common['Authorization'];
-    setUser(null);
-  };
-
   const login = (userData: UserResponse) => {
     console.log('🔐 AuthContext: Logging in user:', userData.email);
+    
     try {
-      // Store in localStorage first
+      // Store in localStorage
       localStorage.setItem('user', JSON.stringify(userData));
       localStorage.setItem('token', userData.token);
       console.log('💾 AuthContext: Stored user data in localStorage');
@@ -109,20 +105,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('✅ AuthContext: Login successful, user state updated');
     } catch (error) {
       console.error('❌ AuthContext: Error during login:', error);
-      clearAuthData();
     }
   };
 
   const logout = () => {
     console.log('🚪 AuthContext: Logging out user');
-    try {
-      clearAuthData();
-      // Redirect to login page
-      console.log('🔄 AuthContext: Redirecting to login page');
-      window.location.href = '/login';
-    } catch (error) {
-      console.error('❌ AuthContext: Error during logout:', error);
-    }
+    
+    // Clear all auth data
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    delete api.defaults.headers.common['Authorization'];
+    setUser(null);
+    
+    // Redirect to login page
+    console.log('🔄 AuthContext: Redirecting to login page');
+    window.location.href = '/login';
   };
 
   return (

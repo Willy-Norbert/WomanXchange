@@ -10,25 +10,55 @@ import { Button } from '@/components/ui/button';
 import { useDashboardData } from '@/hooks/useDashboardData';
 
 const Dashboard = () => {
-  const { user } = useContext(AuthContext);
+  const auth = useContext(AuthContext);
   const navigate = useNavigate();
-  const { totalSales, dailySales, dailyUsers, totalProducts, recentOrders, loading, error } = useDashboardData();
+  
+  if (!auth) {
+    throw new Error('AuthContext must be used within AuthProvider');
+  }
+  
+  const { user, loading: authLoading } = auth;
+  const { totalSales, dailySales, dailyUsers, totalProducts, recentOrders, loading: dashboardLoading, error } = useDashboardData();
 
   useEffect(() => {
+    console.log('🏠 Dashboard: useEffect - authLoading:', authLoading, 'user:', user);
+    
+    // Don't redirect while auth is still loading
+    if (authLoading) {
+      console.log('⏳ Dashboard: Auth is still loading, waiting...');
+      return;
+    }
+    
     if (!user) {
+      console.log('👤 Dashboard: No user found, redirecting to login');
       navigate('/login');
       return;
     }
-    if (user.role === 'buyer') {
+    
+    if (user.role === 'BUYER' || user.role === 'buyer') {
+      console.log('🛒 Dashboard: User is buyer, redirecting to home');
       navigate('/');
+      return;
     }
-  }, [user, navigate]);
+    
+    console.log('✅ Dashboard: User authenticated and authorized:', user.email, user.role);
+  }, [user, authLoading, navigate]);
 
-  if (!user || user.role === 'buyer') {
+  // Show loading while auth is initializing
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-lg text-gray-600">Loading...</div>
+      </div>
+    );
+  }
+
+  // Don't render if user is not authenticated or authorized
+  if (!user || user.role === 'BUYER' || user.role === 'buyer') {
     return null;
   }
 
-  if (loading) {
+  if (dashboardLoading) {
     return (
       <DashboardLayout currentPage="dashboard">
         <div className="flex items-center justify-center min-h-[400px]">
@@ -53,7 +83,7 @@ const Dashboard = () => {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <h1 className="text-2xl font-bold text-gray-900">
-            {user.role === 'admin' ? 'Admin Dashboard' : 'Seller Dashboard'}
+            {user.role === 'ADMIN' || user.role === 'admin' ? 'Admin Dashboard' : 'Seller Dashboard'}
           </h1>
           <Link to="/products">
             <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white">

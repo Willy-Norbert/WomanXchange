@@ -44,8 +44,8 @@ api.interceptors.response.use(
       const isTokenVerification = url?.includes('/auth/verify-token');
       
       if (isTokenVerification) {
-        console.log('🔍 401 from token verification - letting AuthContext handle this');
-        // Don't clear auth data here, let AuthContext handle it
+        console.log('🔍 401 from token verification - this will be handled by AuthContext');
+        // Don't clear auth data here, let AuthContext handle token verification failures
         return Promise.reject(error);
       }
       
