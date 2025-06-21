@@ -11,29 +11,24 @@ import { useQuery } from '@tanstack/react-query';
 import api from '@/api/api';
 
 const Vendors = () => {
-  const { user } = useContext(AuthContext);
+  const { user, loading } = useContext(AuthContext);
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    // Case 1: still loading
-    if (user === undefined) return;
+    if (loading) return;
 
-    // Case 2: not logged in
-    if (user === null) {
+    if (!user) {
       navigate('/login');
       return;
     }
 
-    // Case 3: not an admin
+    // Only admins can access vendors page
     if (user.role !== 'admin') {
       navigate('/dashboard');
       return;
     }
-
-    // Case 4: valid admin
-
-  }, [user, navigate]);
+  }, [user, loading, navigate]);
 
   const { data: usersData, isLoading, error, refetch } = useQuery({
     queryKey: ['vendors'],
@@ -49,7 +44,7 @@ const Vendors = () => {
   // Filter vendors from the users data
   const allUsers = usersData?.data || [];
   const vendors = allUsers.filter((u: any) => {
-    const userRole = u.role.toLowerCase();
+    const userRole = u.role?.toLowerCase();
     return userRole === 'seller';
   });
 
@@ -61,7 +56,7 @@ const Vendors = () => {
 
   console.log('All users:', allUsers.length, 'Vendors found:', vendors.length, 'Filtered:', filteredVendors.length);
 
-  if (isLoading) {
+  if (loading || isLoading) {
     return (
       <DashboardLayout currentPage="vendors">
         <div className="flex items-center justify-center min-h-[400px]">
@@ -69,6 +64,10 @@ const Vendors = () => {
         </div>
       </DashboardLayout>
     );
+  }
+
+  if (!user || user.role !== 'admin') {
+    return null;
   }
 
   if (error) {
