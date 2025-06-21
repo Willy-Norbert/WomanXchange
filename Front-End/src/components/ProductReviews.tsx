@@ -24,23 +24,35 @@ interface ProductReviewsProps {
 }
 
 const ProductReviews = ({ productId }: ProductReviewsProps) => {
-  const { user } = useContext(AuthContext);
+  const auth = useContext(AuthContext);
+  const user = auth?.user;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [showForm, setShowForm] = useState(false);
 
-  const { data: reviewsData, isLoading } = useQuery({
+  // Fetch reviews from backend
+  const { data: reviewsData, isLoading, error } = useQuery({
     queryKey: ['reviews', productId],
-    queryFn: () => api.get(`/products/${productId}/reviews`)
+    queryFn: async () => {
+      console.log('Fetching reviews for product:', productId);
+      const response = await api.get(`/products/${productId}/reviews`);
+      console.log('Reviews response:', response.data);
+      return response;
+    }
   });
 
   const reviews = reviewsData?.data || [];
 
+  // Submit review mutation
   const submitReviewMutation = useMutation({
-    mutationFn: (reviewData: { rating: number; comment: string }) =>
-      api.post(`/products/${productId}/reviews`, reviewData),
+    mutationFn: async (reviewData: { rating: number; comment: string }) => {
+      console.log('Submitting review:', reviewData, 'for product:', productId);
+      const response = await api.post(`/products/${productId}/reviews`, reviewData);
+      console.log('Review submission response:', response.data);
+      return response;
+    },
     onSuccess: () => {
       toast({
         title: "Review submitted",
@@ -52,9 +64,11 @@ const ProductReviews = ({ productId }: ProductReviewsProps) => {
       queryClient.invalidateQueries({ queryKey: ['reviews', productId] });
     },
     onError: (error: any) => {
+      console.error('Review submission error:', error);
+      const errorMessage = error.response?.data?.message || "Failed to submit review";
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to submit review",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -65,6 +79,15 @@ const ProductReviews = ({ productId }: ProductReviewsProps) => {
       toast({
         title: "Error",
         description: "Please write a comment for your review",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to submit a review",
         variant: "destructive",
       });
       return;
@@ -84,7 +107,7 @@ const ProductReviews = ({ productId }: ProductReviewsProps) => {
           key={star}
           className={`w-5 h-5 cursor-pointer transition-colors ${
             star <= value ? 'text-yellow-400 fill-current' : 'text-gray-300'
-          }`}
+          } ${readonly ? 'cursor-default' : 'hover:text-yellow-300'}`}
           onClick={() => !readonly && onChange?.(star)}
         />
       ))}
@@ -101,6 +124,17 @@ const ProductReviews = ({ productId }: ProductReviewsProps) => {
     );
   }
 
+  if (error) {
+    console.error('Error loading reviews:', error);
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center text-red-600">Failed to load reviews</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -109,13 +143,13 @@ const ProductReviews = ({ productId }: ProductReviewsProps) => {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Add Review Button for Buyers */}
-        {user && user.role === 'buyer' && (
+        {/* Add Review Button for logged-in users */}
+        {user && (
           <div className="border-b pb-6">
             {!showForm ? (
               <Button 
                 onClick={() => setShowForm(true)}
-                className="bg-purple hover:bg-purple-600 text-white"
+                className="bg-purple-600 hover:bg-purple-700 text-white"
               >
                 Write a Review
               </Button>
@@ -143,7 +177,7 @@ const ProductReviews = ({ productId }: ProductReviewsProps) => {
                   <Button 
                     onClick={handleSubmitReview}
                     disabled={submitReviewMutation.isPending}
-                    className="bg-purple hover:bg-purple-600 text-white"
+                    className="bg-purple-600 hover:bg-purple-700 text-white"
                   >
                     {submitReviewMutation.isPending ? 'Submitting...' : 'Submit Review'}
                   </Button>
@@ -160,6 +194,14 @@ const ProductReviews = ({ productId }: ProductReviewsProps) => {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {!user && (
+          <div className="border-b pb-6">
+            <p className="text-gray-600 text-sm">
+              Please <a href="/login" className="text-purple-600 hover:underline">log in</a> to write a review.
+            </p>
           </div>
         )}
 
