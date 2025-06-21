@@ -2,8 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getCategories, Category } from '@/api/categories';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const CategorySection = () => {
+  const { t } = useLanguage();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -28,7 +30,7 @@ const CategorySection = () => {
       <section className="py-16 bg-gray-50">
         <div className="container mx-auto px-4">
           <div className="text-center">
-            <div className="text-lg text-gray-600">Loading categories...</div>
+            <div className="text-lg text-gray-600">{t('loading_categories')}</div>
           </div>
         </div>
       </section>
@@ -39,12 +41,12 @@ const CategorySection = () => {
     <section className="py-16 bg-gray-50">
       <div className="container mx-auto px-4">
         <h2 className="text-3xl font-bold text-center mb-12 text-gray-900">
-          BROWSE BY CATEGORY
+          {t('browse_by_category')}
         </h2>
         
         {categories.length === 0 ? (
           <div className="text-center">
-            <p className="text-gray-600">No categories available at the moment.</p>
+            <p className="text-gray-600">{t('no_categories_available')}</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">

@@ -2,6 +2,7 @@
 import React, { useContext, useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 
 const CommunityChat = () => {
   const { user } = useContext(AuthContext);
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -53,16 +55,16 @@ const CommunityChat = () => {
       setNewMessage('');
       queryClient.invalidateQueries({ queryKey: ['chat-messages'] });
       toast({
-        title: "Message sent",
-        description: "Your message has been posted to the community chat.",
+        title: t('message_sent'),
+        description: t('message_posted'),
       });
       scrollToBottom();
     },
     onError: (error: any) => {
       console.error('Error sending message:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to send message';
+      const errorMessage = error.response?.data?.message || error.message || t('failed_send_message');
       toast({
-        title: "Error",
+        title: t('error'),
         description: errorMessage,
         variant: "destructive",
       });
@@ -97,7 +99,7 @@ const CommunityChat = () => {
     return (
       <DashboardLayout currentPage="community-chat">
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-lg text-gray-600">Loading chat...</div>
+          <div className="text-lg text-gray-600">{t('loading_chat')}</div>
         </div>
       </DashboardLayout>
     );
@@ -109,10 +111,10 @@ const CommunityChat = () => {
       <DashboardLayout currentPage="community-chat">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-lg text-red-600">
-            Failed to load chat messages
+            {t('failed_load_chat')}
             <Button onClick={() => refetch()} className="ml-2">
               <RefreshCw className="w-4 h-4 mr-1" />
-              Retry
+              {t('retry')}
             </Button>
           </div>
         </div>
@@ -127,22 +129,22 @@ const CommunityChat = () => {
           <div className="flex items-center space-x-3">
             <MessageSquare className="w-8 h-8 text-purple-600" />
             <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              Community Chat
+              {t('community_chat')}
             </h1>
           </div>
           <Button onClick={() => refetch()} variant="outline" size="sm">
             <RefreshCw className="w-4 h-4 mr-1" />
-            Refresh
+            {t('refresh')}
           </Button>
         </div>
         
         <Card className="flex-1 flex flex-col h-[calc(100vh-200px)]">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg font-medium text-gray-800">
-              Discussion for Vendors & Admins ({messages.length} messages)
+              {t('discussion_vendors')} ({messages.length} {t('messages')})
             </CardTitle>
             <p className="text-sm text-gray-600">
-              Share ideas, ask questions, and collaborate with other vendors and administrators.
+              {t('share_ideas')}
             </p>
           </CardHeader>
           
@@ -163,7 +165,7 @@ const CommunityChat = () => {
                             ? 'bg-red-100 text-red-800' 
                             : 'bg-blue-100 text-blue-800'
                         }`}>
-                          {message.user.role.toLowerCase() === 'admin' ? 'Admin' : 'Vendor'}
+                          {message.user.role.toLowerCase() === 'admin' ? t('admin') : t('vendor_role')}
                         </span>
                         <span className="text-xs text-gray-500">
                           {new Date(message.createdAt).toLocaleString()}
@@ -179,7 +181,7 @@ const CommunityChat = () => {
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center">
                     <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">No messages yet. Start the conversation!</p>
+                    <p className="text-gray-500">{t('no_messages')}</p>
                   </div>
                 </div>
               )}
@@ -192,7 +194,7 @@ const CommunityChat = () => {
                 <Input
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Type your message..."
+                  placeholder={t('type_message')}
                   className="flex-1"
                   disabled={createMessageMutation.isPending}
                   maxLength={500}
@@ -210,7 +212,7 @@ const CommunityChat = () => {
                 </Button>
               </form>
               <p className="text-xs text-gray-500 mt-2">
-                {newMessage.length}/500 characters
+                {newMessage.length}/500 {t('characters')}
               </p>
             </div>
           </CardContent>

@@ -5,8 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const Contact = () => {
+  const { t } = useLanguage();
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -27,26 +30,26 @@ const Contact = () => {
             <div className="bg-white rounded-2xl shadow-lg p-0 max-w-4xl w-full flex overflow-hidden">
               {/* Contact Form */}
               <div className="flex-1 p-8">
-                <h2 className="text-2xl font-bold mb-6">Send Us message</h2>
+                <h2 className="text-2xl font-bold mb-6">{t('send_message')}</h2>
                 
                 <form className="space-y-4">
                   <Input 
                     type="text" 
-                    placeholder="Enter your full name" 
+                    placeholder={t('full_name')}
                     className="w-full border-gray-200"
                   />
                   <Input 
                     type="email" 
-                    placeholder="Enter your email" 
+                    placeholder={t('enter_email')}
                     className="w-full border-gray-200"
                   />
                   <Textarea 
-                    placeholder="Enter your message here..." 
+                    placeholder={t('enter_message')}
                     rows={4}
                     className="w-full resize-none border-gray-200"
                   />
                   <Button className="w-full bg-gray-900 hover:bg-gray-800 text-white rounded-lg">
-                    Send
+                    {t('send')}
                   </Button>
                 </form>
               </div>
@@ -57,7 +60,7 @@ const Contact = () => {
                   <div className="flex items-start space-x-4">
                     <Phone className="w-5 h-5 text-white mt-1" />
                     <div>
-                      <p className="text-sm text-gray-300 mb-1">Phone:</p>
+                      <p className="text-sm text-gray-300 mb-1">{t('phone_label')}</p>
                       <p className="font-medium">+250 784 526984</p>
                     </div>
                   </div>
@@ -65,7 +68,7 @@ const Contact = () => {
                   <div className="flex items-start space-x-4">
                     <Mail className="w-5 h-5 text-white mt-1" />
                     <div>
-                      <p className="text-sm text-gray-300 mb-1">Email:</p>
+                      <p className="text-sm text-gray-300 mb-1">{t('email_label')}</p>
                       <p className="font-medium">info@rwandamart.shop</p>
                     </div>
                   </div>
@@ -73,16 +76,16 @@ const Contact = () => {
                   <div className="flex items-start space-x-4">
                     <Clock className="w-5 h-5 text-white mt-1" />
                     <div>
-                      <p className="text-sm text-gray-300 mb-1">Times:</p>
-                      <p className="font-medium">Mon - Sun: 7 AM - 9 PM</p>
+                      <p className="text-sm text-gray-300 mb-1">{t('times_label')}</p>
+                      <p className="font-medium">{t('times_value')}</p>
                     </div>
                   </div>
                   
                   <div className="flex items-start space-x-4">
                     <MapPin className="w-5 h-5 text-white mt-1" />
                     <div>
-                      <p className="text-sm text-gray-300 mb-1">Location:</p>
-                      <p className="font-medium">Downtown House Kigali</p>
+                      <p className="text-sm text-gray-300 mb-1">{t('location_label')}</p>
+                      <p className="font-medium">{t('location_value')}</p>
                     </div>
                   </div>
                 </div>

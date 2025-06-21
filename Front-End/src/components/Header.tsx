@@ -4,10 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { useContext } from 'react';
 import { AuthContext } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { LanguageSwitcher } from './LanguageSwitcher';
 import TopBanner from './TopBanner';
 
 const Header = () => {
   const auth = useContext(AuthContext);
+  const { t } = useLanguage();
   const user = auth?.user;
 
   return (
@@ -29,16 +32,16 @@ const Header = () => {
 
             {/* Navigation */}
             <nav className="hidden md:flex items-center space-x-8">
-              <Link to="/" className="text-gray-700 hover:text-purple-600 transition-colors">Home</Link>
-              <Link to="/products" className="text-gray-700 hover:text-purple-600 transition-colors">Products</Link>
-              <Link to="/categories" className="text-gray-700 hover:text-purple-600 transition-colors">Categories</Link>
-              <Link to="/about" className="text-gray-700 hover:text-purple-600 transition-colors">About</Link>
-              <Link to="/contact" className="text-gray-700 hover:text-purple-600 transition-colors">Contact</Link>
+              <Link to="/" className="text-gray-700 hover:text-purple-600 transition-colors">{t('home')}</Link>
+              <Link to="/products" className="text-gray-700 hover:text-purple-600 transition-colors">{t('products')}</Link>
+              <Link to="/categories" className="text-gray-700 hover:text-purple-600 transition-colors">{t('categories')}</Link>
+              <Link to="/about" className="text-gray-700 hover:text-purple-600 transition-colors">{t('about')}</Link>
+              <Link to="/contact" className="text-gray-700 hover:text-purple-600 transition-colors">{t('contact')}</Link>
               
               {/* Dashboard link for sellers and admins */}
               {user && (user.role === 'SELLER' || user.role === 'ADMIN' || user.role === 'seller' || user.role === 'admin') && (
                 <Link to="/dashboard" className="text-purple-600 hover:text-purple-700 font-medium transition-colors">
-                  Dashboard
+                  {t('dashboard')}
                 </Link>
               )}
             </nav>
@@ -49,7 +52,7 @@ const Header = () => {
                 <Search className="w-4 h-4 text-gray-400 mr-2" />
                 <input 
                   type="text" 
-                  placeholder="Search products..." 
+                  placeholder={t('search_products')}
                   className="bg-transparent border-none outline-none text-sm"
                 />
               </div>
@@ -60,10 +63,12 @@ const Header = () => {
                 </Button>
               </Link>
 
+              <LanguageSwitcher />
+
               {user ? (
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-gray-700 hidden md:block">
-                    Welcome, {user.name}
+                    {t('welcome')}, {user.name}
                   </span>
                   <Link to="/profile">
                     <Button variant="ghost" size="icon">

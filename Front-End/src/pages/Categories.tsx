@@ -6,9 +6,11 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getCategories } from '@/api/categories';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Package } from 'lucide-react';
 
 const Categories = () => {
+  const { t } = useLanguage();
   const { data: categoriesData, isLoading, error } = useQuery({
     queryKey: ['categories'],
     queryFn: getCategories
@@ -21,7 +23,7 @@ const Categories = () => {
       <div className="min-h-screen bg-white">
         <Header />
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-lg text-gray-600">Loading categories...</div>
+          <div className="text-lg text-gray-600">{t('loading_categories')}</div>
         </div>
         <Footer />
       </div>
@@ -33,7 +35,7 @@ const Categories = () => {
       <div className="min-h-screen bg-white">
         <Header />
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-lg text-red-600">Failed to load categories</div>
+          <div className="text-lg text-red-600">{t('failed_load_categories')}</div>
         </div>
         <Footer />
       </div>
@@ -45,9 +47,9 @@ const Categories = () => {
       <Header />
       <div className="container mx-auto px-4 py-8">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">Shop by Categories</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">{t('shop_by_categories')}</h1>
           <p className="text-gray-600 max-w-2xl mx-auto">
-            Discover our wide range of product categories and find exactly what you're looking for.
+            {t('wide_range_categories')}
           </p>
         </div>
 
@@ -76,8 +78,8 @@ const Categories = () => {
         {categories.length === 0 && (
           <div className="text-center py-12">
             <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Categories Found</h3>
-            <p className="text-gray-600">Categories will appear here once they are added to the system.</p>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">{t('no_categories')}</h3>
+            <p className="text-gray-600">{t('categories_appear')}</p>
           </div>
         )}
       </div>

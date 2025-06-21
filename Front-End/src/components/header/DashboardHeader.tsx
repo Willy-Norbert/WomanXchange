@@ -4,6 +4,8 @@ import { Bell, Moon, LogOut, User, Settings, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AuthContext } from '../../contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { LanguageSwitcher } from '../LanguageSwitcher';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getNotifications } from '@/api/notifications';
@@ -17,6 +19,7 @@ import {
 
 export const DashboardHeader: React.FC = () => {
   const { user, logout } = useContext(AuthContext);
+  const { t } = useLanguage();
 
   const { data: notificationsData } = useQuery({
     queryKey: ['notifications'],
@@ -40,13 +43,13 @@ export const DashboardHeader: React.FC = () => {
           <Link to="/">
             <Button variant="ghost" className="text-purple-600 hover:text-purple-700">
               <Home className="w-4 h-4 mr-2" />
-              Home
+              {t('home')}
             </Button>
           </Link>
           {(user.role === 'admin' || user.role === 'seller') && (
             <Link to="/dashboard">
               <Button variant="ghost" className="text-purple-600 hover:text-purple-700">
-                Dashboard
+                {t('dashboard')}
               </Button>
             </Link>
           )}
@@ -82,11 +85,13 @@ export const DashboardHeader: React.FC = () => {
                 ))
               ) : (
                 <DropdownMenuItem>
-                  <p className="text-sm text-gray-500">No notifications</p>
+                  <p className="text-sm text-gray-500">{t('no_notifications')}</p>
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+
+          <LanguageSwitcher />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -101,17 +106,17 @@ export const DashboardHeader: React.FC = () => {
               <DropdownMenuItem asChild>
                 <Link to="/profile" className="flex items-center">
                   <User className="w-4 h-4 mr-2" />
-                  Profile
+                  {t('profile')}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <Settings className="w-4 h-4 mr-2" />
-                Settings
+                {t('settings')}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="w-4 h-4 mr-2" />
-                Log out
+                {t('logout')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
