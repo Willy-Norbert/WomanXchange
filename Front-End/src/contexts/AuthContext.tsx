@@ -22,61 +22,70 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     const initializeAuth = async () => {
-      console.log('Initializing auth...');
+      console.log('🔄 AuthContext: Initializing authentication...');
+      
       const userData = localStorage.getItem('user');
       const token = localStorage.getItem('token');
       
-      console.log('Stored user data:', userData ? 'exists' : 'missing');
-      console.log('Stored token:', token ? 'exists' : 'missing');
+      console.log('📦 AuthContext: Stored user data:', userData ? 'EXISTS' : 'MISSING');
+      console.log('🔑 AuthContext: Stored token:', token ? 'EXISTS' : 'MISSING');
       
-      if (userData && token) {
-        try {
-          const parsedUser = JSON.parse(userData);
-          console.log('Parsed user:', parsedUser);
+      if (!userData || !token) {
+        console.log('❌ AuthContext: No stored auth data found, user not logged in');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const parsedUser = JSON.parse(userData);
+        console.log('👤 AuthContext: Parsed user data:', parsedUser);
+        
+        // Set the token in axios defaults BEFORE making the request
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        console.log('🔧 AuthContext: Set token in axios defaults');
+        
+        // Verify token is still valid
+        console.log('🔍 AuthContext: Verifying token with server...');
+        const response = await api.get('/auth/verify-token');
+        console.log('✅ AuthContext: Token verification response:', response.data);
+        
+        if (response.data.success && response.data.user) {
+          // Update user data with fresh data from server
+          const freshUserData = {
+            id: response.data.user.id,
+            name: response.data.user.name,
+            email: response.data.user.email,
+            role: response.data.user.role,
+            token: token // Keep the original token
+          };
           
-          // Set the token in axios defaults before making the request
-          api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          console.log('🔄 AuthContext: Updating user data with fresh server data:', freshUserData);
           
-          // Verify token is still valid
-          console.log('Making token verification request...');
-          const response = await api.get('/auth/verify-token');
-          console.log('Token verification response:', response.data);
+          // Update localStorage with fresh user data
+          localStorage.setItem('user', JSON.stringify(freshUserData));
           
-          if (response.data.success && response.data.user) {
-            // Update user data with fresh data from server
-            const freshUserData = {
-              ...response.data.user,
-              token: token // Keep the original token
-            };
-            
-            // Update localStorage with fresh user data
-            localStorage.setItem('user', JSON.stringify(freshUserData));
-            
-            // Token is valid, set user state
-            setUser(freshUserData);
-            console.log('User restored and updated:', freshUserData);
-          } else {
-            console.log('Token verification failed - invalid response format');
-            clearAuthData();
-          }
-        } catch (error) {
-          console.error('Token verification failed:', error);
-          // Token is invalid or expired, clear everything
+          // Set user state - THIS IS CRITICAL
+          setUser(freshUserData);
+          console.log('✅ AuthContext: User successfully restored and logged in');
+        } else {
+          console.log('❌ AuthContext: Invalid token verification response format');
           clearAuthData();
         }
-      } else {
-        console.log('No stored authentication data found');
+      } catch (error) {
+        console.error('❌ AuthContext: Token verification failed:', error);
+        console.log('🧹 AuthContext: Clearing invalid auth data');
         clearAuthData();
       }
       
       setLoading(false);
+      console.log('✅ AuthContext: Authentication initialization complete');
     };
 
     initializeAuth();
   }, []);
 
   const clearAuthData = () => {
-    console.log('Clearing authentication data');
+    console.log('🧹 AuthContext: Clearing all authentication data');
     localStorage.removeItem('user');
     localStorage.removeItem('token');
     delete api.defaults.headers.common['Authorization'];
@@ -84,32 +93,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const login = (userData: UserResponse) => {
-    console.log('Logging in user:', userData);
+    console.log('🔐 AuthContext: Logging in user:', userData.email);
     try {
       // Store in localStorage first
       localStorage.setItem('user', JSON.stringify(userData));
       localStorage.setItem('token', userData.token);
+      console.log('💾 AuthContext: Stored user data in localStorage');
       
       // Set axios default header
       api.defaults.headers.common['Authorization'] = `Bearer ${userData.token}`;
+      console.log('🔧 AuthContext: Set axios authorization header');
       
       // Update state
       setUser(userData);
-      console.log('Login successful, user set in state and localStorage');
+      console.log('✅ AuthContext: Login successful, user state updated');
     } catch (error) {
-      console.error('Error during login:', error);
+      console.error('❌ AuthContext: Error during login:', error);
       clearAuthData();
     }
   };
 
   const logout = () => {
-    console.log('Logging out user');
+    console.log('🚪 AuthContext: Logging out user');
     try {
       clearAuthData();
       // Redirect to login page
+      console.log('🔄 AuthContext: Redirecting to login page');
       window.location.href = '/login';
     } catch (error) {
-      console.error('Error during logout:', error);
+      console.error('❌ AuthContext: Error during logout:', error);
     }
   };
 

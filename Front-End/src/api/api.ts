@@ -12,14 +12,14 @@ api.interceptors.request.use(
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('Request interceptor: Token added to request for', config.url);
+      console.log('🔧 API Request interceptor: Token added for', config.url);
     } else {
-      console.log('Request interceptor: No token found for', config.url);
+      console.log('⚠️ API Request interceptor: No token found for', config.url);
     }
     return config;
   },
   (error) => {
-    console.error('API request error:', error);
+    console.error('❌ API request error:', error);
     return Promise.reject(error);
   }
 );
@@ -27,40 +27,48 @@ api.interceptors.request.use(
 // Add response interceptor to handle auth errors
 api.interceptors.response.use(
   (response) => {
-    console.log('API Response successful:', response.config.url);
+    console.log('✅ API Response successful for:', response.config.url);
     return response;
   },
   (error) => {
-    console.error('API response error:', error.response?.status, error.response?.data, 'for URL:', error.config?.url);
+    const url = error.config?.url;
+    const status = error.response?.status;
+    const data = error.response?.data;
     
-    if (error.response?.status === 401) {
-      console.log('Unauthorized response detected for URL:', error.config?.url);
+    console.error('❌ API Response error:', status, data, 'for URL:', url);
+    
+    if (status === 401) {
+      console.log('🚫 Unauthorized (401) response detected for:', url);
       
-      // Only clear auth data and redirect if this is NOT the initial token verification
-      const isTokenVerification = error.config?.url?.includes('/auth/verify-token');
+      // Check if this is a token verification request
+      const isTokenVerification = url?.includes('/auth/verify-token');
       
-      if (!isTokenVerification) {
-        console.log('Clearing auth data due to 401 error (not from token verification)');
-        
-        // Clear localStorage
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        
-        // Clear axios header
-        delete api.defaults.headers.common['Authorization'];
-        
-        // Only redirect if not already on login/register pages
-        const isLoginPage = window.location.pathname === '/login';
-        const isRegisterPage = window.location.pathname === '/register';
-        
-        if (!isLoginPage && !isRegisterPage) {
-          console.log('Redirecting to login page due to 401 error');
-          window.location.href = '/login';
-        }
-      } else {
-        console.log('401 error from token verification - will be handled by AuthContext');
+      if (isTokenVerification) {
+        console.log('🔍 401 from token verification - letting AuthContext handle this');
+        // Don't clear auth data here, let AuthContext handle it
+        return Promise.reject(error);
+      }
+      
+      // For other 401 errors (not token verification), clear auth data
+      console.log('🧹 Clearing auth data due to 401 error (not from token verification)');
+      
+      // Clear localStorage
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      
+      // Clear axios header
+      delete api.defaults.headers.common['Authorization'];
+      
+      // Only redirect if not already on login/register pages
+      const currentPath = window.location.pathname;
+      const isAuthPage = currentPath === '/login' || currentPath === '/register';
+      
+      if (!isAuthPage) {
+        console.log('🔄 Redirecting to login page due to 401 error');
+        window.location.href = '/login';
       }
     }
+    
     return Promise.reject(error);
   }
 );
