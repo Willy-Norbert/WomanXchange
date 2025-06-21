@@ -38,12 +38,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
           
           // Verify token is still valid
+          console.log('Making token verification request...');
           const response = await api.get('/auth/verify-token');
-          console.log('Token verification successful:', response.data);
+          console.log('Token verification response:', response.data);
           
-          // Token is valid, set user state
-          setUser(parsedUser);
-          console.log('User restored from localStorage:', parsedUser);
+          if (response.data.success && response.data.user) {
+            // Update user data with fresh data from server
+            const freshUserData = {
+              ...response.data.user,
+              token: token // Keep the original token
+            };
+            
+            // Update localStorage with fresh user data
+            localStorage.setItem('user', JSON.stringify(freshUserData));
+            
+            // Token is valid, set user state
+            setUser(freshUserData);
+            console.log('User restored and updated:', freshUserData);
+          } else {
+            console.log('Token verification failed - invalid response format');
+            clearAuthData();
+          }
         } catch (error) {
           console.error('Token verification failed:', error);
           // Token is invalid or expired, clear everything

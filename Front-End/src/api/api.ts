@@ -12,9 +12,9 @@ api.interceptors.request.use(
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('Request interceptor: Token added to request');
+      console.log('Request interceptor: Token added to request for', config.url);
     } else {
-      console.log('Request interceptor: No token found');
+      console.log('Request interceptor: No token found for', config.url);
     }
     return config;
   },
@@ -31,26 +31,34 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    console.error('API response error:', error.response?.status, error.response?.data);
+    console.error('API response error:', error.response?.status, error.response?.data, 'for URL:', error.config?.url);
     
     if (error.response?.status === 401) {
-      console.log('Unauthorized response detected, clearing auth data');
+      console.log('Unauthorized response detected for URL:', error.config?.url);
       
-      // Clear localStorage
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      
-      // Clear axios header
-      delete api.defaults.headers.common['Authorization'];
-      
-      // Only redirect if not already on login page and not during token verification
-      const isLoginPage = window.location.pathname === '/login';
-      const isRegisterPage = window.location.pathname === '/register';
+      // Only clear auth data and redirect if this is NOT the initial token verification
       const isTokenVerification = error.config?.url?.includes('/auth/verify-token');
       
-      if (!isLoginPage && !isRegisterPage && !isTokenVerification) {
-        console.log('Redirecting to login page');
-        window.location.href = '/login';
+      if (!isTokenVerification) {
+        console.log('Clearing auth data due to 401 error (not from token verification)');
+        
+        // Clear localStorage
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        
+        // Clear axios header
+        delete api.defaults.headers.common['Authorization'];
+        
+        // Only redirect if not already on login/register pages
+        const isLoginPage = window.location.pathname === '/login';
+        const isRegisterPage = window.location.pathname === '/register';
+        
+        if (!isLoginPage && !isRegisterPage) {
+          console.log('Redirecting to login page due to 401 error');
+          window.location.href = '/login';
+        }
+      } else {
+        console.log('401 error from token verification - will be handled by AuthContext');
       }
     }
     return Promise.reject(error);
