@@ -2,6 +2,7 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { UserResponse } from '../api/auth';
 import api from '../api/api';
+import { isTokenExpired } from '../utils/tokenUtils';
 
 interface AuthContextType {
   user: UserResponse | null;
@@ -20,6 +21,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<UserResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Check token expiry periodically
+  useEffect(() => {
+    const checkTokenExpiry = () => {
+      const token = localStorage.getItem('token');
+      
+      if (token && user) {
+        console.log('🕐 AuthContext: Checking token expiry...');
+        
+        if (isTokenExpired(token)) {
+          console.log('⏰ AuthContext: Token expired, logging out user');
+          logout();
+          return;
+        }
+        
+        console.log('✅ AuthContext: Token still valid');
+      }
+    };
+
+    // Check token expiry every 5 minutes
+    const interval = setInterval(checkTokenExpiry, 5 * 60 * 1000);
+    
+    return () => clearInterval(interval);
+  }, [user]);
+
   useEffect(() => {
     const initializeAuth = async () => {
       console.log('🚀 AuthContext: Starting authentication initialization...');
@@ -37,8 +62,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return;
         }
 
+        // Check if token is expired client-side first
+        if (isTokenExpired(token)) {
+          console.log('⏰ AuthContext: Token expired (client-side check), clearing auth data');
+          localStorage.removeItem('user');
+          localStorage.removeItem('token');
+          delete api.defaults.headers.common['Authorization'];
+          setLoading(false);
+          return;
+        }
+
         const parsedUser = JSON.parse(userData);
         console.log('👤 AuthContext: Parsed user from localStorage:', parsedUser);
+        console.log('✅ AuthContext: Token valid (client-side check), proceeding with verification');
         
         // Set the authorization header BEFORE making the verification request
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -91,6 +127,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     console.log('🔐 AuthContext: Logging in user:', userData.email);
     
     try {
+      // Check if token is expired before setting it
+      if (isTokenExpired(userData.token)) {
+        console.log('⏰ AuthContext: Received expired token during login');
+        throw new Error('Received expired token');
+      }
+
       // Store in localStorage
       localStorage.setItem('user', JSON.stringify(userData));
       localStorage.setItem('token', userData.token);
@@ -105,6 +147,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('✅ AuthContext: Login successful, user state updated');
     } catch (error) {
       console.error('❌ AuthContext: Error during login:', error);
+      throw error;
     }
   };
 

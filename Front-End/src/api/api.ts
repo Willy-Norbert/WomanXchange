@@ -1,21 +1,46 @@
 
 import axios from 'axios';
+import { isTokenExpired } from '../utils/tokenUtils';
 
 const api = axios.create({
   baseURL: 'http://localhost:5000/api',
   withCredentials: true,
 });
 
-// Add request interceptor to include token
+// Add request interceptor to include token and check expiry
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
+    
     if (token) {
+      // Check if token is expired before making the request
+      if (isTokenExpired(token)) {
+        console.log('⏰ API Request interceptor: Token expired, clearing auth data');
+        
+        // Clear auth data
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        delete api.defaults.headers.common['Authorization'];
+        
+        // Redirect to login if not already on auth pages
+        const currentPath = window.location.pathname;
+        const isAuthPage = currentPath === '/login' || currentPath === '/register';
+        
+        if (!isAuthPage) {
+          console.log('🔄 API Request interceptor: Redirecting to login due to expired token');
+          window.location.href = '/login';
+        }
+        
+        // Reject the request
+        return Promise.reject(new Error('Token expired'));
+      }
+      
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('🔧 API Request interceptor: Token added for', config.url);
+      console.log('🔧 API Request interceptor: Valid token added for', config.url);
     } else {
       console.log('⚠️ API Request interceptor: No token found for', config.url);
     }
+    
     return config;
   },
   (error) => {
