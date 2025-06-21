@@ -22,7 +22,10 @@ import Profile from './pages/Profile';
 import CommunityChat from './pages/CommunityChat';
 import OrderComplete from './pages/OrderComplete';
 import NotFound from './pages/NotFound';
-import TopBanner from './components/TopBanner';
+import Checkout from './pages/Checkout';
+import Reports from './pages/Reports';
+import AdminProducts from './pages/AdminProducts';
+import Dashboard from './pages/Dashboard';
 
 const queryClient = new QueryClient();
 
@@ -33,13 +36,13 @@ function App() {
         <AuthProvider>
           <Router>
             <div className="App">
-              <TopBanner />
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/seller-request" element={<SellerRequest />} />
-                <Route path="/dashboard" element={<VendorDashboard />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/vendor-dashboard" element={<VendorDashboard />} />
                 <Route path="/products" element={<Products />} />
                 <Route path="/product/:id" element={<SingleProduct />} />
                 <Route path="/cart" element={<Cart />} />
@@ -52,6 +55,9 @@ function App() {
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/community-chat" element={<CommunityChat />} />
                 <Route path="/order-complete" element={<OrderComplete />} />
+                <Route path="/checkout" element={<Checkout />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/admin-products" element={<AdminProducts />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <Toaster />
