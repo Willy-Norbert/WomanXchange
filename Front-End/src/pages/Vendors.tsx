@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -12,27 +12,43 @@ import api from '@/api/api';
 const Vendors = () => {
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
-    if (!user) {
-      navigate('/login');
-      return;
-    }
-    if (user.role !== 'admin') {
-      navigate('/');
-    }
-  }, [user, navigate]);
+  // Case 1: still loading
+  if (user === undefined) return;
 
-  // Fix: Use correct auth route for users
+  // Case 2: not logged in
+  if (user === null) {
+    navigate('/login');
+    return;
+  }
+
+  // Case 3: not an admin
+  if (user.role !== 'admin') {
+    navigate('/');
+    return;
+  }
+
+  // Case 4: valid admin
+  setCheckingAuth(false);
+}, [user, navigate]);
+
+
   const { data: usersData, isLoading, error } = useQuery({
     queryKey: ['vendors'],
-    queryFn: () => api.get('/auth/users')
+    queryFn: () => api.get('/auth/users'),
+    enabled: !checkingAuth, // Don't run until auth is checked
   });
 
   const vendors = usersData?.data?.filter((u: any) => u.role === 'seller') || [];
 
-  if (!user || user.role !== 'admin') {
-    return null;
+  if (checkingAuth) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-lg text-gray-500">Checking access...</p>
+      </div>
+    );
   }
 
   if (isLoading) {
