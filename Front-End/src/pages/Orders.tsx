@@ -11,8 +11,10 @@ import { useQuery } from '@tanstack/react-query';
 import { getAllOrders, updateOrderStatus } from '@/api/orders';
 import { confirmPaymentByAdmin } from '@/api/payments';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const Orders = () => {
+  const { t } = useLanguage();
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -72,21 +74,21 @@ const Orders = () => {
 
   const getPaymentStatusBadge = (order: any) => {
     if (order.isConfirmedByAdmin) {
-      return <Badge className="bg-green-100 text-green-800">Confirmed by Admin</Badge>;
+      return <Badge className="bg-green-100 text-green-800">{t('orders.confirmed_by_admin')}</Badge>;
     } else if (order.isPaid) {
-      return <Badge className="bg-yellow-100 text-yellow-800">Awaiting Admin Confirmation</Badge>;
+      return <Badge className="bg-yellow-100 text-yellow-800">{t('orders.awaiting_admin')}</Badge>;
     } else if (order.paymentCode) {
-      return <Badge className="bg-blue-100 text-blue-800">Payment Code Generated</Badge>;
+      return <Badge className="bg-blue-100 text-blue-800">{t('orders.payment_code_generated')}</Badge>;
     } else {
-      return <Badge variant="secondary">Pending Payment</Badge>;
+      return <Badge variant="secondary">{t('orders.pending_payment_status')}</Badge>;
     }
   };
 
   const getDeliveryStatusBadge = (order: any) => {
     if (order.isDelivered) {
-      return <Badge className="bg-green-100 text-green-800">Delivered</Badge>;
+      return <Badge className="bg-green-100 text-green-800">{t('orders.delivered')}</Badge>;
     } else {
-      return <Badge className="bg-gray-100 text-gray-800">Not Delivered</Badge>;
+      return <Badge className="bg-gray-100 text-gray-800">{t('orders.not_delivered')}</Badge>;
     }
   };
 
@@ -98,7 +100,7 @@ const Orders = () => {
     return (
       <DashboardLayout currentPage="orders">
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-lg text-gray-600">Loading orders...</div>
+          <div className="text-lg text-gray-600">{t('common.loading')}</div>
         </div>
       </DashboardLayout>
     );
@@ -108,7 +110,7 @@ const Orders = () => {
     return (
       <DashboardLayout currentPage="orders">
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-lg text-red-600">Failed to load orders</div>
+          <div className="text-lg text-red-600">{t('error.failed_load_products')}</div>
         </div>
       </DashboardLayout>
     );
@@ -118,9 +120,9 @@ const Orders = () => {
     <DashboardLayout currentPage="orders">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">Orders Management</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t('orders.title')}</h1>
           <Button onClick={() => refetch()} variant="outline">
-            Refresh Orders
+            {t('orders.refresh')}
           </Button>
         </div>
         
@@ -128,7 +130,7 @@ const Orders = () => {
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <Input 
-            placeholder="Search orders..." 
+            placeholder={t('orders.search_orders')} 
             className="pl-10 bg-gray-50 border-gray-200"
           />
         </div>
@@ -136,23 +138,23 @@ const Orders = () => {
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-lg border">
-            <h3 className="text-sm font-medium text-gray-600">Total Orders</h3>
+            <h3 className="text-sm font-medium text-gray-600">{t('orders.total_orders')}</h3>
             <p className="text-2xl font-bold">{orders.length}</p>
           </div>
           <div className="bg-white p-4 rounded-lg border">
-            <h3 className="text-sm font-medium text-gray-600">Paid Orders</h3>
+            <h3 className="text-sm font-medium text-gray-600">{t('orders.paid_orders')}</h3>
             <p className="text-2xl font-bold text-green-600">
               {orders.filter((order: any) => order.isPaid).length}
             </p>
           </div>
           <div className="bg-white p-4 rounded-lg border">
-            <h3 className="text-sm font-medium text-gray-600">Pending Payment</h3>
+            <h3 className="text-sm font-medium text-gray-600">{t('orders.pending_payment')}</h3>
             <p className="text-2xl font-bold text-yellow-600">
               {orders.filter((order: any) => !order.isPaid).length}
             </p>
           </div>
           <div className="bg-white p-4 rounded-lg border">
-            <h3 className="text-sm font-medium text-gray-600">Total Revenue</h3>
+            <h3 className="text-sm font-medium text-gray-600">{t('orders.total_revenue')}</h3>
             <p className="text-2xl font-bold text-blue-600">
               {orders.reduce((sum: number, order: any) => sum + order.totalPrice, 0).toLocaleString()} Rwf
             </p>
@@ -164,13 +166,13 @@ const Orders = () => {
           <table className="w-full">
             <thead className="bg-gray-900 text-white">
               <tr>
-                <th className="px-6 py-4 text-left text-sm font-medium">Order ID</th>
-                <th className="px-6 py-4 text-left text-sm font-medium">Customer</th>
-                <th className="px-6 py-4 text-left text-sm font-medium">Total Price</th>
-                <th className="px-6 py-4 text-left text-sm font-medium">Payment Status</th>
-                <th className="px-6 py-4 text-left text-sm font-medium">Delivery Status</th>
-                <th className="px-6 py-4 text-left text-sm font-medium">Date</th>
-                <th className="px-6 py-4 text-left text-sm font-medium">Actions</th>
+                <th className="px-6 py-4 text-left text-sm font-medium">{t('orders.order_id')}</th>
+                <th className="px-6 py-4 text-left text-sm font-medium">{t('orders.customer')}</th>
+                <th className="px-6 py-4 text-left text-sm font-medium">{t('orders.total_price')}</th>
+                <th className="px-6 py-4 text-left text-sm font-medium">{t('orders.payment_status')}</th>
+                <th className="px-6 py-4 text-left text-sm font-medium">{t('orders.delivery_status')}</th>
+                <th className="px-6 py-4 text-left text-sm font-medium">{t('orders.date')}</th>
+                <th className="px-6 py-4 text-left text-sm font-medium">{t('orders.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -180,7 +182,7 @@ const Orders = () => {
                     <td className="px-6 py-4 text-sm text-gray-900">#{order.id}</td>
                     <td className="px-6 py-4 text-sm text-gray-900">
                       <div>
-                        <div className="font-medium">{order.user?.name || 'Unknown Customer'}</div>
+                        <div className="font-medium">{order.user?.name || t('orders.customer')}</div>
                         <div className="text-gray-500 text-xs">{order.user?.email}</div>
                       </div>
                     </td>
@@ -210,7 +212,7 @@ const Orders = () => {
                             className="bg-green-600 hover:bg-green-700"
                           >
                             <CheckCircle className="w-4 h-4 mr-1" />
-                            Confirm Payment
+                            {t('orders.confirm_payment')}
                           </Button>
                         )}
                         {order.isConfirmedByAdmin && !order.isDelivered && (
@@ -219,7 +221,7 @@ const Orders = () => {
                             variant="outline"
                             onClick={() => handleUpdateOrderStatus(order.id, undefined, true)}
                           >
-                            Mark Delivered
+                            {t('orders.mark_delivered')}
                           </Button>
                         )}
                         <Button variant="ghost" size="sm">
@@ -232,7 +234,7 @@ const Orders = () => {
               ) : (
                 <tr>
                   <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
-                    No orders found
+                    {t('orders.no_orders')}
                   </td>
                 </tr>
               )}

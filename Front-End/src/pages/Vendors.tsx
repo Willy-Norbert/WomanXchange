@@ -9,8 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Search, Plus, Trash2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/api/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const Vendors = () => {
+  const { t } = useLanguage();
   const { user, loading } = useContext(AuthContext);
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
@@ -60,7 +62,7 @@ const Vendors = () => {
     return (
       <DashboardLayout currentPage="vendors">
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-lg text-gray-600">Loading vendors...</div>
+          <div className="text-lg text-gray-600">{t('common.loading')}</div>
         </div>
       </DashboardLayout>
     );
@@ -76,8 +78,8 @@ const Vendors = () => {
       <DashboardLayout currentPage="vendors">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-lg text-red-600">
-            Failed to load vendors. 
-            <Button onClick={() => refetch()} className="ml-2">Retry</Button>
+            {t('error.failed_load_products')}
+            <Button onClick={() => refetch()} className="ml-2">{t('common.retry')}</Button>
           </div>
         </div>
       </DashboardLayout>
@@ -88,10 +90,10 @@ const Vendors = () => {
     <DashboardLayout currentPage="vendors">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">Vendors</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t('vendors.title')}</h1>
           <Button className="bg-blue-600 hover:bg-blue-700">
             <Plus className="w-4 h-4 mr-2" />
-            Add Vendor
+            {t('vendors.add_vendor')}
           </Button>
         </div>
 
@@ -100,7 +102,7 @@ const Vendors = () => {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input 
-              placeholder="Search vendors..." 
+              placeholder={t('vendors.search_vendors')} 
               className="pl-10 bg-gray-50 border-gray-200"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -110,22 +112,22 @@ const Vendors = () => {
           {/* Total Vendors Card */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Vendors</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600">{t('vendors.total_vendors')}</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">{vendors.length}</p>
-              <p className="text-sm text-gray-500">Active SELLERs</p>
+              <p className="text-sm text-gray-500">{t('vendors.active_sellers')}</p>
             </CardContent>
           </Card>
 
           {/* Total Users Card */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Users</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600">{t('vendors.total_users')}</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">{allUsers.length}</p>
-              <p className="text-sm text-gray-500">All registered users</p>
+              <p className="text-sm text-gray-500">{t('vendors.all_registered')}</p>
             </CardContent>
           </Card>
         </div>
@@ -134,10 +136,10 @@ const Vendors = () => {
         <div className="bg-white rounded-lg shadow-sm border">
           <div className="p-6 border-b">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Vendors ({filteredVendors.length})</h2>
+              <h2 className="text-xl font-semibold">{t('vendors.title')} ({filteredVendors.length})</h2>
               <div className="flex space-x-4">
-                <Button variant="outline" size="sm">Import</Button>
-                <Button variant="outline" size="sm">Export</Button>
+                <Button variant="outline" size="sm">{t('customers.import')}</Button>
+                <Button variant="outline" size="sm">{t('customers.export')}</Button>
               </div>
             </div>
           </div>
@@ -148,12 +150,12 @@ const Vendors = () => {
                 <th className="px-6 py-3 text-left">
                   <input type="checkbox" className="rounded" />
                 </th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">VENDOR</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">EMAIL</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">ROLE</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">JOINED</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">STATUS</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">ACTIONS</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t('vendors.vendor').toUpperCase()}</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t('customers.email').toUpperCase()}</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t('vendors.role').toUpperCase()}</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t('customers.joined').toUpperCase()}</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t('customers.status').toUpperCase()}</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t('customers.actions').toUpperCase()}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -182,7 +184,7 @@ const Vendors = () => {
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-sm font-medium text-green-600">
-                        ACTIVE
+                        {t('customers.active').toUpperCase()}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -195,7 +197,7 @@ const Vendors = () => {
               ) : (
                 <tr>
                   <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
-                    {searchTerm ? `No vendors found matching "${searchTerm}"` : 'No vendors found'}
+                    {searchTerm ? `${t('vendors.no_vendors')} "${searchTerm}"` : t('vendors.no_vendors')}
                   </td>
                 </tr>
               )}

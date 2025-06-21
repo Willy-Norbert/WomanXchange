@@ -8,8 +8,10 @@ import Footer from '@/components/Footer';
 import { AuthContext } from '@/contexts/AuthContext';
 import { getCart, removeFromCart, addToCart, Cart as CartType } from '@/api/orders';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const Cart = () => {
+  const { t } = useLanguage();
   const auth = useContext(AuthContext);
   const { toast } = useToast();
   const [cart, setCart] = useState<CartType | null>(null);
@@ -78,11 +80,11 @@ const Cart = () => {
         <Header />
         <div className="container mx-auto px-4 py-8 max-w-md">
           <div className="text-center">
-            <h1 className="text-2xl font-bold mb-6">Please Login</h1>
-            <p className="text-gray-600 mb-6">You need to be logged in to view your cart.</p>
+            <h1 className="text-2xl font-bold mb-6">{t('cart.please_login')}</h1>
+            <p className="text-gray-600 mb-6">{t('cart.login_to_view')}</p>
             <Link to="/login">
               <Button className="bg-purple-500 hover:bg-purple-600 text-white">
-                Login
+                {t('auth.login')}
               </Button>
             </Link>
           </div>
@@ -97,7 +99,7 @@ const Cart = () => {
       <div className="min-h-screen bg-white">
         <Header />
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-lg text-gray-600">Loading cart...</div>
+          <div className="text-lg text-gray-600">{t('cart.loading')}</div>
         </div>
         <Footer />
       </div>
@@ -127,14 +129,14 @@ const Cart = () => {
       <Header />
       
       <div className="container mx-auto px-4 py-8 max-w-md">
-        <h1 className="text-2xl font-bold mb-6">YOUR CART</h1>
+        <h1 className="text-2xl font-bold mb-6">{t('cart.title')}</h1>
         
         {cartItems.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-600 mb-6">Your cart is empty</p>
+            <p className="text-gray-600 mb-6">{t('cart.empty')}</p>
             <Link to="/products">
               <Button className="bg-purple-500 hover:bg-purple-600 text-white">
-                Continue Shopping
+                {t('cart.continue_shopping')}
               </Button>
             </Link>
           </div>
@@ -185,23 +187,23 @@ const Cart = () => {
 
             {/* Order Summary */}
             <div className="bg-gray-50 p-6 rounded-lg mb-6">
-              <h2 className="text-xl font-bold mb-4">Order Summary</h2>
+              <h2 className="text-xl font-bold mb-4">{t('cart.order_summary')}</h2>
               
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Subtotal</span>
+                  <span className="text-gray-600">{t('cart.subtotal')}</span>
                   <span className="font-semibold">{subtotal.toLocaleString()} Rwf</span>
                 </div>
                 <div className="flex justify-between text-red-600">
-                  <span>Discount (-20%)</span>
+                  <span>{t('cart.discount')}</span>
                   <span>-{discount.toLocaleString()} Rwf</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Delivery Fee</span>
+                  <span className="text-gray-600">{t('cart.delivery_fee')}</span>
                   <span className="font-semibold">{deliveryFee.toLocaleString()} Rwf</span>
                 </div>
                 <div className="border-t pt-3 flex justify-between text-lg font-bold">
-                  <span>Total</span>
+                  <span>{t('cart.total')}</span>
                   <span>{total.toLocaleString()} Rwf</span>
                 </div>
               </div>
@@ -210,7 +212,7 @@ const Cart = () => {
             {/* Checkout Button */}
             <Link to="/checkout">
               <Button className="w-full bg-purple-500 hover:bg-purple-600 text-white py-4 rounded-full">
-                Go to checkout
+                {t('cart.go_to_checkout')}
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
             </Link>

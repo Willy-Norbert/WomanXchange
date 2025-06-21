@@ -5,8 +5,10 @@ import { Link, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { generatePaymentCode, confirmClientPayment } from '@/api/payments';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const OrderComplete = () => {
+  const { t } = useLanguage();
   const location = useLocation();
   const { toast } = useToast();
   const [paymentCode, setPaymentCode] = useState<string>('');
@@ -24,8 +26,8 @@ const OrderComplete = () => {
   const handleGeneratePaymentCode = async () => {
     if (!orderId) {
       toast({
-        title: "Error",
-        description: "Order ID not found",
+        title: t('common.error'),
+        description: t('order_complete.order_id_not_found'),
         variant: "destructive",
       });
       return;
@@ -36,14 +38,14 @@ const OrderComplete = () => {
       setPaymentCode(response.data.paymentCode);
       setPaymentStatus('code-generated');
       toast({
-        title: "Success",
-        description: "Payment code generated successfully",
+        title: t('common.success'),
+        description: t('order_complete.code_generated_success'),
       });
     } catch (error: any) {
       console.error('Error generating payment code:', error);
       toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to generate payment code",
+        title: t('common.error'),
+        description: error.response?.data?.message || t('order_complete.failed_generate_code'),
         variant: "destructive",
       });
     }
@@ -52,8 +54,8 @@ const OrderComplete = () => {
   const handleConfirmPayment = async () => {
     if (!orderId) {
       toast({
-        title: "Error",
-        description: "Order ID not found",
+        title: t('common.error'),
+        description: t('order_complete.order_id_not_found'),
         variant: "destructive",
       });
       return;
@@ -63,14 +65,14 @@ const OrderComplete = () => {
       const response = await confirmClientPayment(orderId);
       setPaymentStatus('confirmed');
       toast({
-        title: "Success",
-        description: "Payment confirmed! Awaiting admin verification.",
+        title: t('common.success'),
+        description: t('order_complete.payment_confirmed'),
       });
     } catch (error: any) {
       console.error('Error confirming payment:', error);
       toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to confirm payment",
+        title: t('common.error'),
+        description: error.response?.data?.message || t('order_complete.failed_confirm_payment'),
         variant: "destructive",
       });
     }
@@ -81,12 +83,12 @@ const OrderComplete = () => {
       <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
         <div className="mb-6">
           <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Order Placed Successfully!</h1>
+          <h1 className="text-2xl font-bold mb-2">{t('order_complete.title')}</h1>
           <p className="text-gray-600">
-            Your order has been received and is being processed.
+            {t('order_complete.message')}
           </p>
           {orderId && (
-            <p className="text-sm text-gray-500 mt-2">Order ID: #{orderId}</p>
+            <p className="text-sm text-gray-500 mt-2">{t('order_complete.order_id', { id: orderId })}</p>
           )}
         </div>
 
@@ -94,17 +96,17 @@ const OrderComplete = () => {
         <div className="mb-6 p-4 bg-gray-50 rounded-lg">
           <h3 className="font-semibold mb-3 flex items-center justify-center">
             <CreditCard className="w-5 h-5 mr-2" />
-            Payment Processing
+            {t('order_complete.payment_processing')}
           </h3>
           
           {paymentStatus === 'pending' && (
             <div className="space-y-3">
-              <p className="text-sm text-gray-600">Generate a payment code to proceed with MoMo payment</p>
+              <p className="text-sm text-gray-600">{t('order_complete.generate_code')}</p>
               <Button 
                 onClick={handleGeneratePaymentCode}
                 className="w-full bg-blue-600 hover:bg-blue-700"
               >
-                Generate Payment Code
+                {t('order_complete.generate_payment_code')}
               </Button>
             </div>
           )}
@@ -112,17 +114,17 @@ const OrderComplete = () => {
           {paymentStatus === 'code-generated' && (
             <div className="space-y-3">
               <div className="p-3 bg-blue-50 rounded border">
-                <p className="text-sm text-gray-600 mb-1">Your Payment Code:</p>
+                <p className="text-sm text-gray-600 mb-1">{t('order_complete.payment_code')}</p>
                 <p className="text-xl font-bold text-blue-600">{paymentCode}</p>
               </div>
               <p className="text-xs text-gray-500">
-                Use this code to complete your MoMo payment, then confirm below
+                {t('order_complete.use_code')}
               </p>
               <Button 
                 onClick={handleConfirmPayment}
                 className="w-full bg-green-600 hover:bg-green-700"
               >
-                I've Made the Payment
+                {t('order_complete.made_payment')}
               </Button>
             </div>
           )}
@@ -131,10 +133,10 @@ const OrderComplete = () => {
             <div className="space-y-2">
               <div className="flex items-center justify-center text-orange-600">
                 <Clock className="w-5 h-5 mr-2" />
-                <span className="font-semibold">Awaiting Admin Confirmation</span>
+                <span className="font-semibold">{t('order_complete.awaiting_confirmation')}</span>
               </div>
               <p className="text-sm text-gray-600">
-                Your payment is being verified by our admin team
+                {t('order_complete.payment_verification')}
               </p>
             </div>
           )}
@@ -143,18 +145,18 @@ const OrderComplete = () => {
         <div className="space-y-3">
           <Link to="/orders" className="block">
             <Button variant="outline" className="w-full">
-              View My Orders
+              {t('order_complete.view_orders')}
             </Button>
           </Link>
           <Link to="/" className="block">
             <Button className="w-full bg-purple-500 hover:bg-purple-600 text-white">
-              Return to Home Page
+              {t('order_complete.return_home')}
             </Button>
           </Link>
         </div>
 
         <p className="text-xs text-gray-500 mt-4">
-          Your purchases are secured by industry-standard encryption
+          {t('order_complete.secured')}
         </p>
       </div>
     </div>
