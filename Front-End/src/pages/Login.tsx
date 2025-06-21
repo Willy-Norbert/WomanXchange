@@ -1,3 +1,4 @@
+
 import { useState, useContext, FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,10 +7,13 @@ import { ArrowLeft } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { loginUser, LoginData } from "../api/auth";
 import { AuthContext } from "../contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 const Login = () => {
   const auth = useContext(AuthContext);
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   if (!auth) throw new Error("AuthContext must be used within AuthProvider");
 
@@ -43,6 +47,10 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-purple flex items-center justify-center p-4">
       <div className="w-full max-w-md">
+        <div className="absolute top-4 right-4">
+          <LanguageSwitcher />
+        </div>
+        
         <div className="text-center mb-8">
           <h1 className="text-6xl font-bold text-white mb-8">
             w<span className="text-purple-200">X</span>c
@@ -52,11 +60,11 @@ const Login = () => {
         <div className="bg-white rounded-lg p-8 shadow-2xl">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-purple-600">Email</label>
+              <label className="text-sm font-medium text-purple-600">{t('common.email')}</label>
               <Input
                 type="email"
                 name="email"
-                placeholder="Enter your email"
+                placeholder={t('auth.enterEmail')}
                 value={formData.email}
                 onChange={handleChange}
                 required
@@ -64,11 +72,11 @@ const Login = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-purple-600">Password</label>
+              <label className="text-sm font-medium text-purple-600">{t('common.password')}</label>
               <Input
                 type="password"
                 name="password"
-                placeholder="Enter your password"
+                placeholder={t('auth.enterPassword')}
                 value={formData.password}
                 onChange={handleChange}
                 required
@@ -83,13 +91,13 @@ const Login = () => {
                 className="data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
               />
               <label htmlFor="remember" className="text-sm text-gray-600">
-                Remember me
+                {t('auth.rememberMe')}
               </label>
             </div>
 
             <div className="text-center">
               <Link to="/forgot-password" className="text-sm text-purple-600 hover:underline">
-                Forgot Password?
+                {t('auth.forgotPassword')}
               </Link>
             </div>
 
@@ -99,13 +107,13 @@ const Login = () => {
               type="submit"
               className="w-full bg-gray-800 hover:bg-gray-700 text-white py-3 rounded-md transition-colors"
             >
-              Login
+              {t('auth.login')}
             </Button>
 
             <div className="text-center">
-              <span className="text-sm text-gray-600">Don't have </span>
+              <span className="text-sm text-gray-600">{t('auth.dontHaveAccount')} </span>
               <Link to="/register" className="text-sm text-purple-600 hover:underline">
-                an account?
+                {t('auth.register')}
               </Link>
             </div>
           </form>
