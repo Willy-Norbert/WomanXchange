@@ -6,7 +6,7 @@ import prisma from '../prismaClient.js';
 // @route   GET /api/chat/messages
 // @access  Private (Admin/Seller only)
 export const getChatMessages = asyncHandler(async (req, res) => {
-  console.log('Getting chat messages...');
+  console.log('Getting chat messages...', req.user);
   
   const messages = await prisma.chatMessage.findMany({
     include: {
@@ -34,11 +34,18 @@ export const createChatMessage = asyncHandler(async (req, res) => {
   const { message } = req.body;
   const userId = req.user.id;
 
-  console.log('Creating chat message:', { message, userId });
+  console.log('Creating chat message:', { message, userId, userRole: req.user.role });
 
   if (!message || !message.trim()) {
     res.status(400);
     throw new Error('Message is required');
+  }
+
+  // Ensure user has proper role
+  const userRole = req.user.role.toLowerCase();
+  if (userRole !== 'admin' && userRole !== 'seller') {
+    res.status(403);
+    throw new Error('Only admins and sellers can post messages');
   }
 
   const chatMessage = await prisma.chatMessage.create({

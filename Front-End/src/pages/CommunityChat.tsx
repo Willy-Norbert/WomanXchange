@@ -6,7 +6,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Send, MessageSquare } from 'lucide-react';
+import { Send, MessageSquare, RefreshCw } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getChatMessages, createChatMessage, ChatMessage } from '@/api/chat';
 import { useToast } from '@/hooks/use-toast';
@@ -29,33 +29,48 @@ const CommunityChat = () => {
     }
   }, [user, navigate]);
 
-  const { data: messagesData, isLoading, error } = useQuery({
+  const { data: messagesData, isLoading, error, refetch } = useQuery({
     queryKey: ['chat-messages'],
-    queryFn: getChatMessages,
-    refetchInterval: 3000, // Refetch every 3 seconds for real-time feel
+    queryFn: async () => {
+      console.log('Fetching chat messages...');
+      const response = await getChatMessages();
+      console.log('Chat messages response:', response);
+      return response;
+    },
+    refetchInterval: 5000, // Refetch every 5 seconds for real-time feel
     enabled: !!user && (user.role === 'admin' || user.role === 'seller')
   });
 
   const createMessageMutation = useMutation({
-    mutationFn: createChatMessage,
-    onSuccess: () => {
+    mutationFn: async (message: string) => {
+      console.log('Sending message:', message);
+      const response = await createChatMessage(message);
+      console.log('Message sent response:', response);
+      return response;
+    },
+    onSuccess: (data) => {
+      console.log('Message created successfully:', data);
       setNewMessage('');
       queryClient.invalidateQueries({ queryKey: ['chat-messages'] });
       toast({
         title: "Message sent",
         description: "Your message has been posted to the community chat.",
       });
+      scrollToBottom();
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error('Error sending message:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to send message';
       toast({
         title: "Error",
-        description: "Failed to send message. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
   });
 
-  const messages = messagesData?.data || [];
+  // Extract messages from response - handle both direct array and data wrapper
+  const messages = Array.isArray(messagesData) ? messagesData : (messagesData?.data || []);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,7 +80,9 @@ const CommunityChat = () => {
   };
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
   };
 
   useEffect(() => {
@@ -87,10 +104,17 @@ const CommunityChat = () => {
   }
 
   if (error) {
+    console.error('Chat error:', error);
     return (
       <DashboardLayout currentPage="community-chat">
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-lg text-red-600">Failed to load chat messages</div>
+          <div className="text-lg text-red-600">
+            Failed to load chat messages
+            <Button onClick={() => refetch()} className="ml-2">
+              <RefreshCw className="w-4 h-4 mr-1" />
+              Retry
+            </Button>
+          </div>
         </div>
       </DashboardLayout>
     );
@@ -99,17 +123,23 @@ const CommunityChat = () => {
   return (
     <DashboardLayout currentPage="community-chat">
       <div className="h-full flex flex-col space-y-6">
-        <div className="flex items-center space-x-3">
-          <MessageSquare className="w-8 h-8 text-purple-600" />
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-            Community Chat
-          </h1>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <MessageSquare className="w-8 h-8 text-purple-600" />
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              Community Chat
+            </h1>
+          </div>
+          <Button onClick={() => refetch()} variant="outline" size="sm">
+            <RefreshCw className="w-4 h-4 mr-1" />
+            Refresh
+          </Button>
         </div>
         
         <Card className="flex-1 flex flex-col h-[calc(100vh-200px)]">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg font-medium text-gray-800">
-              Discussion for Vendors & Admins
+              Discussion for Vendors & Admins ({messages.length} messages)
             </CardTitle>
             <p className="text-sm text-gray-600">
               Share ideas, ask questions, and collaborate with other vendors and administrators.
@@ -129,11 +159,11 @@ const CommunityChat = () => {
                       <div className="flex items-center space-x-2 mb-1">
                         <span className="font-medium text-gray-900">{message.user.name}</span>
                         <span className={`px-2 py-1 rounded-full text-xs ${
-                          message.user.role === 'admin' 
+                          message.user.role.toLowerCase() === 'admin' 
                             ? 'bg-red-100 text-red-800' 
                             : 'bg-blue-100 text-blue-800'
                         }`}>
-                          {message.user.role === 'admin' ? 'Admin' : 'Vendor'}
+                          {message.user.role.toLowerCase() === 'admin' ? 'Admin' : 'Vendor'}
                         </span>
                         <span className="text-xs text-gray-500">
                           {new Date(message.createdAt).toLocaleString()}
@@ -165,15 +195,23 @@ const CommunityChat = () => {
                   placeholder="Type your message..."
                   className="flex-1"
                   disabled={createMessageMutation.isPending}
+                  maxLength={500}
                 />
                 <Button 
                   type="submit" 
                   disabled={!newMessage.trim() || createMessageMutation.isPending}
                   className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
                 >
-                  <Send className="w-4 h-4" />
+                  {createMessageMutation.isPending ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
                 </Button>
               </form>
+              <p className="text-xs text-gray-500 mt-2">
+                {newMessage.length}/500 characters
+              </p>
             </div>
           </CardContent>
         </Card>
