@@ -8,14 +8,12 @@ import TestimonialSection from '@/components/TestimonialSection';
 import Footer from '@/components/Footer';
 import { getProducts } from '@/api/products';
 import { Product } from '@/api/products';
-import { useLanguage } from '@/contexts/LanguageContext';
 
 const Index = () => {
   const [newArrivals, setNewArrivals] = useState<Product[]>([]);
   const [topSelling, setTopSelling] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
-  const { t } = useLanguage();
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -44,7 +42,7 @@ const Index = () => {
       <div className="min-h-screen bg-white">
         <Header />
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-lg text-gray-600">{t('common.loading')}</div>
+          <div className="text-lg text-gray-600">Loading products...</div>
         </div>
         <Footer />
       </div>
@@ -67,8 +65,8 @@ const Index = () => {
     <div className="min-h-screen bg-white">
       <Header />
       <HeroSection />
-      <ProductSection title={t('products.newArrivals')} products={newArrivals} />
-      <ProductSection title={t('products.topSelling')} products={topSelling} />
+      <ProductSection title="NEW ARRIVALS" products={newArrivals} />
+      <ProductSection title="TOP SELLING" products={topSelling} />
       <CategorySection />
       <TestimonialSection />
       <Footer />

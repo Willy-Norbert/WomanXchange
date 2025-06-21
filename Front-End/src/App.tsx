@@ -27,48 +27,45 @@ import Profile from "./pages/Profile";
 import CommunityChat from "./pages/CommunityChat";
 import AdminProducts from "./pages/AdminProducts";
 import { AuthProvider } from './contexts/AuthContext'; 
-import { LanguageProvider } from './contexts/LanguageContext';
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <LanguageProvider>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/products" element={<Products />} />
-              <Route path="/categories" element={<Categories />} />
-              <Route path="/product/:id" element={<SingleProduct />} />
-              <Route path="/contact" element={<Contact />} />
-              
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/analytics" element={<Analytics />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/community-chat" element={<CommunityChat />} />
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/products" element={<Products />} />
+            <Route path="/categories" element={<Categories />} />
+            <Route path="/product/:id" element={<SingleProduct />} />
+            <Route path="/contact" element={<Contact />} />
+            
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/community-chat" element={<CommunityChat />} />
 
-              <Route path="/seller-request" element={<SellerRequest />} />
-              <Route path="/orders" element={<Orders />} />
-              <Route path="/customers" element={<Customers />} />
-              <Route path="/vendors" element={<Vendors />} />
-              <Route path="/admin-products" element={<AdminProducts />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/cart" element={<Cart />} />
-              <Route path="/checkout" element={<Checkout />} />
-              <Route path="/order-complete" element={<OrderComplete />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </AuthProvider>
-    </LanguageProvider>
+            <Route path="/seller-request" element={<SellerRequest />} />
+            <Route path="/orders" element={<Orders />} />
+            <Route path="/customers" element={<Customers />} />
+            <Route path="/vendors" element={<Vendors />} />
+            <Route path="/admin-products" element={<AdminProducts />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/cart" element={<Cart />} />
+            <Route path="/checkout" element={<Checkout />} />
+            <Route path="/order-complete" element={<OrderComplete />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 
