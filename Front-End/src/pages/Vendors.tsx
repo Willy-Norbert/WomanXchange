@@ -23,8 +23,8 @@ const Vendors = () => {
       return;
     }
 
-    // Only admins can access vendors page
-    if (user.role !== 'admin') {
+    // Only ADMINs can access vendors page
+    if (user.role !== 'ADMIN') {
       navigate('/dashboard');
       return;
     }
@@ -38,14 +38,14 @@ const Vendors = () => {
       console.log('Vendors API response:', response.data);
       return response;
     },
-    enabled: !!user && user.role === 'admin'
+    enabled: !!user && user.role === 'ADMIN'
   });
 
   // Filter vendors from the users data
   const allUsers = usersData?.data || [];
   const vendors = allUsers.filter((u: any) => {
     const userRole = u.role?.toLowerCase();
-    return userRole === 'seller';
+    return userRole === 'SELLER';
   });
 
   // Filter vendors based on search term
@@ -66,7 +66,7 @@ const Vendors = () => {
     );
   }
 
-  if (!user || user.role !== 'admin') {
+  if (!user || user.role !== 'ADMIN') {
     return null;
   }
 
@@ -114,7 +114,7 @@ const Vendors = () => {
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">{vendors.length}</p>
-              <p className="text-sm text-gray-500">Active sellers</p>
+              <p className="text-sm text-gray-500">Active SELLERs</p>
             </CardContent>
           </Card>
 

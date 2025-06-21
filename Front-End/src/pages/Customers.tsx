@@ -22,8 +22,8 @@ const Customers = () => {
       return;
     }
     
-    // Allow both admin and sellers to access customers
-    if (user.role !== 'admin' && user.role !== 'seller') {
+    // Allow both ADMIN and sellers to access customers
+    if (user.role !== 'ADMIN' && user.role !== 'seller') {
       navigate('/dashboard');
       return;
     }
@@ -37,7 +37,7 @@ const Customers = () => {
       console.log('Customers API response:', response.data);
       return response;
     },
-    enabled: !!user && (user.role === 'admin' || user.role === 'seller')
+    enabled: !!user && (user.role === 'ADMIN' || user.role === 'seller')
   });
 
   // Filter customers (buyers) from the users data
@@ -59,7 +59,7 @@ const Customers = () => {
     );
   }
 
-  if (!user || (user.role !== 'admin' && user.role !== 'seller')) {
+  if (!user || (user.role !== 'ADMIN' && user.role !== 'seller')) {
     return null;
   }
 
