@@ -34,17 +34,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const parsedUser = JSON.parse(userData);
           console.log('Parsed user:', parsedUser);
           
-          // Set the authorization header for API requests
-          api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-          
-          // Verify token is still valid by making a test request
+          // Verify token is still valid
           try {
+            // Set token in header first
+            api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+            
             const response = await api.get('/auth/verify-token');
             console.log('Token verification successful:', response.data);
+            
+            // Token is valid, set user
             setUser(parsedUser);
           } catch (error) {
-            // Token is invalid, clear stored data
             console.error('Token verification failed:', error);
+            // Token is invalid, clear everything
             localStorage.removeItem('user');
             localStorage.removeItem('token');
             delete api.defaults.headers.common['Authorization'];
@@ -57,7 +59,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           delete api.defaults.headers.common['Authorization'];
           setUser(null);
         }
+      } else {
+        console.log('No stored user data or token found');
+        setUser(null);
       }
+      
       setLoading(false);
     };
 
@@ -66,19 +72,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = (userData: UserResponse) => {
     console.log('Logging in user:', userData);
-    localStorage.setItem('user', JSON.stringify(userData));
-    localStorage.setItem('token', userData.token);
-    api.defaults.headers.common['Authorization'] = `Bearer ${userData.token}`;
-    setUser(userData);
+    try {
+      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('token', userData.token);
+      api.defaults.headers.common['Authorization'] = `Bearer ${userData.token}`;
+      setUser(userData);
+      console.log('Login successful, user set');
+    } catch (error) {
+      console.error('Error during login:', error);
+    }
   };
 
   const logout = () => {
     console.log('Logging out user');
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-    delete api.defaults.headers.common['Authorization'];
-    setUser(null);
-    window.location.href = '/login';
+    try {
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      delete api.defaults.headers.common['Authorization'];
+      setUser(null);
+      window.location.href = '/login';
+    } catch (error) {
+      console.error('Error during logout:', error);
+    }
   };
 
   return (

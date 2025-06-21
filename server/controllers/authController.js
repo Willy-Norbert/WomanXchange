@@ -1,8 +1,9 @@
+
 import asyncHandler from 'express-async-handler';
 import prisma from '../prismaClient.js';
 import generateToken from '../utils/generateToken.js';
 import bcrypt from 'bcryptjs';
-import { notify } from '../utils/notify.js';  // import notify utility
+import { notify } from '../utils/notify.js';
 
 // Register User
 export const registerUser = asyncHandler(async (req, res) => {
@@ -21,14 +22,13 @@ export const registerUser = asyncHandler(async (req, res) => {
       name,
       email,
       password: hashedPassword,
-      role: role.toUpperCase(), // Prisma enum: ADMIN, BUYER, SELLER
+      role: role.toUpperCase(),
     }
   });
 
-  // Notify admins about new user registration
   try {
     await notify({
-      userId: null,  // No specific user, this is for admins
+      userId: null,
       message: `New user registered: ${user.name} (${user.role})`,
       recipientRole: 'ADMIN',
       relatedOrderId: null,
@@ -71,11 +71,27 @@ export const authUser = asyncHandler(async (req, res) => {
   }
 });
 
-// Add this at the end of your authController.js
+// Verify token endpoint
+export const verifyToken = asyncHandler(async (req, res) => {
+  // The protect middleware will have already verified the token
+  // and attached the user to req.user
+  if (req.user) {
+    res.json({ 
+      success: true, 
+      user: {
+        id: req.user.id,
+        name: req.user.name,
+        email: req.user.email,
+        role: req.user.role
+      }
+    });
+  } else {
+    res.status(401);
+    throw new Error('Token verification failed');
+  }
+});
 
-// @desc    Get all users
-// @route   GET /api/auth/users
-// @access  Admin only
+// Get all users
 export const getAllUsers = asyncHandler(async (req, res) => {
   const users = await prisma.user.findMany({
     select: {
@@ -93,8 +109,7 @@ export const getAllUsers = asyncHandler(async (req, res) => {
   res.status(200).json(users);
 });
 
-
-// Logout User (if using cookie tokens)
+// Logout User
 export const logoutUser = (req, res) => {
   res.cookie('token', '', { httpOnly: true, expires: new Date(0) });
   res.status(200).json({ message: 'Logged out successfully' });
