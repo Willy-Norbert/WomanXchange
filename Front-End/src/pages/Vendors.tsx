@@ -12,44 +12,34 @@ import api from '@/api/api';
 const Vendors = () => {
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
-  const [checkingAuth, setCheckingAuth] = useState(true);
-
   useEffect(() => {
   // Case 1: still loading
   if (user === undefined) return;
 
   // Case 2: not logged in
   if (user === null) {
-    navigate('/login');
+    navigate('/NotFound');
     return;
   }
 
   // Case 3: not an admin
   if (user.role !== 'admin') {
-    navigate('/');
+    navigate('/vendors');
     return;
   }
 
   // Case 4: valid admin
-  setCheckingAuth(false);
+
 }, [user, navigate]);
 
 
   const { data: usersData, isLoading, error } = useQuery({
     queryKey: ['vendors'],
     queryFn: () => api.get('/auth/users'),
-    enabled: !checkingAuth, // Don't run until auth is checked
   });
 
   const vendors = usersData?.data?.filter((u: any) => u.role === 'seller') || [];
 
-  if (checkingAuth) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-lg text-gray-500">Checking access...</p>
-      </div>
-    );
-  }
 
   if (isLoading) {
     return (
