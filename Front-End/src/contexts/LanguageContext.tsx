@@ -1,55 +1,17 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 export type Language = 'en' | 'rw';
 
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, any>) => string;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
-export const useLanguage = () => {
-  const context = useContext(LanguageContext);
-  if (!context) {
-    throw new Error('useLanguage must be used within a LanguageProvider');
-  }
-  return context;
-};
-
-interface LanguageProviderProps {
-  children: React.ReactNode;
-}
-
-export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) => {
-  const [language, setLanguage] = useState<Language>('en');
-
-  useEffect(() => {
-    const savedLanguage = localStorage.getItem('language') as Language;
-    if (savedLanguage && (savedLanguage === 'en' || savedLanguage === 'rw')) {
-      setLanguage(savedLanguage);
-    }
-  }, []);
-
-  const changeLanguage = (lang: Language) => {
-    setLanguage(lang);
-    localStorage.setItem('language', lang);
-  };
-
-  const t = (key: string): string => {
-    return translations[language][key] || key;
-  };
-
-  return (
-    <LanguageContext.Provider value={{ language, setLanguage: changeLanguage, t }}>
-      {children}
-    </LanguageContext.Provider>
-  );
-};
-
-const translations: Record<Language, Record<string, string>> = {
+const translations = {
   en: {
     // Navigation
     'nav.home': 'Home',
@@ -58,16 +20,11 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.about': 'About',
     'nav.contact': 'Contact',
     'nav.dashboard': 'Dashboard',
-    'nav.cart': 'Cart',
-    'nav.profile': 'Profile',
-    'nav.login': 'Login',
-    'nav.register': 'Register',
     
     // Common
-    'common.welcome': 'Welcome',
     'common.loading': 'Loading...',
     'common.error': 'Error',
-    'common.success': 'Success',
+    'common.welcome': 'Welcome',
     'common.save': 'Save',
     'common.cancel': 'Cancel',
     'common.delete': 'Delete',
@@ -77,397 +34,261 @@ const translations: Record<Language, Record<string, string>> = {
     'common.filter': 'Filter',
     'common.clear': 'Clear',
     'common.submit': 'Submit',
-    'common.back': 'Back',
-    'common.next': 'Next',
-    'common.previous': 'Previous',
-    'common.actions': 'Actions',
-    'common.status': 'Status',
-    'common.date': 'Date',
-    'common.price': 'Price',
-    'common.total': 'Total',
-    'common.quantity': 'Quantity',
-    'common.name': 'Name',
-    'common.email': 'Email',
-    'common.phone': 'Phone',
-    'common.address': 'Address',
-    'common.description': 'Description',
-    'common.category': 'Category',
-    'common.view': 'View',
     'common.close': 'Close',
-    'common.confirm': 'Confirm',
+    'common.open': 'Open',
+    'common.view': 'View',
     
-    // Home Page
-    'home.hero.title': 'Welcome to Rwanda Marketplace',
-    'home.hero.subtitle': 'Discover amazing products from local vendors',
-    'home.new_arrivals': 'NEW ARRIVALS',
-    'home.top_selling': 'TOP SELLING',
-    'home.browse_categories': 'BROWSE BY CATEGORY',
-    'home.testimonials': 'TESTIMONIALS',
-    
-    // Auth
+    // Authentication
     'auth.login': 'Login',
     'auth.register': 'Register',
     'auth.logout': 'Logout',
     'auth.email': 'Email',
     'auth.password': 'Password',
-    'auth.confirm_password': 'Confirm Password',
+    'auth.name': 'Name',
+    'auth.login_required': 'Login Required',
+    'auth.login_to_add_cart': 'Please login to add items to cart',
     'auth.forgot_password': 'Forgot Password?',
     'auth.remember_me': 'Remember me',
     'auth.dont_have_account': "Don't have an account?",
     'auth.already_have_account': 'Already have an account?',
-    'auth.login_failed': 'Login failed',
-    'auth.registration_failed': 'Registration failed',
-    'auth.terms_conditions': 'Terms and Conditions',
-    'auth.agree_terms': 'I have read the Terms and Conditions',
-    'auth.join_as_seller': 'Join As Seller',
-    'auth.business_name': 'Business Name',
-    'auth.phone_number': 'Phone Number',
-    'auth.gender': 'Gender',
-    'auth.male': 'Male',
-    'auth.female': 'Female',
-    'auth.other': 'Other',
-    'auth.prefer_not_say': 'Prefer not to say',
-    
-    // Dashboard
-    'dashboard.title': 'Dashboard',
-    'dashboard.analytics': 'Analytics',
-    'dashboard.orders': 'Orders',
-    'dashboard.customers': 'Customers',
-    'dashboard.vendors': 'Vendors',
-    'dashboard.products': 'Products',
-    'dashboard.reports': 'Reports',
-    'dashboard.settings': 'Settings',
-    'dashboard.notifications': 'Notifications',
-    'dashboard.profile': 'Profile',
-    'dashboard.total_sales': 'Total Sales',
-    'dashboard.daily_sales': 'Daily Sales',
-    'dashboard.daily_users': 'Daily Users',
-    'dashboard.recent_orders': 'Recent Orders',
-    'dashboard.summary_sales': 'Summary Sales',
-    'dashboard.upcoming_payments': 'Upcoming Payments',
-    'dashboard.expense_status': 'Expense Status',
+    'auth.sign_up': 'Sign up',
+    'auth.sign_in': 'Sign in',
     
     // Products
-    'products.title': 'Products',
-    'products.search_placeholder': 'Search products...',
-    'products.price_range': 'Price Range',
-    'products.clear_filters': 'Clear Filters',
-    'products.no_products': 'No products found',
-    'products.showing_results': 'Showing {count} of {total} products',
-    'products.add_product': 'Add Product',
-    'products.product_name': 'Product Name',
-    'products.product_description': 'Product Description',
-    'products.product_price': 'Product Price',
-    'products.product_category': 'Product Category',
-    'products.product_image': 'Product Image',
-    'products.in_stock': 'In Stock',
+    'products.search_placeholder': 'Search for products...',
+    'products.no_products_available': 'No products available at the moment.',
+    'products.view_more': 'View More',
+    'products.loading_related': 'Loading related products...',
+    'products.you_might_like': 'You might also like',
+    'products.add_to_cart': 'Add to Cart',
     'products.out_of_stock': 'Out of Stock',
+    'products.in_stock': 'In Stock',
     
-    // Cart & Checkout
-    'cart.title': 'Shopping Cart',
-    'cart.empty': 'Your cart is empty',
-    'cart.continue_shopping': 'Continue Shopping',
-    'cart.checkout': 'Checkout',
-    'cart.subtotal': 'Subtotal',
-    'cart.shipping': 'Shipping',
-    'cart.tax': 'Tax',
-    'cart.total': 'Total',
-    'checkout.title': 'Checkout',
-    'checkout.billing_address': 'Billing Address',
-    'checkout.shipping_address': 'Shipping Address',
-    'checkout.payment_method': 'Payment Method',
-    'checkout.place_order': 'Place Order',
-    'checkout.order_summary': 'Order Summary',
-    
-    // Orders
-    'orders.title': 'Orders',
-    'orders.order_id': 'Order ID',
-    'orders.customer': 'Customer',
-    'orders.order_date': 'Order Date',
-    'orders.order_status': 'Order Status',
-    'orders.order_total': 'Order Total',
-    'orders.pending': 'Pending',
-    'orders.processing': 'Processing',
-    'orders.shipped': 'Shipped',
-    'orders.delivered': 'Delivered',
-    'orders.cancelled': 'Cancelled',
-    'orders.order_complete': 'Order Complete',
-    'orders.payment_code': 'Payment Code',
-    'orders.generate_payment_code': 'Generate Payment Code',
-    'orders.confirm_payment': 'I\'ve Made the Payment',
-    'orders.awaiting_confirmation': 'Awaiting Admin Confirmation',
-    
-    // Profile
-    'profile.title': 'Profile Settings',
-    'profile.personal_info': 'Personal Information',
-    'profile.full_name': 'Full Name',
-    'profile.email_address': 'Email Address',
-    'profile.phone_number': 'Phone Number',
-    'profile.company': 'Company/Organization',
-    'profile.bio': 'Bio',
-    'profile.account_settings': 'Account Settings',
-    'profile.email_notifications': 'Email Notifications',
-    'profile.change_password': 'Change Password',
-    'profile.delete_account': 'Delete Account',
-    'profile.save_changes': 'Save Changes',
-    'profile.edit_profile': 'Edit Profile',
-    'profile.active_member': 'Active Member',
-    'profile.joined': 'Joined',
-    
-    // Vendors
-    'vendors.title': 'Vendors',
-    'vendors.add_vendor': 'Add Vendor',
-    'vendors.total_vendors': 'Total Vendors',
-    'vendors.total_users': 'Total Users',
-    'vendors.vendor_name': 'Vendor Name',
-    'vendors.joined_date': 'Joined Date',
-    'vendors.active': 'Active',
-    'vendors.inactive': 'Inactive',
-    'vendors.search_vendors': 'Search vendors...',
+    // Cart
+    'cart.added_to_cart': 'Added to cart',
+    'cart.item_added': '{{item}} has been added to your cart.',
+    'cart.failed_to_add': 'Failed to add to cart',
+    'cart.add_to_cart': 'Add to Cart',
+    'cart.adding': 'Adding...',
     
     // Categories
-    'categories.title': 'Categories',
-    'categories.no_categories': 'No categories available at the moment.',
     'categories.loading': 'Loading categories...',
+    'categories.no_categories': 'No categories available.',
     
-    // Contact
-    'contact.title': 'Contact Us',
-    'contact.get_in_touch': 'Get in Touch',
-    'contact.message': 'Message',
-    'contact.send_message': 'Send Message',
-    'contact.subject': 'Subject',
+    // Home
+    'home.new_arrivals': 'NEW ARRIVALS',
+    'home.top_selling': 'TOP SELLING',
+    'home.browse_categories': 'Browse by Category',
+    
+    // Hero Section
+    'hero.title': 'Welcome to A Smart Marketplace for Women Entrepreneurs in Rwanda',
+    'hero.description': 'Built for women entrepreneurs in Kigali, WomXchange Rwanda provides a seamless online platform for selling, managing, and expanding your business.',
+    'hero.shop_now': 'Shop Now',
+    'hero.image_alt': 'Successful woman entrepreneur',
     
     // Footer
-    'footer.about_us': 'About Us',
-    'footer.privacy_policy': 'Privacy Policy',
-    'footer.terms_service': 'Terms of Service',
+    'footer.company_name': 'WomXchange Rwanda',
+    'footer.company_description': 'Empowering women entrepreneurs across Rwanda with a smart marketplace platform.',
+    'footer.location': 'Kigali, Rwanda',
+    'footer.quick_links': 'Quick Links',
+    'footer.support': 'Support',
     'footer.help_center': 'Help Center',
-    'footer.contact_us': 'Contact Us',
-    'footer.follow_us': 'Follow Us',
-    'footer.newsletter': 'Newsletter',
-    'footer.subscribe': 'Subscribe',
-    'footer.all_rights_reserved': 'All rights reserved',
+    'footer.shipping_info': 'Shipping Info',
+    'footer.returns': 'Returns',
+    'footer.privacy_policy': 'Privacy Policy',
+    'footer.terms_of_service': 'Terms of Service',
+    'footer.location_title': 'Location',
+    'footer.location_description': 'Visit our office in Kigali or shop online from anywhere in Rwanda.',
+    'footer.store_hours': 'Store Hours',
+    'footer.weekdays': 'Mon - Fri: 9:00 AM - 9:00 PM',
+    'footer.weekends': 'Sat - Sun: 10:00 AM - 9:00 PM',
+    'footer.copyright': '© 2024 WomXchange. All rights reserved. Made with ❤ for women entrepreneurs.',
+    
+    // Testimonials
+    'testimonials.title': 'OUR HAPPY CUSTOMERS',
+    'testimonials.review_1': 'Amazing quality products and fast delivery. I love supporting local women entrepreneurs!',
+    'testimonials.review_2': 'The cosmetics I bought are incredible. Great prices and authentic products from talented women.',
+    'testimonials.review_3': 'This marketplace changed my shopping experience. So many unique items and great customer service!',
+    'testimonials.review_4': 'Excellent customer service and high quality products. Will definitely shop here again!',
+    'testimonials.review_5': 'Love the variety of products available. Supporting local businesses has never been easier!',
+    
+    // Banner
+    'banner.sell_on_system': 'Sell on Our System',
+    'banner.join_as_seller': 'Join as a Seller',
+    
+    // Dashboard
+    'dashboard.notifications': 'No notifications',
+    'dashboard.profile': 'Profile',
+    'dashboard.settings': 'Settings',
     
     // Error Pages
-    'error.404.title': '404',
-    'error.404.message': 'Oops! Page not found',
+    'error.404.title': '404 - Page Not Found',
+    'error.404.message': 'The page you are looking for does not exist.',
     'error.404.return_home': 'Return to Home',
     'error.failed_load_products': 'Failed to load products',
-    'error.failed_load_categories': 'Failed to load categories',
     
     // Language
     'language.english': 'English',
     'language.kinyarwanda': 'Kinyarwanda',
-    'language.select': 'Select Language',
   },
   rw: {
     // Navigation
     'nav.home': 'Ahabanza',
     'nav.products': 'Ibicuruzwa',
-    'nav.categories': 'Ibyiciro',
-    'nav.about': 'Ibyerekeye',
+    'nav.categories': 'Amatsinda',
+    'nav.about': 'Ibibacu',
     'nav.contact': 'Twandikire',
-    'nav.dashboard': 'Imbonerahamwe',
-    'nav.cart': 'Ikibindi',
-    'nav.profile': 'Umwirondoro',
-    'nav.login': 'Injira',
-    'nav.register': 'Iyandikishe',
+    'nav.dashboard': 'Ubuyobozi',
     
     // Common
-    'common.welcome': 'Murakaza neza',
-    'common.loading': 'Biragutegereza...',
+    'common.loading': 'Birimo gutangura...',
     'common.error': 'Ikosa',
-    'common.success': 'Byagenze neza',
+    'common.welcome': 'Murakaza neza',
     'common.save': 'Bika',
-    'common.cancel': 'Reka',
-    'common.delete': 'Siba',
-    'common.edit': 'Hindura',
-    'common.add': 'Ongeraho',
-    'common.search': 'Shakisha',
-    'common.filter': 'Shyungura',
-    'common.clear': 'Siba',
+    'common.cancel': 'Kuraguza',
+    'common.delete': 'Gusiba',
+    'common.edit': 'Guhindura',
+    'common.add': 'Kongeramo',
+    'common.search': 'Gushaka',
+    'common.filter': 'Gutoranya',
+    'common.clear': 'Gusiba',
     'common.submit': 'Kohereza',
-    'common.back': 'Subira',
-    'common.next': 'Ikurikiyeho',
-    'common.previous': 'Ibanjirije',
-    'common.actions': 'Ibikorwa',
-    'common.status': 'Uko bimeze',
-    'common.date': 'Itariki',
-    'common.price': 'Igiciro',
-    'common.total': 'Igiteranyo',
-    'common.quantity': 'Umubare',
-    'common.name': 'Izina',
-    'common.email': 'Imeri',
-    'common.phone': 'Telefoni',
-    'common.address': 'Aderesi',
-    'common.description': 'Ibisobanuro',
-    'common.category': 'Icyiciro',
-    'common.view': 'Reba',
-    'common.close': 'Funga',
-    'common.confirm': 'Emeza',
+    'common.close': 'Gufunga',
+    'common.open': 'Gufungura',
+    'common.view': 'Kureba',
     
-    // Home Page
-    'home.hero.title': 'Murakaza neza ku isoko rya Rwanda',
-    'home.hero.subtitle': 'Menya ibicuruzwa byiza bituruka ku bacuruzi bo hafi yawe',
-    'home.new_arrivals': 'BISHYA BIGEZE',
-    'home.top_selling': 'BYINSHI BIGURISHA',
-    'home.browse_categories': 'SHAKISHA MU BYICIRO',
-    'home.testimonials': 'UBWIYEMEJE',
-    
-    // Auth
-    'auth.login': 'Injira',
-    'auth.register': 'Iyandikishe',
-    'auth.logout': 'Sohoka',
-    'auth.email': 'Imeri',
-    'auth.password': 'Ijambo banga',
-    'auth.confirm_password': 'Emeza ijambo banga',
-    'auth.forgot_password': 'Wibagiwe ijambo banga?',
+    // Authentication
+    'auth.login': 'Kwinjira',
+    'auth.register': 'Kwiyandikisha',
+    'auth.logout': 'Gusohoka',
+    'auth.email': 'Imeli',
+    'auth.password': 'Ijambo ry\'ibanga',
+    'auth.name': 'Izina',
+    'auth.login_required': 'Ugomba Kwinjira',
+    'auth.login_to_add_cart': 'Nyamuneka winjire kugira ngo wongeremo ibicuruzwa mu gitebo',
+    'auth.forgot_password': 'Wibagiwe ijambo ry\'ibanga?',
     'auth.remember_me': 'Nyibuke',
     'auth.dont_have_account': 'Ntufite konti?',
     'auth.already_have_account': 'Usanzwe ufite konti?',
-    'auth.login_failed': 'Kwinjira byanze',
-    'auth.registration_failed': 'Kwiyandikisha byanze',
-    'auth.terms_conditions': 'Amabwiriza n\'amategeko',
-    'auth.agree_terms': 'Nasomye amabwiriza n\'amategeko',
-    'auth.join_as_seller': 'Injira nk\'umucuruzi',
-    'auth.business_name': 'Izina ry\'ubucuruzi',
-    'auth.phone_number': 'Nimero ya telefoni',
-    'auth.gender': 'Igitsina',
-    'auth.male': 'Gabo',
-    'auth.female': 'Gore',
-    'auth.other': 'Ikindi',
-    'auth.prefer_not_say': 'Sinshaka kubivuga',
-    
-    // Dashboard
-    'dashboard.title': 'Imbonerahamwe',
-    'dashboard.analytics': 'Isesengura',
-    'dashboard.orders': 'Ibicuruzwa byatumijwe',
-    'dashboard.customers': 'Abakiriya',
-    'dashboard.vendors': 'Abacuruzi',
-    'dashboard.products': 'Ibicuruzwa',
-    'dashboard.reports': 'Raporo',
-    'dashboard.settings': 'Igenamiterere',
-    'dashboard.notifications': 'Ubutumwa',
-    'dashboard.profile': 'Umwirondoro',
-    'dashboard.total_sales': 'Igurisha ryose',
-    'dashboard.daily_sales': 'Igurisha rya buri munsi',
-    'dashboard.daily_users': 'Abakoresha ba buri munsi',
-    'dashboard.recent_orders': 'Ibisabwa vuba',
-    'dashboard.summary_sales': 'Incamake y\'igurisha',
-    'dashboard.upcoming_payments': 'Kwishyura bizaza',
-    'dashboard.expense_status': 'Uko amafaranga ameze',
+    'auth.sign_up': 'Iyandikishe',
+    'auth.sign_in': 'Injira',
     
     // Products
-    'products.title': 'Ibicuruzwa',
     'products.search_placeholder': 'Shakisha ibicuruzwa...',
-    'products.price_range': 'Igiciro',
-    'products.clear_filters': 'Siba byose',
-    'products.no_products': 'Nta bicuruzwa byabonetse',
-    'products.showing_results': 'Byerekana {count} muri {total} ibicuruzwa',
-    'products.add_product': 'Ongeraho icyagurishwa',
-    'products.product_name': 'Izina ry\'icyagurishwa',
-    'products.product_description': 'Ibisobanuro by\'icyagurishwa',
-    'products.product_price': 'Igiciro cy\'icyagurishwa',
-    'products.product_category': 'Icyiciro cy\'icyagurishwa',
-    'products.product_image': 'Ishusho y\'icyagurishwa',
-    'products.in_stock': 'Irahari',
-    'products.out_of_stock': 'Ntikyahari',
+    'products.no_products_available': 'Nta bicuruzwa bihari ubu.',
+    'products.view_more': 'Reba Byinshi',
+    'products.loading_related': 'Birimo gutangura ibicuruzwa bifitaniye isano...',
+    'products.you_might_like': 'Bishoboka ko ubishaka',
+    'products.add_to_cart': 'Shyira mu Gitebo',
+    'products.out_of_stock': 'Byarangiye',
+    'products.in_stock': 'Birahari',
     
-    // Cart & Checkout
-    'cart.title': 'Ikibindi cyawe',
-    'cart.empty': 'Ikibindi cyawe kirimo ubusa',
-    'cart.continue_shopping': 'Komeza guhaha',
-    'cart.checkout': 'Kwishyura',
-    'cart.subtotal': 'Igiteranyo gito',
-    'cart.shipping': 'Kohereza',
-    'cart.tax': 'Imisoro',
-    'cart.total': 'Igiteranyo',
-    'checkout.title': 'Kwishyura',
-    'checkout.billing_address': 'Aderesi yo kwishyura',
-    'checkout.shipping_address': 'Aderesi yo kohereza',
-    'checkout.payment_method': 'Uburyo bwo kwishyura',
-    'checkout.place_order': 'Emeza gusaba',
-    'checkout.order_summary': 'Incamake y\'icyasabwe',
-    
-    // Orders
-    'orders.title': 'Ibisabwa',
-    'orders.order_id': 'Nimero y\'icyasabwe',
-    'orders.customer': 'Umukiriya',
-    'orders.order_date': 'Itariki y\'icyasabwe',
-    'orders.order_status': 'Uko icyasabwe kimeze',
-    'orders.order_total': 'Igiteranyo cy\'icyasabwe',
-    'orders.pending': 'Birategereza',
-    'orders.processing': 'Biratunganywa',
-    'orders.shipped': 'Byoherejwe',
-    'orders.delivered': 'Byagarutse',
-    'orders.cancelled': 'Byahagaritswe',
-    'orders.order_complete': 'Icyasabwe cyarangiye',
-    'orders.payment_code': 'Kode yo kwishyura',
-    'orders.generate_payment_code': 'Kora kode yo kwishyura',
-    'orders.confirm_payment': 'Nashyuye',
-    'orders.awaiting_confirmation': 'Gutegereza kwemeza kwa munyangizi',
-    
-    // Profile
-    'profile.title': 'Igenamiterere ry\'umwirondoro',
-    'profile.personal_info': 'Amakuru y\'umuntu ku giti cye',
-    'profile.full_name': 'Amazina yose',
-    'profile.email_address': 'Aderesi ya imeri',
-    'profile.phone_number': 'Nimero ya telefoni',
-    'profile.company': 'Ikigo/Umuryango',
-    'profile.bio': 'Incamake y\'ubuzima',
-    'profile.account_settings': 'Igenamiterere ry\'konti',
-    'profile.email_notifications': 'Ubutumwa bwa imeri',
-    'profile.change_password': 'Hindura ijambo banga',
-    'profile.delete_account': 'Siba konti',
-    'profile.save_changes': 'Bika impinduka',
-    'profile.edit_profile': 'Hindura umwirondoro',
-    'profile.active_member': 'Umunyamuryango ukora',
-    'profile.joined': 'Yinjiye',
-    
-    // Vendors
-    'vendors.title': 'Abacuruzi',
-    'vendors.add_vendor': 'Ongeraho umucuruzi',
-    'vendors.total_vendors': 'Abacuruzi bose',
-    'vendors.total_users': 'Abakoresha bose',
-    'vendors.vendor_name': 'Izina ry\'umucuruzi',
-    'vendors.joined_date': 'Itariki yinjiriyeho',
-    'vendors.active': 'Ukora',
-    'vendors.inactive': 'Ntakora',
-    'vendors.search_vendors': 'Shakisha abacuruzi...',
+    // Cart
+    'cart.added_to_cart': 'Byashyizwe mu gitebo',
+    'cart.item_added': '{{item}} byashyizwe mu gitebo cyawe.',
+    'cart.failed_to_add': 'Byanze gushyirwa mu gitebo',
+    'cart.add_to_cart': 'Shyira mu Gitebo',
+    'cart.adding': 'Birimo gushyirwa...',
     
     // Categories
-    'categories.title': 'Ibyiciro',
-    'categories.no_categories': 'Nta byiciro bihari ubu.',
-    'categories.loading': 'Byongera ibyiciro...',
+    'categories.loading': 'Birimo gutangura amatsinda...',
+    'categories.no_categories': 'Nta matsinda ahari.',
     
-    // Contact
-    'contact.title': 'Twandikire',
-    'contact.get_in_touch': 'Duhuze',
-    'contact.message': 'Ubutumwa',
-    'contact.send_message': 'Kohereza ubutumwa',
-    'contact.subject': 'Ingingo',
+    // Home
+    'home.new_arrivals': 'IBICURUZWA BISHYA',
+    'home.top_selling': 'IBICURUZWA BICURUZA CYANE',
+    'home.browse_categories': 'Shakisha hakurikijwe Itsinda',
+    
+    // Hero Section
+    'hero.title': 'Murakaza neza ku Isoko Ryubwenge ry\'Abacuruzi b\'Abagore mu Rwanda',
+    'hero.description': 'Ryubatswe kubacuruzi b\'abagore bo i Kigali, WomXchange Rwanda itanga urubuga rworoshye rwo gucuruza, gucunga, no kwagura ubucuruzi bwawe.',
+    'hero.shop_now': 'Gura Ubu',
+    'hero.image_alt': 'Umucuruzi w\'umugore watsindiye',
     
     // Footer
-    'footer.about_us': 'Ibyerekeye twe',
-    'footer.privacy_policy': 'Politiki y\'ibanga',
-    'footer.terms_service': 'Amabwiriza y\'ubudahangarwa',
-    'footer.help_center': 'Ikigo cy\'ubufasha',
-    'footer.contact_us': 'Twandikire',
-    'footer.follow_us': 'Dukurikire',
-    'footer.newsletter': 'Inyandiko z\'amakuru',
-    'footer.subscribe': 'Iyandikishe',
-    'footer.all_rights_reserved': 'Uburenganzira bwose bwarabitswe',
+    'footer.company_name': 'WomXchange Rwanda',
+    'footer.company_description': 'Gutera imbere abacuruzi b\'abagore bo mu Rwanda hakoreshejwe urubuga rw\'isoko ryubwenge.',
+    'footer.location': 'Kigali, u Rwanda',
+    'footer.quick_links': 'Ihuza Ryihuse',
+    'footer.support': 'Ub ufasha',
+    'footer.help_center': 'Ikigo cy\'Ubufasha',
+    'footer.shipping_info': 'Amakuru y\'Iyohereza',
+    'footer.returns': 'Iyasubizwa',
+    'footer.privacy_policy': 'Politiki y\'Ibanga',
+    'footer.terms_of_service': 'Amabwiriza y\'Inyago',
+    'footer.location_title': 'Ahantu',
+    'footer.location_description': 'Suranabire ibiro byacu i Kigali cyangwa ugure kumurongo uhereye ahantu hose mu Rwanda.',
+    'footer.store_hours': 'Amasaha y\'Iduka',
+    'footer.weekdays': 'Ku cyumweru - Kw\'igatanu: 9:00 AM - 9:00 PM',
+    'footer.weekends': 'Ku cyomboro - Ku cyumweru: 10:00 AM - 9:00 PM',
+    'footer.copyright': '© 2024 WomXchange. Uburenganzira bwose burarangiye. Byakozwe n\'urukundo kubacuruzi b\'abagore.',
+    
+    // Testimonials
+    'testimonials.title': 'ABAKIRIYA BACU BISHIMIYE',
+    'testimonials.review_1': 'Ibicuruzwa byiza cyane kandi biboherezwa vuba. Ndakunda gushyigikira abacuruzi b\'aho!',
+    'testimonials.review_2': 'Ibintu byo kwisiga naguze biratangaje. Ibiciro byiza kandi ibicuruzwa nyabyo kuva kumugore ufite ubuhanga.',
+    'testimonials.review_3': 'Iri soko ryahinduye ubunyangamugayo bwanjye bwo kugura. Ibintu byinshi bidasanzwe kandi serivisi nziza!',
+    'testimonials.review_4': 'Serivisi nziza y\'abakiriya n\'ibicuruzwa byujuje ibisabwa. Nzongera kugura hano!',
+    'testimonials.review_5': 'Ndakunda ibicuruzwa bitandukanye birahari. Gushyigikira ubucuruzi bw\'aho ntabwo byigeze byoroshye!',
+    
+    // Banner
+    'banner.sell_on_system': 'Gucuruzira kuri sisiteme yacu',
+    'banner.join_as_seller': 'Winjire nk\'Umucuruzi',
+    
+    // Dashboard
+    'dashboard.notifications': 'Nta makuru',
+    'dashboard.profile': 'Umwirondoro',
+    'dashboard.settings': 'Igenamiterere',
     
     // Error Pages
-    'error.404.title': '404',
-    'error.404.message': 'Yihangane! Urupapuro ntirubonetse',
-    'error.404.return_home': 'Subira ku rupapuro rw\'itangiriro',
-    'error.failed_load_products': 'Byanze gushyira ibicuruzwa',
-    'error.failed_load_categories': 'Byanze gushyira ibyiciro',
+    'error.404.title': '404 - Urupapuro Rutabonetse',
+    'error.404.message': 'Urupapuro ushaka ntirubaho.',
+    'error.404.return_home': 'Subira Ahabanza',
+    'error.failed_load_products': 'Byanze gutangura ibicuruzwa',
     
     // Language
     'language.english': 'Icyongereza',
     'language.kinyarwanda': 'Ikinyarwanda',
-    'language.select': 'Hitamo Ururimi',
+  },
+};
+
+interface LanguageProviderProps {
+  children: ReactNode;
+}
+
+export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) => {
+  const [language, setLanguage] = useState<Language>(() => {
+    const saved = localStorage.getItem('language') as Language;
+    return saved || 'en';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('language', language);
+  }, [language]);
+
+  const t = (key: string, params?: Record<string, any>): string => {
+    let translation = translations[language][key] || translations['en'][key] || key;
+    
+    if (params) {
+      Object.keys(params).forEach(param => {
+        translation = translation.replace(`{{${param}}}`, params[param]);
+      });
+    }
+    
+    return translation;
+  };
+
+  return (
+    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+      {children}
+    </LanguageContext.Provider>
+  );
+};
+
+export const useLanguage = () => {
+  const context = useContext(LanguageContext);
+  if (context === undefined) {
+    throw new Error('useLanguage must be used within a LanguageProvider');
   }
+  return context;
 };

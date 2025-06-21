@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import { AuthContext } from '@/contexts/AuthContext';
 import { addToCart } from '@/api/orders';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface ProductCardProps {
   id: string;
@@ -19,6 +20,7 @@ interface ProductCardProps {
 const ProductCard = ({ id, image, title, price, originalPrice, rating = 5 }: ProductCardProps) => {
   const auth = useContext(AuthContext);
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [isAddingToCart, setIsAddingToCart] = useState(false);
 
   const handleAddToCart = async (e: React.MouseEvent) => {
@@ -27,8 +29,8 @@ const ProductCard = ({ id, image, title, price, originalPrice, rating = 5 }: Pro
     
     if (!auth?.user) {
       toast({
-        title: "Login Required",
-        description: "Please login to add items to cart",
+        title: t('auth.login_required'),
+        description: t('auth.login_to_add_cart'),
         variant: "destructive",
       });
       return;
@@ -38,13 +40,13 @@ const ProductCard = ({ id, image, title, price, originalPrice, rating = 5 }: Pro
       setIsAddingToCart(true);
       await addToCart(parseInt(id), 1);
       toast({
-        title: "Added to cart",
-        description: `${title} has been added to your cart.`,
+        title: t('cart.added_to_cart'),
+        description: t('cart.item_added', { item: title }),
       });
     } catch (err: any) {
       toast({
-        title: "Error",
-        description: err.response?.data?.message || "Failed to add to cart",
+        title: t('common.error'),
+        description: err.response?.data?.message || t('cart.failed_to_add'),
         variant: "destructive",
       });
     } finally {
@@ -88,7 +90,7 @@ const ProductCard = ({ id, image, title, price, originalPrice, rating = 5 }: Pro
               onClick={handleAddToCart}
               disabled={isAddingToCart}
             >
-              {isAddingToCart ? 'Adding...' : 'Add to Cart'}
+              {isAddingToCart ? t('cart.adding') : t('cart.add_to_cart')}
             </Button>
           </div>
         </div>

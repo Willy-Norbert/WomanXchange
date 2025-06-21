@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import ProductCard from './ProductCard';
 import { getProducts, Product } from '@/api/products';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface RelatedProductsProps {
   categoryId: number;
@@ -9,6 +10,7 @@ interface RelatedProductsProps {
 }
 
 const RelatedProducts = ({ categoryId, currentProductId }: RelatedProductsProps) => {
+  const { t } = useLanguage();
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -34,7 +36,7 @@ const RelatedProducts = ({ categoryId, currentProductId }: RelatedProductsProps)
   if (loading) {
     return (
       <div className="text-center py-8">
-        <div className="text-lg text-gray-600">Loading related products...</div>
+        <div className="text-lg text-gray-600">{t('products.loading_related')}</div>
       </div>
     );
   }
@@ -45,7 +47,7 @@ const RelatedProducts = ({ categoryId, currentProductId }: RelatedProductsProps)
 
   return (
     <section>
-      <h2 className="text-2xl font-bold mb-8">You might also like</h2>
+      <h2 className="text-2xl font-bold mb-8">{t('products.you_might_like')}</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {relatedProducts.map((product) => (
           <ProductCard

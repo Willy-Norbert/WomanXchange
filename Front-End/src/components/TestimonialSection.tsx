@@ -7,37 +7,40 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const TestimonialSection = () => {
+  const { t } = useLanguage();
+
   const testimonials = [
     {
       name: "Gentil Mugisha",
       rating: 5,
-      text: "Amazing quality products and fast delivery. I love supporting local women entrepreneurs!",
+      text: t('testimonials.review_1'),
       avatar: "/Gentil.jpg"
     },
     {
       name: "Gentil Mugisha",
       rating: 5,
-      text: "The cosmetics I bought are incredible. Great prices and authentic products from talented women.",
+      text: t('testimonials.review_2'),
       avatar: "/Gentil.jpg"
     },
     {
       name: "Gentil Mugisha",
       rating: 5,
-      text: "This marketplace changed my shopping experience. So many unique items and great customer service!",
+      text: t('testimonials.review_3'),
       avatar: "/Gentil.jpg"
     },
     {
       name: "Gentil Mugisha",
       rating: 5,
-      text: "Excellent customer service and high quality products. Will definitely shop here again!",
+      text: t('testimonials.review_4'),
       avatar: "/Gentil.jpg"
     },
     {
       name: "Gentil Mugisha",
       rating: 5,
-      text: "Love the variety of products available. Supporting local businesses has never been easier!",
+      text: t('testimonials.review_5'),
       avatar: "/Gentil.jpg"
     }
   ];
@@ -46,7 +49,7 @@ const TestimonialSection = () => {
     <section className="py-16 bg-white">
       <div className="container mx-auto px-4">
         <h2 className="text-3xl font-bold text-center mb-12 text-gray-900">
-          OUR HAPPY CUSTOMERS
+          {t('testimonials.title')}
         </h2>
         <div className="max-w-4xl mx-auto">
           <Carousel
