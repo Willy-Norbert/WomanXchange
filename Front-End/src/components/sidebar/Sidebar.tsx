@@ -1,7 +1,7 @@
 
 import React, { useContext } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { BarChart3, Users, Package, FileText, ShoppingCart, TrendingUp, MessageSquare } from 'lucide-react';
+import { BarChart3, Users, Package, FileText, ShoppingCart, TrendingUp, MessageSquare, UserCheck } from 'lucide-react';
 import { AuthContext } from '../../contexts/AuthContext';
 
 interface SidebarProps {
@@ -11,18 +11,19 @@ interface SidebarProps {
 const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3, path: '/dashboard', roles: ['admin', 'seller'] },
   { id: 'customers', label: 'Customers', icon: Users, path: '/customers', roles: ['admin'] },
+  { id: 'vendors', label: 'Vendors', icon: UserCheck, path: '/vendors', roles: ['admin'] },
   { id: 'community-chat', label: 'Community Chat', icon: MessageSquare, path: '/community-chat', roles: ['admin', 'seller'] },
 ];
 
 const managementItems = [
   { label: 'Products', path: '/admin-products', roles: ['admin', 'seller'] },
   { label: 'Orders', path: '/orders', roles: ['admin', 'seller'] },
-  { label: 'Vendors', path: '/vendors', roles: ['admin'] },
   { label: 'Reports', path: '/reports', roles: ['admin', 'seller'] },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentPage }) => {
   const { user } = useContext(AuthContext);
+  const location = useLocation();
   
   if (!user) return null;
 
@@ -49,7 +50,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage }) => {
       <nav className="space-y-2">
         {filteredMenuItems.map((item) => {
           const Icon = item.icon;
-          const isActive = currentPage === item.id;
+          const isActive = location.pathname === item.path || currentPage === item.id;
           
           return (
             <Link
@@ -72,15 +73,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage }) => {
         <div className="mt-8 pt-8 border-t border-purple-300">
           <h3 className="text-purple-200 text-sm font-semibold mb-4">Management</h3>
           <div className="space-y-2">
-            {filteredManagementItems.map((item) => (
-              <Link 
-                key={item.path}
-                to={item.path} 
-                className="block px-4 py-2 text-purple-100 hover:text-white transition-colors"
-              >
-                {item.label}
-              </Link>
-            ))}
+            {filteredManagementItems.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <Link 
+                  key={item.path}
+                  to={item.path} 
+                  className={`block px-4 py-2 transition-colors rounded-lg ${
+                    isActive 
+                      ? 'bg-white bg-opacity-20 text-white' 
+                      : 'text-purple-100 hover:text-white hover:bg-white hover:bg-opacity-10'
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
           </div>
         </div>
       )}

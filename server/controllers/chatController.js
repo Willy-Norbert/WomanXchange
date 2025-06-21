@@ -1,82 +1,62 @@
 
 import asyncHandler from 'express-async-handler';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../prismaClient.js';
 
-const prisma = new PrismaClient();
-
-// @desc    Get all chat messages
+// @desc    Get all chat messages for community chat
 // @route   GET /api/chat/messages
-// @access  Private (Admin, Seller)
+// @access  Private (Admin/Seller only)
 export const getChatMessages = asyncHandler(async (req, res) => {
-  try {
-    const messages = await prisma.chatMessage.findMany({
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            role: true,
-          }
-        }
+  console.log('Getting chat messages...');
+  
+  const messages = await prisma.chatMessage.findMany({
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          role: true,
+        },
       },
-      orderBy: {
-        createdAt: 'asc'
-      }
-    });
+    },
+    orderBy: {
+      createdAt: 'asc',
+    },
+  });
 
-    res.json({
-      success: true,
-      data: messages
-    });
-  } catch (error) {
-    console.error('Error fetching chat messages:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch chat messages'
-    });
-  }
+  console.log('Found messages:', messages.length);
+  res.status(200).json(messages);
 });
 
-// @desc    Create new chat message
+// @desc    Create a new chat message
 // @route   POST /api/chat/messages
-// @access  Private (Admin, Seller)
+// @access  Private (Admin/Seller only)
 export const createChatMessage = asyncHandler(async (req, res) => {
-  try {
-    const { message } = req.body;
-    const userId = req.user.id;
+  const { message } = req.body;
+  const userId = req.user.id;
 
-    if (!message || message.trim() === '') {
-      return res.status(400).json({
-        success: false,
-        message: 'Message content is required'
-      });
-    }
+  console.log('Creating chat message:', { message, userId });
 
-    const newMessage = await prisma.chatMessage.create({
-      data: {
-        message: message.trim(),
-        userId: userId
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            role: true,
-          }
-        }
-      }
-    });
-
-    res.status(201).json({
-      success: true,
-      data: newMessage
-    });
-  } catch (error) {
-    console.error('Error creating chat message:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to create chat message'
-    });
+  if (!message || !message.trim()) {
+    res.status(400);
+    throw new Error('Message is required');
   }
+
+  const chatMessage = await prisma.chatMessage.create({
+    data: {
+      message: message.trim(),
+      userId,
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          role: true,
+        },
+      },
+    },
+  });
+
+  console.log('Created chat message:', chatMessage);
+  res.status(201).json(chatMessage);
 });

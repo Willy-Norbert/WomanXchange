@@ -1,6 +1,6 @@
 
 import React, { useContext, useState } from 'react';
-import { Bell, Moon, LogOut, User, Settings } from 'lucide-react';
+import { Bell, Moon, LogOut, User, Settings, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AuthContext } from '../../contexts/AuthContext';
@@ -37,6 +37,12 @@ export const DashboardHeader: React.FC = () => {
     <header className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
+          <Link to="/">
+            <Button variant="ghost" className="text-purple-600 hover:text-purple-700">
+              <Home className="w-4 h-4 mr-2" />
+              Home
+            </Button>
+          </Link>
           {(user.role === 'admin' || user.role === 'seller') && (
             <Link to="/dashboard">
               <Button variant="ghost" className="text-purple-600 hover:text-purple-700">
