@@ -54,12 +54,35 @@ export const getProductById = asyncHandler(async (req, res) => {
 
 export const updateProduct = asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
+  
+  console.log('Update Product Debug:');
+  console.log('Product ID:', id);
+  console.log('User ID:', req.user.id);
+  console.log('User Role:', req.user.role);
+  
   const product = await prisma.product.findUnique({ where: { id } });
 
-  if (!product || (product.createdById !== req.user.id && req.user.role !== 'admin')) {
-    res.status(403);
-    throw new Error('Not authorized or product not found');
+  if (!product) {
+    console.log('Product not found');
+    res.status(404);
+    throw new Error('Product not found');
   }
+
+  console.log('Product createdById:', product.createdById);
+  console.log('User owns product?', product.createdById === req.user.id);
+  console.log('User is admin?', req.user.role.toLowerCase() === 'admin');
+
+  // Check if user owns the product OR is an admin
+  const userOwnsProduct = product.createdById === req.user.id;
+  const userIsAdmin = req.user.role.toLowerCase() === 'admin';
+  
+  if (!userOwnsProduct && !userIsAdmin) {
+    console.log('Authorization failed - user does not own product and is not admin');
+    res.status(403);
+    throw new Error('Not authorized to update this product');
+  }
+
+  console.log('Authorization passed, updating product');
 
   const updated = await prisma.product.update({
     where: { id },
@@ -86,12 +109,33 @@ export const updateProduct = asyncHandler(async (req, res) => {
 
 export const deleteProduct = asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
+  
+  console.log('Delete Product Debug:');
+  console.log('Product ID:', id);
+  console.log('User ID:', req.user.id);
+  console.log('User Role:', req.user.role);
+  
   const product = await prisma.product.findUnique({ where: { id } });
 
-  if (!product || (product.createdById !== req.user.id && req.user.role !== 'admin')) {
-    res.status(403);
-    throw new Error('Not authorized or product not found');
+  if (!product) {
+    console.log('Product not found');
+    res.status(404);
+    throw new Error('Product not found');
   }
+
+  console.log('Product createdById:', product.createdById);
+  
+  // Check if user owns the product OR is an admin
+  const userOwnsProduct = product.createdById === req.user.id;
+  const userIsAdmin = req.user.role.toLowerCase() === 'admin';
+  
+  if (!userOwnsProduct && !userIsAdmin) {
+    console.log('Authorization failed - user does not own product and is not admin');
+    res.status(403);
+    throw new Error('Not authorized to delete this product');
+  }
+
+  console.log('Authorization passed, deleting product');
 
   await prisma.product.delete({ where: { id } });
 
