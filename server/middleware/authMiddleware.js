@@ -1,3 +1,4 @@
+
 import jwt from 'jsonwebtoken';
 import asyncHandler from 'express-async-handler';
 import prisma from '../prismaClient.js';
@@ -9,13 +10,19 @@ dotenv.config();
 export const protect = asyncHandler(async (req, res, next) => {
   let token;
 
+  console.log('Auth middleware: Checking authorization header');
+  console.log('Authorization header:', req.headers.authorization);
+
   if (
     req.headers.authorization &&
     req.headers.authorization.startsWith('Bearer')
   ) {
     try {
       token = req.headers.authorization.split(' ')[1];
+      console.log('Auth middleware: Token extracted, length:', token.length);
+      
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      console.log('Auth middleware: Token decoded successfully, user ID:', decoded.id);
 
       const user = await prisma.user.findUnique({
         where: { id: decoded.id },
@@ -28,18 +35,21 @@ export const protect = asyncHandler(async (req, res, next) => {
       });
 
       if (!user) {
+        console.log('Auth middleware: User not found in database');
         res.status(401);
         throw new Error('User not found');
       }
 
+      console.log('Auth middleware: User found:', user.email);
       req.user = user;
       next();
     } catch (error) {
-      console.error('JWT error:', error.message);
+      console.error('Auth middleware: JWT error:', error.message);
       res.status(401);
       throw new Error('Not authorized, token failed');
     }
   } else {
+    console.log('Auth middleware: No authorization header found');
     res.status(401);
     throw new Error('Not authorized, no token');
   }

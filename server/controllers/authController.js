@@ -73,9 +73,13 @@ export const authUser = asyncHandler(async (req, res) => {
 
 // Verify token endpoint
 export const verifyToken = asyncHandler(async (req, res) => {
+  console.log('Token verification request received');
+  console.log('User from middleware:', req.user);
+  
   // The protect middleware will have already verified the token
   // and attached the user to req.user
   if (req.user) {
+    console.log('Token verification successful for user:', req.user.email);
     res.json({ 
       success: true, 
       user: {
@@ -86,6 +90,7 @@ export const verifyToken = asyncHandler(async (req, res) => {
       }
     });
   } else {
+    console.log('Token verification failed - no user found');
     res.status(401);
     throw new Error('Token verification failed');
   }

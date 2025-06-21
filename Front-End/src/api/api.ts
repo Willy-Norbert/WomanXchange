@@ -12,6 +12,9 @@ api.interceptors.request.use(
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log('Request interceptor: Token added to request');
+    } else {
+      console.log('Request interceptor: No token found');
     }
     return config;
   },
@@ -23,17 +26,30 @@ api.interceptors.request.use(
 
 // Add response interceptor to handle auth errors
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('API Response successful:', response.config.url);
+    return response;
+  },
   (error) => {
-    console.error('API response error:', error);
+    console.error('API response error:', error.response?.status, error.response?.data);
     
     if (error.response?.status === 401) {
-      console.log('Unauthorized response, clearing auth data');
+      console.log('Unauthorized response detected, clearing auth data');
+      
+      // Clear localStorage
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       
-      // Only redirect if not already on login page
-      if (window.location.pathname !== '/login') {
+      // Clear axios header
+      delete api.defaults.headers.common['Authorization'];
+      
+      // Only redirect if not already on login page and not during token verification
+      const isLoginPage = window.location.pathname === '/login';
+      const isRegisterPage = window.location.pathname === '/register';
+      const isTokenVerification = error.config?.url?.includes('/auth/verify-token');
+      
+      if (!isLoginPage && !isRegisterPage && !isTokenVerification) {
+        console.log('Redirecting to login page');
         window.location.href = '/login';
       }
     }
