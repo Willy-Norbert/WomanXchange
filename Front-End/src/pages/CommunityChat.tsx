@@ -37,7 +37,7 @@ const CommunityChat = () => {
       console.log('Chat messages response:', response);
       return response;
     },
-    refetchInterval: 5000, // Refetch every 5 seconds for real-time feel
+    refetchInterval: 2000, // Refetch every 2 seconds for real-time updates
     enabled: !!user && (user.role === 'admin' || user.role === 'seller')
   });
 
@@ -51,7 +51,9 @@ const CommunityChat = () => {
     onSuccess: (data) => {
       console.log('Message created successfully:', data);
       setNewMessage('');
+      // Immediately refetch to show the new message
       queryClient.invalidateQueries({ queryKey: ['chat-messages'] });
+      refetch();
       toast({
         title: "Message sent",
         description: "Your message has been posted to the community chat.",
@@ -130,10 +132,16 @@ const CommunityChat = () => {
               Community Chat
             </h1>
           </div>
-          <Button onClick={() => refetch()} variant="outline" size="sm">
-            <RefreshCw className="w-4 h-4 mr-1" />
-            Refresh
-          </Button>
+          <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-sm text-gray-600">Live</span>
+            </div>
+            <Button onClick={() => refetch()} variant="outline" size="sm">
+              <RefreshCw className="w-4 h-4 mr-1" />
+              Refresh
+            </Button>
+          </div>
         </div>
         
         <Card className="flex-1 flex flex-col h-[calc(100vh-200px)]">
@@ -142,7 +150,7 @@ const CommunityChat = () => {
               Discussion for Vendors & Admins ({messages.length} messages)
             </CardTitle>
             <p className="text-sm text-gray-600">
-              Share ideas, ask questions, and collaborate with other vendors and administrators.
+              Share ideas, ask questions, and collaborate with other vendors and administrators. Updates in real-time.
             </p>
           </CardHeader>
           
@@ -210,7 +218,7 @@ const CommunityChat = () => {
                 </Button>
               </form>
               <p className="text-xs text-gray-500 mt-2">
-                {newMessage.length}/500 characters
+                {newMessage.length}/500 characters • Messages update in real-time
               </p>
             </div>
           </CardContent>

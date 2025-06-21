@@ -1,20 +1,43 @@
 
-import React, { useContext, useEffect } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Search, Plus, Edit } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
 import api from '@/api/api';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useToast } from '@/hooks/use-toast';
+
+interface CreateCustomerData {
+  name: string;
+  email: string;
+  password: string;
+  role: 'seller';
+}
 
 const Customers = () => {
   const { t } = useLanguage();
   const { user, loading } = useContext(AuthContext);
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  const form = useForm<CreateCustomerData>({
+    defaultValues: {
+      name: '',
+      email: '',
+      password: '',
+      role: 'seller',
+    },
+  });
 
   useEffect(() => {
     if (loading) return;
@@ -31,7 +54,7 @@ const Customers = () => {
     }
   }, [user, loading, navigate]);
 
-  const { data: usersData, isLoading, error } = useQuery({
+  const { data: usersData, isLoading, error, refetch } = useQuery({
     queryKey: ['customers'],
     queryFn: async () => {
       console.log('Fetching customers data...');
@@ -39,7 +62,34 @@ const Customers = () => {
       console.log('Customers API response:', response.data);
       return response;
     },
-    enabled: !!user && (user.role === 'ADMIN' || user.role === 'seller')
+    enabled: !!user && (user.role === 'ADMIN' || user.role === 'seller'),
+    refetchInterval: 5000, // Refetch every 5 seconds for live updates
+  });
+
+  const createCustomerMutation = useMutation({
+    mutationFn: async (data: CreateCustomerData) => {
+      console.log('Creating customer:', data);
+      const response = await api.post('/auth/register', data);
+      console.log('Customer created response:', response);
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      setIsCreateModalOpen(false);
+      form.reset();
+      toast({
+        title: "Success",
+        description: "Customer (seller) created successfully.",
+      });
+    },
+    onError: (error: any) => {
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to create customer';
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
   });
 
   // Filter customers (buyers) from the users data
@@ -50,6 +100,15 @@ const Customers = () => {
   });
 
   console.log('All users:', allUsers.length, 'Customers found:', customers.length);
+
+  const onSubmit = (data: CreateCustomerData) => {
+    createCustomerMutation.mutate(data);
+  };
+
+  const resetForm = () => {
+    form.reset();
+    setIsCreateModalOpen(false);
+  };
 
   if (loading || isLoading) {
     return (
@@ -70,7 +129,10 @@ const Customers = () => {
     return (
       <DashboardLayout currentPage="customers">
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-lg text-red-600">{t('error.failed_load_products')}</div>
+          <div className="text-lg text-red-600">
+            {t('error.failed_load_products')}
+            <Button onClick={() => refetch()} className="ml-2">{t('common.retry')}</Button>
+          </div>
         </div>
       </DashboardLayout>
     );
@@ -81,10 +143,100 @@ const Customers = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">{t('customers.title')}</h1>
-          <Button className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="w-4 h-4 mr-2" />
-            {t('customers.add_customer')}
-          </Button>
+          <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+            <DialogTrigger asChild>
+              <Button 
+                className="bg-blue-600 hover:bg-blue-700"
+                onClick={() => resetForm()}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                {t('customers.add_customer')}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Add New Customer (Seller)</DialogTitle>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    rules={{ required: 'Name is required' }}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Full Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter full name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    rules={{ 
+                      required: 'Email is required',
+                      pattern: {
+                        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                        message: 'Invalid email address'
+                      }
+                    }}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email Address</FormLabel>
+                        <FormControl>
+                          <Input type="email" placeholder="Enter email address" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    rules={{ 
+                      required: 'Password is required',
+                      minLength: {
+                        value: 6,
+                        message: 'Password must be at least 6 characters'
+                      }
+                    }}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        <FormControl>
+                          <Input type="password" placeholder="Enter password" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <div className="flex gap-2 pt-4">
+                    <Button 
+                      type="submit" 
+                      disabled={createCustomerMutation.isPending}
+                      className="flex-1"
+                    >
+                      {createCustomerMutation.isPending ? 'Creating...' : 'Create Customer'}
+                    </Button>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={resetForm}
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
         </div>
         
         {/* Search */}
