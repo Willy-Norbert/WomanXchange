@@ -8,8 +8,10 @@ import TestimonialSection from '@/components/TestimonialSection';
 import Footer from '@/components/Footer';
 import { getProducts } from '@/api/products';
 import { Product } from '@/api/products';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const Index = () => {
+  const { t } = useLanguage();
   const [newArrivals, setNewArrivals] = useState<Product[]>([]);
   const [topSelling, setTopSelling] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,7 +29,7 @@ const Index = () => {
         setNewArrivals(products.slice(0, half));
         setTopSelling(products.slice(half));
       } catch (err: any) {
-        setError('Failed to load products');
+        setError(t('error.failed_load_products'));
         console.error('Error fetching products:', err);
       } finally {
         setLoading(false);
@@ -35,14 +37,14 @@ const Index = () => {
     };
 
     fetchProducts();
-  }, []);
+  }, [t]);
 
   if (loading) {
     return (
       <div className="min-h-screen bg-white">
         <Header />
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-lg text-gray-600">Loading products...</div>
+          <div className="text-lg text-gray-600">{t('common.loading')}</div>
         </div>
         <Footer />
       </div>
@@ -65,8 +67,8 @@ const Index = () => {
     <div className="min-h-screen bg-white">
       <Header />
       <HeroSection />
-      <ProductSection title="NEW ARRIVALS" products={newArrivals} />
-      <ProductSection title="TOP SELLING" products={topSelling} />
+      <ProductSection title={t('home.new_arrivals')} products={newArrivals} />
+      <ProductSection title={t('home.top_selling')} products={topSelling} />
       <CategorySection />
       <TestimonialSection />
       <Footer />

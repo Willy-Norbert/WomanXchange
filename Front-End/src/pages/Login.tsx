@@ -1,3 +1,4 @@
+
 import { useState, useContext, FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,9 +7,11 @@ import { ArrowLeft } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { loginUser, LoginData } from "../api/auth";
 import { AuthContext } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const Login = () => {
   const auth = useContext(AuthContext);
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   if (!auth) throw new Error("AuthContext must be used within AuthProvider");
@@ -36,7 +39,7 @@ const Login = () => {
       login(res.data);
       navigate("/dashboard");
     } catch (err: any) {
-      setError(err.response?.data?.message || "Login failed");
+      setError(err.response?.data?.message || t('auth.login_failed'));
     }
   };
 
@@ -52,11 +55,11 @@ const Login = () => {
         <div className="bg-white rounded-lg p-8 shadow-2xl">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-purple-600">Email</label>
+              <label className="text-sm font-medium text-purple-600">{t('auth.email')}</label>
               <Input
                 type="email"
                 name="email"
-                placeholder="Enter your email"
+                placeholder={t('auth.email')}
                 value={formData.email}
                 onChange={handleChange}
                 required
@@ -64,11 +67,11 @@ const Login = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-purple-600">Password</label>
+              <label className="text-sm font-medium text-purple-600">{t('auth.password')}</label>
               <Input
                 type="password"
                 name="password"
-                placeholder="Enter your password"
+                placeholder={t('auth.password')}
                 value={formData.password}
                 onChange={handleChange}
                 required
@@ -83,13 +86,13 @@ const Login = () => {
                 className="data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
               />
               <label htmlFor="remember" className="text-sm text-gray-600">
-                Remember me
+                {t('auth.remember_me')}
               </label>
             </div>
 
             <div className="text-center">
               <Link to="/forgot-password" className="text-sm text-purple-600 hover:underline">
-                Forgot Password?
+                {t('auth.forgot_password')}
               </Link>
             </div>
 
@@ -99,13 +102,13 @@ const Login = () => {
               type="submit"
               className="w-full bg-gray-800 hover:bg-gray-700 text-white py-3 rounded-md transition-colors"
             >
-              Login
+              {t('auth.login')}
             </Button>
 
             <div className="text-center">
-              <span className="text-sm text-gray-600">Don't have </span>
+              <span className="text-sm text-gray-600">{t('auth.dont_have_account')} </span>
               <Link to="/register" className="text-sm text-purple-600 hover:underline">
-                an account?
+                {t('auth.register')}
               </Link>
             </div>
           </form>
