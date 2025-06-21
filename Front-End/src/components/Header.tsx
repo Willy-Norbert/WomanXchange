@@ -1,5 +1,5 @@
 
-import { Search, ShoppingCart, User, Menu } from 'lucide-react';
+import { Search, ShoppingCart, User, Menu, Settings, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { useContext } from 'react';
@@ -7,11 +7,14 @@ import { AuthContext } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import TopBanner from './TopBanner';
 import LanguageSwitcher from './LanguageSwitcher';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 
 const Header = () => {
-  const auth = useContext(AuthContext);
+  const { user, logout } = useContext(AuthContext);
   const { t } = useLanguage();
-  const user = auth?.user;
+  const handleLogout = () => {
+    logout();
+  };
 
   return (
     <>
@@ -49,11 +52,7 @@ const Header = () => {
               </Link>
               
               {/* Dashboard link for sellers and admins */}
-              {user && (user.role === 'SELLER' || user.role === 'ADMIN' || user.role === 'seller' || user.role === 'admin') && (
-                <Link to="/dashboard" className="text-purple-600 hover:text-purple-700 font-medium transition-colors">
-                  {t('nav.dashboard')}
-                </Link>
-              )}
+          
             </nav>
 
             {/* Search and Actions */}
@@ -76,16 +75,41 @@ const Header = () => {
               <LanguageSwitcher variant="header" />
 
               {user ? (
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-700 hidden md:block">
-                    {t('common.welcome')}, {user.name}
-                  </span>
-                  <Link to="/profile">
-                    <Button variant="ghost" size="icon">
-                      <User className="w-5 h-5" />
-                    </Button>
-                  </Link>
+                
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="flex items-center space-x-2">
+                <div className="w-8 h-8 bg-purple-400 rounded-full flex items-center justify-center text-white font-medium">
+                  {user.name.charAt(0).toUpperCase()}
                 </div>
+                <span className="text-sm font-medium">{user.name}</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-white border border-gray-200 shadow-lg z-50">
+              <DropdownMenuItem asChild>
+                <Link to="/profile" className="flex items-center">
+                  <User className="w-4 h-4 mr-2" />
+                  {t('dashboard.profile')}
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Settings className="w-4 h-4 mr-2" />
+                {t('dashboard.settings')}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+               <DropdownMenuItem>
+                 
+                <Link to="/dashboard" className="text-gray-700 hover:text-purple-600 transition-colors">
+                  {t('nav.dashboard')}
+                </Link>
+              
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="w-4 h-4 mr-2" />
+                {t('auth.logout')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
               ) : (
                 <Link to="/login">
                   <Button variant="ghost" size="icon">
