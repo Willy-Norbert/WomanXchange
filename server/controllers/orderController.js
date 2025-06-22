@@ -51,10 +51,25 @@ export const addToCart = asyncHandler(async (req, res) => {
 
   const updatedCart = await prisma.cart.findUnique({
     where: { id: cart.id },
-    include: { items: { include: { product: true } } }
+    include: { 
+      items: { 
+        include: { 
+          product: {
+            select: {
+              id: true,
+              name: true,
+              price: true,
+              coverImage: true,
+              description: true,
+              stock: true
+            }
+          }
+        } 
+      } 
+    }
   });
 
-  console.log('Returning updated cart:', updatedCart);
+  console.log('Returning updated cart with full product details:', JSON.stringify(updatedCart, null, 2));
   res.json({ data: updatedCart, cartId: cart.id });
 });
 
@@ -87,7 +102,22 @@ export const removeFromCart = asyncHandler(async (req, res) => {
 
   const updatedCart = await prisma.cart.findUnique({
     where: { id: cart.id },
-    include: { items: { include: { product: true } } }
+    include: { 
+      items: { 
+        include: { 
+          product: {
+            select: {
+              id: true,
+              name: true,
+              price: true,
+              coverImage: true,
+              description: true,
+              stock: true
+            }
+          }
+        } 
+      } 
+    }
   });
 
   res.json({ data: updatedCart, cartId: cart.id });
@@ -104,19 +134,49 @@ export const getCart = asyncHandler(async (req, res) => {
     const userId = req.user.id;
     cart = await prisma.cart.findUnique({
       where: { userId },
-      include: { items: { include: { product: true } } }
+      include: { 
+        items: { 
+          include: { 
+            product: {
+              select: {
+                id: true,
+                name: true,
+                price: true,
+                coverImage: true,
+                description: true,
+                stock: true
+              }
+            }
+          } 
+        } 
+      }
     });
   } else {
     // Unauthenticated user
     if (cartId) {
       cart = await prisma.cart.findUnique({
         where: { id: parseInt(cartId) },
-        include: { items: { include: { product: true } } }
+        include: { 
+          items: { 
+            include: { 
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  price: true,
+                  coverImage: true,
+                  description: true,
+                  stock: true
+                }
+              }
+            } 
+          } 
+        }
       });
     }
   }
 
-  console.log('Returning cart data wrapped in response:', { data: cart || { items: [] } });
+  console.log('Returning cart data with full product details:', JSON.stringify({ data: cart || { items: [] } }, null, 2));
   res.json({ data: cart || { items: [] }, cartId: cart?.id });
 });
 
