@@ -18,11 +18,15 @@ export const useCart = () => {
       if (storedCartId) {
         setCartId(parseInt(storedCartId));
       }
+    } else {
+      // Clear anonymous cart when user logs in
+      localStorage.removeItem('anonymous_cart_id');
+      setCartId(null);
     }
   }, [user]);
 
   const { data: cart, isLoading, error } = useQuery({
-    queryKey: ['cart', cartId],
+    queryKey: ['cart', cartId, user?.id],
     queryFn: () => getCart(cartId),
     staleTime: 5000,
     gcTime: 10 * 60 * 1000,
@@ -36,10 +40,14 @@ export const useCart = () => {
     onSuccess: (data) => {
       console.log('Add to cart success:', data);
       
-      // Store cartId for unauthenticated users
+      // Store cartId for unauthenticated users and update state immediately
       if (!user && data.data.cartId) {
-        localStorage.setItem('anonymous_cart_id', data.data.cartId.toString());
-        setCartId(data.data.cartId);
+        const newCartId = data.data.cartId;
+        localStorage.setItem('anonymous_cart_id', newCartId.toString());
+        setCartId(newCartId);
+        
+        // Update the query cache with the new cart data
+        queryClient.setQueryData(['cart', newCartId, user?.id], data);
       }
       
       queryClient.invalidateQueries({ queryKey: ['cart'] });
