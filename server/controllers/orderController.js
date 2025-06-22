@@ -1,3 +1,4 @@
+
 import asyncHandler from 'express-async-handler';
 import prisma from '../prismaClient.js';
 import { notify } from '../utils/notify.js';
@@ -115,7 +116,7 @@ export const getCart = asyncHandler(async (req, res) => {
     }
   }
 
-  console.log('Returning cart:', cart);
+  console.log('Returning cart data wrapped in response:', { data: cart || { items: [] } });
   res.json({ data: cart || { items: [] }, cartId: cart?.id });
 });
 

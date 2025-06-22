@@ -37,6 +37,25 @@ export const useCart = () => {
     enabled: isCartIdReady, // Only run query when cartId is ready
     staleTime: 5000,
     gcTime: 10 * 60 * 1000,
+    onSuccess: (data) => {
+      console.log('useCart query success - Raw response:', data);
+      console.log('useCart query success - Cart data:', data?.data);
+      console.log('useCart query success - Cart items:', data?.data?.items);
+    },
+    onError: (error) => {
+      console.error('useCart query error:', error);
+    }
+  });
+
+  // Add more detailed logging
+  console.log('useCart hook state:', {
+    user: !!user,
+    cartId,
+    isCartIdReady,
+    isLoading,
+    cart: cart?.data,
+    cartItems: cart?.data?.items,
+    error
   });
 
   const addToCartMutation = useMutation({
@@ -94,6 +113,12 @@ export const useCart = () => {
   });
 
   const cartItemsCount = cart?.data?.items?.reduce((total: number, item: any) => total + item.quantity, 0) || 0;
+
+  console.log('useCart hook final return:', {
+    cart: cart?.data,
+    cartItemsCount,
+    hasItems: cart?.data?.items?.length > 0
+  });
 
   return {
     cart: cart?.data,
