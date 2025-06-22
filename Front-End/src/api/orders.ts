@@ -47,9 +47,10 @@ export interface PlaceOrderData {
   paymentMethod: string;
 }
 
-export const getCart = () => {
-  console.log('Getting cart');
-  return api.get<Cart>('/orders/cart');
+export const getCart = (cartId?: number | null) => {
+  console.log('Getting cart with cartId:', cartId);
+  const params = cartId ? { cartId: cartId.toString() } : {};
+  return api.get<Cart>('/orders/cart', { params });
 };
 
 export const addToCart = (productId: number, quantity: number) => {
@@ -58,8 +59,8 @@ export const addToCart = (productId: number, quantity: number) => {
   return api.post('/orders/cart', data);
 };
 
-export const removeFromCart = (productId: number) => {
-  const data = { productId };
+export const removeFromCart = (productId: number, cartId?: number | null) => {
+  const data = { productId, ...(cartId && { cartId }) };
   return api.delete('/orders/cart', { data });
 };
 

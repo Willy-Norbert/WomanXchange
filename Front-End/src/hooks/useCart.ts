@@ -9,10 +9,21 @@ export const useCart = () => {
   const { user } = useContext(AuthContext);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [cartId, setCartId] = useState<number | null>(null);
+
+  // Get cartId from localStorage for unauthenticated users
+  useEffect(() => {
+    if (!user) {
+      const storedCartId = localStorage.getItem('anonymous_cart_id');
+      if (storedCartId) {
+        setCartId(parseInt(storedCartId));
+      }
+    }
+  }, [user]);
 
   const { data: cart, isLoading, error } = useQuery({
-    queryKey: ['cart'],
-    queryFn: () => getCart(),
+    queryKey: ['cart', cartId],
+    queryFn: () => getCart(cartId),
     staleTime: 5000,
     gcTime: 10 * 60 * 1000,
   });
@@ -24,6 +35,13 @@ export const useCart = () => {
     },
     onSuccess: (data) => {
       console.log('Add to cart success:', data);
+      
+      // Store cartId for unauthenticated users
+      if (!user && data.data.cartId) {
+        localStorage.setItem('anonymous_cart_id', data.data.cartId.toString());
+        setCartId(data.data.cartId);
+      }
+      
       queryClient.invalidateQueries({ queryKey: ['cart'] });
       toast({
         title: "Added to cart",
@@ -42,7 +60,7 @@ export const useCart = () => {
 
   const removeFromCartMutation = useMutation({
     mutationFn: (productId: number) => {
-      return removeFromCart(productId);
+      return removeFromCart(productId, cartId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cart'] });

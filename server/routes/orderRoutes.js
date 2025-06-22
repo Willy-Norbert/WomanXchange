@@ -14,11 +14,30 @@ import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
 
 const orderRouter = express.Router();
 
-// Cart routes - no authentication required for cart operations
+// Optional authentication middleware for cart routes
+const optionalAuth = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (token) {
+    // If token exists, try to authenticate but don't fail if it doesn't work
+    protect(req, res, (err) => {
+      if (err) {
+        console.log('Optional auth failed, continuing without user');
+        req.user = null;
+      }
+      next();
+    });
+  } else {
+    // No token, continue without authentication
+    req.user = null;
+    next();
+  }
+};
+
+// Cart routes - no authentication required, but optionally use auth if available
 orderRouter.route('/cart')
-  .get(getCart)
-  .post(addToCart)
-  .delete(removeFromCart);
+  .get(optionalAuth, getCart)
+  .post(optionalAuth, addToCart)
+  .delete(optionalAuth, removeFromCart);
 
 // Order routes - authentication required for placing orders
 orderRouter.route('/')

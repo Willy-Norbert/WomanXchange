@@ -18,7 +18,7 @@ export const addToCart = asyncHandler(async (req, res) => {
   
   // Check if user is logged in
   if (req.user) {
-    // Logged in user
+    // Logged in user - find or create user cart
     const userId = req.user.id;
     console.log('Handling authenticated user cart for userId:', userId);
     cart = await prisma.cart.findUnique({ where: { userId } });
@@ -26,8 +26,8 @@ export const addToCart = asyncHandler(async (req, res) => {
       cart = await prisma.cart.create({ data: { userId } });
     }
   } else {
-    // No authentication required - create temporary cart
-    console.log('Creating temporary cart for unauthenticated user');
+    // Unauthenticated user - create anonymous cart
+    console.log('Creating anonymous cart for unauthenticated user');
     cart = await prisma.cart.create({ data: {} });
   }
 
@@ -54,24 +54,25 @@ export const addToCart = asyncHandler(async (req, res) => {
   });
 
   console.log('Returning updated cart:', updatedCart);
-  res.json({ data: updatedCart });
+  res.json({ data: updatedCart, cartId: cart.id });
 });
 
 // Remove Product from Cart (no authentication required)
 export const removeFromCart = asyncHandler(async (req, res) => {
-  const { productId } = req.body;
+  const { productId, cartId } = req.body;
 
   let cart;
   if (req.user) {
+    // Authenticated user
     const userId = req.user.id;
     cart = await prisma.cart.findUnique({ where: { userId } });
   } else {
-    // For unauthenticated users, we'll need to find the most recent cart
-    // This is a simplified approach - in production you might want session management
-    cart = await prisma.cart.findFirst({
-      where: { userId: null },
-      orderBy: { updatedAt: 'desc' }
-    });
+    // Unauthenticated user - use cartId from request
+    if (!cartId) {
+      res.status(400);
+      throw new Error('Cart ID required for unauthenticated users');
+    }
+    cart = await prisma.cart.findUnique({ where: { id: cartId } });
   }
 
   if (!cart) {
@@ -88,31 +89,34 @@ export const removeFromCart = asyncHandler(async (req, res) => {
     include: { items: { include: { product: true } } }
   });
 
-  res.json({ data: updatedCart });
+  res.json({ data: updatedCart, cartId: cart.id });
 });
 
 // Get User Cart (no authentication required)
 export const getCart = asyncHandler(async (req, res) => {
-  console.log('getCart called with hasUser:', !!req.user);
+  const { cartId } = req.query;
+  console.log('getCart called with hasUser:', !!req.user, 'cartId:', cartId);
   
   let cart;
   if (req.user) {
+    // Authenticated user
     const userId = req.user.id;
     cart = await prisma.cart.findUnique({
       where: { userId },
       include: { items: { include: { product: true } } }
     });
   } else {
-    // For unauthenticated users, return the most recent cart or empty cart
-    cart = await prisma.cart.findFirst({
-      where: { userId: null },
-      include: { items: { include: { product: true } } },
-      orderBy: { updatedAt: 'desc' }
-    });
+    // Unauthenticated user
+    if (cartId) {
+      cart = await prisma.cart.findUnique({
+        where: { id: parseInt(cartId) },
+        include: { items: { include: { product: true } } }
+      });
+    }
   }
 
   console.log('Returning cart:', cart);
-  res.json({ data: cart || { items: [] } });
+  res.json({ data: cart || { items: [] }, cartId: cart?.id });
 });
 
 // Place an Order (from Cart) - requires authentication
