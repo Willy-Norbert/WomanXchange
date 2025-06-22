@@ -1,3 +1,4 @@
+
 import asyncHandler from 'express-async-handler';
 import prisma from '../prismaClient.js';
 
@@ -43,4 +44,29 @@ export const markNotificationRead = asyncHandler(async (req, res) => {
   });
 
   res.json(updated);
+});
+
+// Delete notification
+export const deleteNotification = asyncHandler(async (req, res) => {
+  const notificationId = Number(req.params.id);
+
+  const notification = await prisma.notification.findUnique({
+    where: { id: notificationId }
+  });
+
+  if (!notification) {
+    res.status(404);
+    throw new Error('Notification not found');
+  }
+
+  if (notification.userId !== req.user.id && notification.recipientRole !== req.user.role) {
+    res.status(403);
+    throw new Error('Not authorized to delete this notification');
+  }
+
+  await prisma.notification.delete({
+    where: { id: notificationId }
+  });
+
+  res.json({ message: 'Notification deleted successfully' });
 });

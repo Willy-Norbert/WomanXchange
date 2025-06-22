@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useContext } from 'react';
 import { ArrowLeft, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,6 +11,7 @@ import Footer from '@/components/Footer';
 import { AuthContext } from '@/contexts/AuthContext';
 import { useCart } from '@/hooks/useCart';
 import { placeOrder } from '@/api/orders';
+import { generatePaymentCode, confirmClientPayment } from '@/api/payments';
 import { useToast } from '@/hooks/use-toast';
 
 const Checkout = () => {
@@ -22,6 +22,9 @@ const Checkout = () => {
   const [paymentMethod, setPaymentMethod] = useState('CARD');
   const [sameAsBilling, setSameAsBilling] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const [paymentCode, setPaymentCode] = useState('');
+  const [generatingCode, setGeneratingCode] = useState(false);
+  const [currentOrderId, setCurrentOrderId] = useState<number | null>(null);
   
   // Form data
   const [formData, setFormData] = useState({
@@ -32,6 +35,33 @@ const Checkout = () => {
     streetLine: '',
     shippingAddress: ''
   });
+
+  // Generate MoMo payment code when MTN is selected
+  const handlePaymentMethodChange = async (method: string) => {
+    setPaymentMethod(method);
+    
+    if (method === 'MTN' && currentOrderId) {
+      setGeneratingCode(true);
+      try {
+        const response = await generatePaymentCode(currentOrderId);
+        setPaymentCode(response.data.paymentCode);
+        toast({
+          title: "Payment Code Generated",
+          description: "Your MoMo payment code is ready",
+        });
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.response?.data?.message || "Failed to generate payment code",
+          variant: "destructive",
+        });
+      } finally {
+        setGeneratingCode(false);
+      }
+    } else {
+      setPaymentCode('');
+    }
+  };
 
   const handleCompleteOrder = async () => {
     if (!cart || cart.items.length === 0) {
@@ -58,15 +88,35 @@ const Checkout = () => {
         ? `${formData.streetLine}, ${formData.location}`
         : formData.shippingAddress || `${formData.streetLine}, ${formData.location}`;
 
+      // First, create the order
       const orderResponse = await placeOrder({
         shippingAddress,
         paymentMethod
       });
       
-      toast({
-        title: "Success",
-        description: "Order placed successfully!",
-      });
+      const orderId = orderResponse.data.id;
+      setCurrentOrderId(orderId);
+
+      if (paymentMethod === 'MTN') {
+        // For MTN MoMo, generate payment code if not already generated
+        if (!paymentCode) {
+          const codeResponse = await generatePaymentCode(orderId);
+          setPaymentCode(codeResponse.data.paymentCode);
+        }
+        
+        // Confirm client payment
+        await confirmClientPayment(orderId);
+        
+        toast({
+          title: "Payment Submitted",
+          description: "Your payment has been submitted for admin confirmation",
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: "Order placed successfully!",
+        });
+      }
 
       navigate('/order-complete');
     } catch (error: any) {
@@ -219,7 +269,7 @@ const Checkout = () => {
                   <h2 className="text-xl font-semibold">Payment Method</h2>
                 </div>
                 
-                <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="mb-4">
+                <RadioGroup value={paymentMethod} onValueChange={handlePaymentMethodChange} className="mb-4">
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="CARD" id="card" />
                     <Label htmlFor="card">CARD</Label>
@@ -227,6 +277,28 @@ const Checkout = () => {
                     <Label htmlFor="mtn">MTN MOMO</Label>
                   </div>
                 </RadioGroup>
+
+                {/* MoMo Payment Code Display */}
+                {paymentMethod === 'MTN' && (
+                  <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                    <h3 className="font-semibold mb-2">MoMo Payment Code</h3>
+                    {generatingCode ? (
+                      <div className="flex items-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-500"></div>
+                        <span className="text-gray-600">Generating payment code...</span>
+                      </div>
+                    ) : paymentCode ? (
+                      <div className="bg-white p-3 rounded border-2 border-green-500">
+                        <div className="text-lg font-bold text-green-600">{paymentCode}</div>
+                        <p className="text-sm text-gray-600 mt-1">
+                          Use this code to complete your MoMo payment
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-gray-600">Payment code will be generated after placing order</p>
+                    )}
+                  </div>
+                )}
 
                 <div className="flex items-center space-x-2 mt-4">
                   <Shield className="w-4 h-4 text-green-500" />
@@ -243,7 +315,7 @@ const Checkout = () => {
                 disabled={processing}
                 className="w-full bg-purple-500 hover:bg-purple-600 text-white py-3 rounded-lg"
               >
-                {processing ? "Processing..." : "Complete Order →"}
+                {processing ? "Processing..." : paymentMethod === 'MTN' ? "Submit Payment for Confirmation →" : "Complete Order →"}
               </Button>
             </div>
 
