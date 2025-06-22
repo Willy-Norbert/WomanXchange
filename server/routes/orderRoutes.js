@@ -1,5 +1,4 @@
 
-// Cart and Order Routes
 import express from 'express';
 import {
   addToCart,
@@ -15,12 +14,13 @@ import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
 
 const orderRouter = express.Router();
 
-// Cart routes - now support guest users
+// Cart routes - no authentication required for cart operations
 orderRouter.route('/cart')
-  .get(getCart) // Remove protect to allow guest access
-  .post(addToCart) // Remove protect to allow guest access
-  .delete(removeFromCart); // Remove protect to allow guest access
+  .get(getCart)
+  .post(addToCart)
+  .delete(removeFromCart);
 
+// Order routes - authentication required for placing orders
 orderRouter.route('/')
   .post(protect, placeOrder)
   .get(protect, getUserOrders);
@@ -31,7 +31,6 @@ orderRouter.route('/all')
 orderRouter.route('/:id/status')
   .put(protect, authorizeRoles('admin','seller'), updateOrderStatus);
 
-// New route for admin to confirm payment
 orderRouter.route('/:id/confirm-payment')
   .put(protect, authorizeRoles('admin','seller'), confirmOrderPayment);
 

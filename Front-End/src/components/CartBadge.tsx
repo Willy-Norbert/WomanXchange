@@ -1,13 +1,11 @@
 
-import React, { useContext } from 'react';
+import React from 'react';
 import { ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { useCart } from '@/hooks/useCart';
-import { AuthContext } from '@/contexts/AuthContext';
 
 const CartBadge = () => {
-  const { user } = useContext(AuthContext);
   const { cartItemsCount, isLoading } = useCart();
 
   return (

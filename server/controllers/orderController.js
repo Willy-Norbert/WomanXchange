@@ -2,11 +2,11 @@ import asyncHandler from 'express-async-handler';
 import prisma from '../prismaClient.js';
 import { notify } from '../utils/notify.js';
 
-// Add or Update Product in Cart (supports guest users)
+// Add or Update Product in Cart (no authentication required)
 export const addToCart = asyncHandler(async (req, res) => {
-  const { productId, quantity, guestId } = req.body;
+  const { productId, quantity } = req.body;
   
-  console.log('addToCart called with:', { productId, quantity, guestId, hasUser: !!req.user });
+  console.log('addToCart called with:', { productId, quantity, hasUser: !!req.user });
   
   const product = await prisma.product.findUnique({ where: { id: productId } });
   if (!product) {
@@ -26,14 +26,9 @@ export const addToCart = asyncHandler(async (req, res) => {
       cart = await prisma.cart.create({ data: { userId } });
     }
   } else {
-    // Guest user - use provided guestId or create new one
-    const finalGuestId = guestId || `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    console.log('Handling guest cart for guestId:', finalGuestId);
-    cart = await prisma.cart.findFirst({ where: { guestId: finalGuestId } });
-    if (!cart) {
-      cart = await prisma.cart.create({ data: { guestId: finalGuestId } });
-      console.log('Created new guest cart with ID:', cart.id);
-    }
+    // No authentication required - create temporary cart
+    console.log('Creating temporary cart for unauthenticated user');
+    cart = await prisma.cart.create({ data: {} });
   }
 
   const existingItem = await prisma.cartItem.findFirst({
@@ -59,19 +54,24 @@ export const addToCart = asyncHandler(async (req, res) => {
   });
 
   console.log('Returning updated cart:', updatedCart);
-  res.json({ data: { ...updatedCart, guestId: cart.guestId } });
+  res.json({ data: updatedCart });
 });
 
-// Remove Product from Cart (supports guest users)
+// Remove Product from Cart (no authentication required)
 export const removeFromCart = asyncHandler(async (req, res) => {
-  const { productId, guestId } = req.body;
+  const { productId } = req.body;
 
   let cart;
   if (req.user) {
     const userId = req.user.id;
     cart = await prisma.cart.findUnique({ where: { userId } });
-  } else if (guestId) {
-    cart = await prisma.cart.findFirst({ where: { guestId } });
+  } else {
+    // For unauthenticated users, we'll need to find the most recent cart
+    // This is a simplified approach - in production you might want session management
+    cart = await prisma.cart.findFirst({
+      where: { userId: null },
+      orderBy: { updatedAt: 'desc' }
+    });
   }
 
   if (!cart) {
@@ -91,11 +91,9 @@ export const removeFromCart = asyncHandler(async (req, res) => {
   res.json({ data: updatedCart });
 });
 
-// Get User Cart (supports guest users)
+// Get User Cart (no authentication required)
 export const getCart = asyncHandler(async (req, res) => {
-  const { guestId } = req.query;
-  
-  console.log('getCart called with:', { guestId, hasUser: !!req.user });
+  console.log('getCart called with hasUser:', !!req.user);
   
   let cart;
   if (req.user) {
@@ -104,10 +102,12 @@ export const getCart = asyncHandler(async (req, res) => {
       where: { userId },
       include: { items: { include: { product: true } } }
     });
-  } else if (guestId) {
+  } else {
+    // For unauthenticated users, return the most recent cart or empty cart
     cart = await prisma.cart.findFirst({
-      where: { guestId },
-      include: { items: { include: { product: true } } }
+      where: { userId: null },
+      include: { items: { include: { product: true } } },
+      orderBy: { updatedAt: 'desc' }
     });
   }
 
@@ -115,7 +115,7 @@ export const getCart = asyncHandler(async (req, res) => {
   res.json({ data: cart || { items: [] } });
 });
 
-// Place an Order (from Cart)
+// Place an Order (from Cart) - requires authentication
 export const placeOrder = asyncHandler(async (req, res) => {
   const userId = req.user.id;
   const { shippingAddress, paymentMethod } = req.body;

@@ -1,10 +1,9 @@
 
-import React, { useContext, useState } from 'react';
+import React, { useState } from 'react';
 import { Star, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { AuthContext } from '@/contexts/AuthContext';
-import { addToCart } from '@/api/orders';
+import { useCart } from '@/hooks/useCart';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -18,39 +17,22 @@ interface ProductCardProps {
 }
 
 const ProductCard = ({ id, image, title, price, originalPrice, rating = 5 }: ProductCardProps) => {
-  const auth = useContext(AuthContext);
   const { toast } = useToast();
   const { t } = useLanguage();
-  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const { addToCart, isAddingToCart } = useCart();
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
-    if (!auth?.user) {
-      toast({
-        title: t('auth.login_required'),
-        description: t('auth.login_to_add_cart'),
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
-      setIsAddingToCart(true);
-      await addToCart(parseInt(id), 1);
-      toast({
-        title: t('cart.added_to_cart'),
-        description: t('cart.item_added', { item: title }),
-      });
+      addToCart({ productId: parseInt(id), quantity: 1 });
     } catch (err: any) {
       toast({
         title: t('common.error'),
         description: err.response?.data?.message || t('cart.failed_to_add'),
         variant: "destructive",
       });
-    } finally {
-      setIsAddingToCart(false);
     }
   };
 

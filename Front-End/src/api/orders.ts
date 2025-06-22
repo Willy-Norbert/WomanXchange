@@ -16,7 +16,6 @@ export interface CartItem {
 export interface Cart {
   id: number;
   userId?: number;
-  guestId?: string;
   items: CartItem[];
 }
 
@@ -48,26 +47,19 @@ export interface PlaceOrderData {
   paymentMethod: string;
 }
 
-export const getCart = (guestId?: string) => {
-  const params = guestId ? { guestId } : {};
-  console.log('Getting cart with params:', params);
-  return api.get<Cart>('/orders/cart', { params });
+export const getCart = () => {
+  console.log('Getting cart');
+  return api.get<Cart>('/orders/cart');
 };
 
-export const addToCart = (productId: number, quantity: number, guestId?: string) => {
-  const data: any = { productId, quantity };
-  if (guestId) {
-    data.guestId = guestId;
-  }
+export const addToCart = (productId: number, quantity: number) => {
+  const data = { productId, quantity };
   console.log('API addToCart called with:', data);
   return api.post('/orders/cart', data);
 };
 
-export const removeFromCart = (productId: number, guestId?: string) => {
-  const data: any = { productId };
-  if (guestId) {
-    data.guestId = guestId;
-  }
+export const removeFromCart = (productId: number) => {
+  const data = { productId };
   return api.delete('/orders/cart', { data });
 };
 

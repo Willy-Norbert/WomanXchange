@@ -9,39 +9,21 @@ export const useCart = () => {
   const { user } = useContext(AuthContext);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
-  // Generate guest ID on first use and persist it
-  const [guestId, setGuestId] = useState<string>(() => {
-    // Always generate guest ID regardless of auth status
-    const stored = localStorage.getItem('guestCartId');
-    if (stored) return stored;
-    const newId = `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    localStorage.setItem('guestCartId', newId);
-    return newId;
-  });
-
-  // Use guest ID for non-authenticated users, user ID for authenticated users
-  const cartKey = user ? user.id : guestId;
 
   const { data: cart, isLoading, error } = useQuery({
-    queryKey: ['cart', cartKey],
-    queryFn: () => getCart(user ? undefined : guestId),
+    queryKey: ['cart'],
+    queryFn: () => getCart(),
     staleTime: 5000,
     gcTime: 10 * 60 * 1000,
   });
 
   const addToCartMutation = useMutation({
     mutationFn: ({ productId, quantity }: { productId: number; quantity: number }) => {
-      console.log('Adding to cart:', { productId, quantity, guestId: user ? undefined : guestId });
-      return addToCart(productId, quantity, user ? undefined : guestId);
+      console.log('Adding to cart:', { productId, quantity });
+      return addToCart(productId, quantity);
     },
     onSuccess: (data) => {
       console.log('Add to cart success:', data);
-      // Update guest ID if returned from server for non-authenticated users
-      if (data.data?.guestId && !user) {
-        setGuestId(data.data.guestId);
-        localStorage.setItem('guestCartId', data.data.guestId);
-      }
       queryClient.invalidateQueries({ queryKey: ['cart'] });
       toast({
         title: "Added to cart",
@@ -60,7 +42,7 @@ export const useCart = () => {
 
   const removeFromCartMutation = useMutation({
     mutationFn: (productId: number) => {
-      return removeFromCart(productId, user ? undefined : guestId);
+      return removeFromCart(productId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cart'] });
