@@ -126,13 +126,13 @@ const AdminCategories = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <Package className="w-8 h-8 text-purple-600" />
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold bg-gradient-to-r text-purple-600  bg-clip-text">
               Category Management
             </h1>
           </div>
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white">
+              <Button className="bg-gradient-to-r text-purple-600   hover:text-pink-700 ">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Category
               </Button>

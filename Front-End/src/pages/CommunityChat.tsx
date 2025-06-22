@@ -1,4 +1,4 @@
-
+// CommunityChat.tsx
 import React, { useContext, useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
@@ -32,35 +32,52 @@ const CommunityChat = () => {
   const { data: messagesData, isLoading, error, refetch } = useQuery({
     queryKey: ['chat-messages'],
     queryFn: getChatMessages,
-    refetchInterval: 2000, // Faster polling for real-time feel
+    refetchInterval: 2000, // refresh every 2 seconds
     enabled: !!user && (user.role === 'admin' || user.role === 'seller'),
-    staleTime: 1000, // Very short stale time for real-time updates
+    staleTime: 1000,
   });
 
   const createMessageMutation = useMutation({
     mutationFn: createChatMessage,
-    onSuccess: () => {
+    onMutate: async (newMessageText) => {
+      // Optimistic update
+      await queryClient.cancelQueries({ queryKey: ['chat-messages'] });
+      const previousMessages = queryClient.getQueryData(['chat-messages']);
+
+      queryClient.setQueryData(['chat-messages'], (old: any) => ({
+        ...old,
+        data: [
+          ...(old?.data || []),
+          {
+            id: Math.random(),
+            message: newMessageText,
+            user: user,
+            userId: user.id,
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      }));
+
+      return { previousMessages };
+    },
+    onSettled: () => {
       setNewMessage('');
       queryClient.invalidateQueries({ queryKey: ['chat-messages'] });
-      scrollToBottom();
     },
-    onError: (error: any) => {
+    onError: (error: any, _, context) => {
+      queryClient.setQueryData(['chat-messages'], context?.previousMessages);
       toast({
         title: "Error",
         description: error.response?.data?.message || "Failed to send message",
         variant: "destructive",
       });
-    }
+    },
   });
 
   const deleteMessageMutation = useMutation({
     mutationFn: deleteChatMessage,
-    onSuccess: () => {
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['chat-messages'] });
-      toast({
-        title: "Message deleted",
-        description: "The message has been removed",
-      });
     },
     onError: (error: any) => {
       toast({
@@ -94,9 +111,7 @@ const CommunityChat = () => {
     scrollToBottom();
   }, [messages]);
 
-  if (!user || user.role === 'buyer') {
-    return null;
-  }
+  if (!user || user.role === 'buyer') return null;
 
   if (isLoading) {
     return (
@@ -145,7 +160,7 @@ const CommunityChat = () => {
             </Button>
           </div>
         </div>
-        
+
         <Card className="flex-1 flex flex-col h-[calc(100vh-200px)]">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg font-medium text-gray-800">
@@ -155,25 +170,25 @@ const CommunityChat = () => {
               Share ideas, ask questions, and collaborate with other vendors and administrators.
             </p>
           </CardHeader>
-          
+
           <CardContent className="flex-1 flex flex-col p-0">
-            {/* Messages Area */}
+            {/* Messages */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50">
               {messages.length > 0 ? (
                 messages.map((message: ChatMessage) => (
                   <div key={message.id} className="flex space-x-3">
                     <div className="w-10 h-10 bg-purple-400 rounded-full flex items-center justify-center text-white font-medium flex-shrink-0">
-                      {message.user.name.charAt(0).toUpperCase()}
+                      {message.user?.name?.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-1">
-                        <span className="font-medium text-gray-900">{message.user.name.split(' ')[0]}</span>
+                        <span className="font-medium text-gray-900">{message.user?.name?.split(' ')[0]}</span>
                         <span className={`px-2 py-1 rounded-full text-xs ${
-                          message.user.role.toLowerCase() === 'admin' 
-                            ? 'bg-red-100 text-red-800' 
+                          message.user?.role?.toLowerCase() === 'admin'
+                            ? 'bg-red-100 text-red-800'
                             : 'bg-blue-100 text-blue-800'
                         }`}>
-                          {message.user.role.toLowerCase() === 'admin' ? 'Admin' : 'Vendor'}
+                          {message.user?.role?.toLowerCase() === 'admin' ? 'Admin' : 'Vendor'}
                         </span>
                         <span className="text-xs text-gray-500">
                           {new Date(message.createdAt).toLocaleString()}
@@ -209,7 +224,7 @@ const CommunityChat = () => {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Message Input */}
+            {/* Message input */}
             <div className="p-6 border-t bg-white">
               <form onSubmit={handleSendMessage} className="flex space-x-3">
                 <Input

@@ -271,8 +271,8 @@ const Checkout = () => {
                 
                 <RadioGroup value={paymentMethod} onValueChange={handlePaymentMethodChange} className="mb-4">
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="CARD" id="card" />
-                    <Label htmlFor="card">CARD</Label>
+                    {/* <RadioGroupItem value="CARD" id="card" />
+                    <Label htmlFor="card">CARD</Label> */}
                     <RadioGroupItem value="MTN" id="mtn" className="ml-8" />
                     <Label htmlFor="mtn">MTN MOMO</Label>
                   </div>
@@ -302,7 +302,7 @@ const Checkout = () => {
 
                 <div className="flex items-center space-x-2 mt-4">
                   <Shield className="w-4 h-4 text-green-500" />
-                  <span className="text-sm text-gray-600">Secure Checkout</span>
+                  <span className="text-sm text-gray-600">Secure Payment</span>
                 </div>
                 
                 <p className="text-xs text-gray-500 mt-2">
