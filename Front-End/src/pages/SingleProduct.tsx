@@ -47,15 +47,6 @@ const SingleProduct = () => {
   const handleAddToCart = async () => {
     if (!product) return;
     
-    if (!user) {
-      toast({
-        title: "Authentication required",
-        description: "Please login to add items to cart",
-        variant: "destructive",
-      });
-      return;
-    }
-    
     addToCart({ productId: product.id, quantity });
   };
 

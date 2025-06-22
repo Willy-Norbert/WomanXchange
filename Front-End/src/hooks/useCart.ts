@@ -10,7 +10,6 @@ export const useCart = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [cartId, setCartId] = useState<number | null>(null);
-  const [isCartIdReady, setIsCartIdReady] = useState(false);
 
   // Get cartId from localStorage for unauthenticated users
   useEffect(() => {
@@ -19,42 +18,36 @@ export const useCart = () => {
       if (storedCartId) {
         setCartId(parseInt(storedCartId));
       }
-      setIsCartIdReady(true);
     } else {
       // Clear anonymous cart when user logs in
       localStorage.removeItem('anonymous_cart_id');
       setCartId(null);
-      setIsCartIdReady(true);
     }
   }, [user]);
 
+  // Create a stable query key that changes when user auth state changes
+  const queryKey = user ? ['cart', 'authenticated', user.id] : ['cart', 'anonymous', cartId];
+
   const { data: cart, isLoading, error } = useQuery({
-    queryKey: ['cart', cartId, user?.id],
+    queryKey,
     queryFn: () => {
-      console.log('useCart query: calling getCart with cartId:', cartId);
+      console.log('useCart query: calling getCart with cartId:', cartId, 'user:', !!user);
       return getCart(cartId);
     },
-    enabled: isCartIdReady, // Only run query when cartId is ready
     staleTime: 5000,
     gcTime: 10 * 60 * 1000,
-    onSuccess: (data) => {
-      console.log('useCart query success - Raw response:', data);
-      console.log('useCart query success - Cart data:', data?.data);
-      console.log('useCart query success - Cart items:', data?.data?.items);
-    },
-    onError: (error) => {
-      console.error('useCart query error:', error);
-    }
+    retry: 1,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
   });
 
-  // Add more detailed logging
   console.log('useCart hook state:', {
     user: !!user,
     cartId,
-    isCartIdReady,
     isLoading,
     cart: cart?.data,
     cartItems: cart?.data?.items,
+    queryKey,
     error
   });
 
@@ -71,12 +64,11 @@ export const useCart = () => {
         const newCartId = data.data.cartId;
         localStorage.setItem('anonymous_cart_id', newCartId.toString());
         setCartId(newCartId);
-        
-        // Update the query cache with the new cart data
-        queryClient.setQueryData(['cart', newCartId, user?.id], data);
       }
       
+      // Invalidate and refetch cart queries
       queryClient.invalidateQueries({ queryKey: ['cart'] });
+      
       toast({
         title: "Added to cart",
         description: "Item has been added to your cart",
@@ -117,13 +109,14 @@ export const useCart = () => {
   console.log('useCart hook final return:', {
     cart: cart?.data,
     cartItemsCount,
-    hasItems: cart?.data?.items?.length > 0
+    hasItems: cart?.data?.items?.length > 0,
+    itemsLength: cart?.data?.items?.length
   });
 
   return {
     cart: cart?.data,
     cartItemsCount,
-    isLoading: isLoading || !isCartIdReady,
+    isLoading,
     error,
     addToCart: addToCartMutation.mutate,
     removeFromCart: removeFromCartMutation.mutate,
