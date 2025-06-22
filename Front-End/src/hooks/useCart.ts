@@ -10,6 +10,7 @@ export const useCart = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [cartId, setCartId] = useState<number | null>(null);
+  const [isCartIdReady, setIsCartIdReady] = useState(false);
 
   // Get cartId from localStorage for unauthenticated users
   useEffect(() => {
@@ -18,16 +19,22 @@ export const useCart = () => {
       if (storedCartId) {
         setCartId(parseInt(storedCartId));
       }
+      setIsCartIdReady(true);
     } else {
       // Clear anonymous cart when user logs in
       localStorage.removeItem('anonymous_cart_id');
       setCartId(null);
+      setIsCartIdReady(true);
     }
   }, [user]);
 
   const { data: cart, isLoading, error } = useQuery({
     queryKey: ['cart', cartId, user?.id],
-    queryFn: () => getCart(cartId),
+    queryFn: () => {
+      console.log('useCart query: calling getCart with cartId:', cartId);
+      return getCart(cartId);
+    },
+    enabled: isCartIdReady, // Only run query when cartId is ready
     staleTime: 5000,
     gcTime: 10 * 60 * 1000,
   });
@@ -91,7 +98,7 @@ export const useCart = () => {
   return {
     cart: cart?.data,
     cartItemsCount,
-    isLoading,
+    isLoading: isLoading || !isCartIdReady,
     error,
     addToCart: addToCartMutation.mutate,
     removeFromCart: removeFromCartMutation.mutate,
