@@ -14,7 +14,7 @@ export const useCart = () => {
     queryKey: ['cart'],
     queryFn: getCart,
     enabled: !!user,
-    staleTime: 30000, // Cache for 30 seconds for better performance
+    staleTime: 5000, // Reduced for better real-time updates
   });
 
   const addToCartMutation = useMutation({
@@ -26,11 +26,15 @@ export const useCart = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cart'] });
+      toast({
+        title: "Added to cart",
+        description: "Item has been added to your cart",
+      });
     },
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to add item to cart",
+        description: error.response?.data?.message || "Failed to add item to cart",
         variant: "destructive",
       });
     }
@@ -53,7 +57,7 @@ export const useCart = () => {
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to remove item",
+        description: error.response?.data?.message || "Failed to remove item",
         variant: "destructive",
       });
     }

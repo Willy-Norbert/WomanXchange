@@ -1,6 +1,6 @@
 
 import React, { useContext } from 'react';
-import { Trash2, Plus, Minus, ArrowRight } from 'lucide-react';
+import { Trash2, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import Header from '@/components/Header';
@@ -101,9 +101,13 @@ const Cart = () => {
                     <button 
                       onClick={() => removeFromCart(item.productId)}
                       disabled={isRemovingFromCart}
-                      className="text-red-500 hover:text-red-700 disabled:opacity-50"
+                      className="text-red-500 hover:text-red-700 disabled:opacity-50 p-1 rounded hover:bg-red-50"
                     >
-                      <Trash2 className="w-5 h-5" />
+                      {isRemovingFromCart ? (
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-500"></div>
+                      ) : (
+                        <Trash2 className="w-5 h-5" />
+                      )}
                     </button>
                     
                     <div className="flex items-center space-x-2">

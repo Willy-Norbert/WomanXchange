@@ -21,6 +21,13 @@ const NotificationList = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to mark as read",
+        variant: "destructive",
+      });
+    }
   });
 
   const deleteMutation = useMutation({
@@ -99,8 +106,13 @@ const NotificationList = () => {
                       size="sm"
                       onClick={() => handleMarkRead(notification.id)}
                       disabled={markReadMutation.isPending}
+                      className="hover:bg-blue-100"
                     >
-                      <X className="w-4 h-4" />
+                      {markReadMutation.isPending ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                      ) : (
+                        <X className="w-4 h-4" />
+                      )}
                     </Button>
                   )}
                   
@@ -111,7 +123,11 @@ const NotificationList = () => {
                     disabled={deleteMutation.isPending}
                     className="text-red-600 hover:text-red-800 hover:bg-red-50"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    {deleteMutation.isPending ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500"></div>
+                    ) : (
+                      <Trash2 className="w-4 h-4" />
+                    )}
                   </Button>
                 </div>
               </div>

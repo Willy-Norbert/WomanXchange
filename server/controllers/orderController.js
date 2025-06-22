@@ -36,8 +36,7 @@ export const addToCart = asyncHandler(async (req, res) => {
     });
   }
 
-  // Removed notification to seller when product is added to cart
-  // This was causing unnecessary spam notifications
+  // NO ADMIN NOTIFICATION FOR CART ADDITIONS - This was removed as requested
 
   const updatedCart = await prisma.cart.findUnique({
     where: { id: cart.id },

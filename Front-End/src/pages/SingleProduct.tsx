@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useParams } from 'react-router-dom';
 import { Star, Heart, ShoppingCart, Plus, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,12 +7,15 @@ import Footer from '@/components/Footer';
 import ProductReviews from '@/components/ProductReviews';
 import RelatedProducts from '@/components/RelatedProducts';
 import { getProductById, Product } from '@/api/products';
-import { addToCart } from '@/api/orders';
+import { useCart } from '@/hooks/useCart';
+import { AuthContext } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
 const SingleProduct = () => {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
+  const { user } = useContext(AuthContext);
+  const { addToCart, isAddingToCart } = useCart();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
@@ -22,7 +24,6 @@ const SingleProduct = () => {
   const [selectedSize, setSelectedSize] = useState('M');
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState('details');
-  const [addingToCart, setAddingToCart] = useState(false);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -46,22 +47,16 @@ const SingleProduct = () => {
   const handleAddToCart = async () => {
     if (!product) return;
     
-    try {
-      setAddingToCart(true);
-      await addToCart(product.id, quantity);
+    if (!user) {
       toast({
-        title: "Added to cart",
-        description: `${product.name} has been added to your cart.`,
-      });
-    } catch (err: any) {
-      toast({
-        title: "Error",
-        description: err.response?.data?.message || "Failed to add to cart",
+        title: "Authentication required",
+        description: "Please login to add items to cart",
         variant: "destructive",
       });
-    } finally {
-      setAddingToCart(false);
+      return;
     }
+    
+    addToCart({ productId: product.id, quantity });
   };
 
   const productImages = product?.coverImage ? [product.coverImage] : [];
@@ -80,7 +75,7 @@ const SingleProduct = () => {
       <div className="min-h-screen bg-white">
         <Header />
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-lg text-gray-600">Loading product...</div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
         </div>
         <Footer />
       </div>
@@ -223,10 +218,10 @@ const SingleProduct = () => {
                 <Button 
                   className="flex-1 bg-purple hover:bg-purple-600 text-white"
                   onClick={handleAddToCart}
-                  disabled={product.stock === 0 || addingToCart}
+                  disabled={product.stock === 0 || isAddingToCart}
                 >
                   <ShoppingCart className="w-4 h-4 mr-2" />
-                  {addingToCart ? 'Adding...' : 'Add to Cart'}
+                  {isAddingToCart ? 'Adding...' : 'Add to Cart'}
                 </Button>
                 <Button variant="outline" size="icon">
                   <Heart className="w-4 h-4" />
