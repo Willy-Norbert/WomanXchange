@@ -6,8 +6,6 @@ import prisma from '../prismaClient.js';
 // @route   GET /api/chat/messages
 // @access  Private (Admin/Seller only)
 export const getChatMessages = asyncHandler(async (req, res) => {
-  console.log('Getting chat messages...', req.user);
-  
   const messages = await prisma.chatMessage.findMany({
     include: {
       user: {
@@ -23,7 +21,6 @@ export const getChatMessages = asyncHandler(async (req, res) => {
     },
   });
 
-  console.log('Found messages:', messages.length);
   res.status(200).json(messages);
 });
 
@@ -33,8 +30,6 @@ export const getChatMessages = asyncHandler(async (req, res) => {
 export const createChatMessage = asyncHandler(async (req, res) => {
   const { message } = req.body;
   const userId = req.user.id;
-
-  console.log('Creating chat message:', { message, userId, userRole: req.user.role });
 
   if (!message || !message.trim()) {
     res.status(400);
@@ -64,6 +59,35 @@ export const createChatMessage = asyncHandler(async (req, res) => {
     },
   });
 
-  console.log('Created chat message:', chatMessage);
   res.status(201).json(chatMessage);
+});
+
+// @desc    Delete a chat message
+// @route   DELETE /api/chat/messages/:id
+// @access  Private (Admin or message owner)
+export const deleteChatMessage = asyncHandler(async (req, res) => {
+  const messageId = parseInt(req.params.id);
+  const userId = req.user.id;
+  const userRole = req.user.role.toLowerCase();
+
+  const message = await prisma.chatMessage.findUnique({
+    where: { id: messageId }
+  });
+
+  if (!message) {
+    res.status(404);
+    throw new Error('Message not found');
+  }
+
+  // Allow deletion if user is admin or message owner
+  if (userRole !== 'admin' && message.userId !== userId) {
+    res.status(403);
+    throw new Error('Not authorized to delete this message');
+  }
+
+  await prisma.chatMessage.delete({
+    where: { id: messageId }
+  });
+
+  res.status(200).json({ message: 'Message deleted successfully' });
 });

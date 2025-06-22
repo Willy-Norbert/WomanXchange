@@ -22,3 +22,8 @@ export const createChatMessage = async (message: string) => {
   const response = await api.post('/chat/messages', { message });
   return response.data;
 };
+
+export const deleteChatMessage = async (messageId: number) => {
+  const response = await api.delete(`/chat/messages/${messageId}`);
+  return response.data;
+};

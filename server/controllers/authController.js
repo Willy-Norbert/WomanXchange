@@ -73,13 +73,7 @@ export const authUser = asyncHandler(async (req, res) => {
 
 // Verify token endpoint
 export const verifyToken = asyncHandler(async (req, res) => {
-  console.log('Token verification request received');
-  console.log('User from middleware:', req.user);
-  
-  // The protect middleware will have already verified the token
-  // and attached the user to req.user
   if (req.user) {
-    console.log('Token verification successful for user:', req.user.email);
     res.json({ 
       success: true, 
       user: {
@@ -90,10 +84,83 @@ export const verifyToken = asyncHandler(async (req, res) => {
       }
     });
   } else {
-    console.log('Token verification failed - no user found');
     res.status(401);
     throw new Error('Token verification failed');
   }
+});
+
+// Get user profile
+export const getUserProfile = asyncHandler(async (req, res) => {
+  const user = await prisma.user.findUnique({
+    where: { id: req.user.id },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      phone: true,
+      address: true,
+      bio: true,
+      company: true,
+      createdAt: true
+    }
+  });
+
+  if (!user) {
+    res.status(404);
+    throw new Error('User not found');
+  }
+
+  res.json(user);
+});
+
+// Update user profile
+export const updateUserProfile = asyncHandler(async (req, res) => {
+  const { name, email, phone, address, bio, company } = req.body;
+
+  const user = await prisma.user.findUnique({
+    where: { id: req.user.id }
+  });
+
+  if (!user) {
+    res.status(404);
+    throw new Error('User not found');
+  }
+
+  // Check if email is already taken by another user
+  if (email && email !== user.email) {
+    const emailExists = await prisma.user.findUnique({
+      where: { email }
+    });
+    if (emailExists) {
+      res.status(400);
+      throw new Error('Email already exists');
+    }
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id: req.user.id },
+    data: {
+      ...(name && { name }),
+      ...(email && { email }),
+      ...(phone && { phone }),
+      ...(address && { address }),
+      ...(bio && { bio }),
+      ...(company && { company })
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      phone: true,
+      address: true,
+      bio: true,
+      company: true
+    }
+  });
+
+  res.json(updatedUser);
 });
 
 // Get all users

@@ -1,78 +1,18 @@
 
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useContext } from 'react';
 import { Trash2, Plus, Minus, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { AuthContext } from '@/contexts/AuthContext';
-import { getCart, removeFromCart, addToCart, Cart as CartType } from '@/api/orders';
-import { useToast } from '@/hooks/use-toast';
+import { useCart } from '@/hooks/useCart';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 const Cart = () => {
   const { t } = useLanguage();
   const auth = useContext(AuthContext);
-  const { toast } = useToast();
-  const [cart, setCart] = useState<CartType | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string>('');
-
-  useEffect(() => {
-    const fetchCart = async () => {
-      if (!auth?.user) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        const response = await getCart();
-        setCart(response.data);
-      } catch (err: any) {
-        setError('Failed to load cart');
-        console.error('Error fetching cart:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCart();
-  }, [auth?.user]);
-
-  const updateQuantity = async (productId: number, newQuantity: number) => {
-    try {
-      await addToCart(productId, newQuantity);
-      // Refetch cart
-      const response = await getCart();
-      setCart(response.data);
-    } catch (err: any) {
-      toast({
-        title: "Error",
-        description: "Failed to update quantity",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const removeItem = async (productId: number) => {
-    try {
-      await removeFromCart(productId);
-      // Refetch cart
-      const response = await getCart();
-      setCart(response.data);
-      toast({
-        title: "Item removed",
-        description: "Item has been removed from your cart",
-      });
-    } catch (err: any) {
-      toast({
-        title: "Error",
-        description: "Failed to remove item",
-        variant: "destructive",
-      });
-    }
-  };
+  const { cart, isLoading, error, removeFromCart, isRemovingFromCart } = useCart();
 
   if (!auth?.user) {
     return (
@@ -94,12 +34,12 @@ const Cart = () => {
     );
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-white">
         <Header />
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-lg text-gray-600">{t('cart.loading')}</div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
         </div>
         <Footer />
       </div>
@@ -111,7 +51,7 @@ const Cart = () => {
       <div className="min-h-screen bg-white">
         <Header />
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-lg text-red-600">{error}</div>
+          <div className="text-lg text-red-600">Failed to load cart</div>
         </div>
         <Footer />
       </div>
@@ -121,7 +61,7 @@ const Cart = () => {
   const cartItems = cart?.items || [];
   const subtotal = cartItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
   const discount = Math.round(subtotal * 0.2);
-  const deliveryFee = 1200;
+  const deliveryFee = 12000; // Fixed delivery fee - consistent across the app
   const total = subtotal - discount + deliveryFee;
 
   return (
@@ -159,26 +99,15 @@ const Cart = () => {
                   
                   <div className="flex items-center space-x-3">
                     <button 
-                      onClick={() => removeItem(item.productId)}
-                      className="text-red-500 hover:text-red-700"
+                      onClick={() => removeFromCart(item.productId)}
+                      disabled={isRemovingFromCart}
+                      className="text-red-500 hover:text-red-700 disabled:opacity-50"
                     >
                       <Trash2 className="w-5 h-5" />
                     </button>
                     
                     <div className="flex items-center space-x-2">
-                      <button 
-                        onClick={() => updateQuantity(item.productId, Math.max(1, item.quantity - 1))}
-                        className="w-8 h-8 flex items-center justify-center border rounded"
-                      >
-                        <Minus className="w-4 h-4" />
-                      </button>
                       <span className="w-8 text-center">{item.quantity}</span>
-                      <button 
-                        onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                        className="w-8 h-8 flex items-center justify-center border rounded"
-                      >
-                        <Plus className="w-4 h-4" />
-                      </button>
                     </div>
                   </div>
                 </div>

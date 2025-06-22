@@ -6,15 +6,13 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Send, MessageSquare, RefreshCw } from 'lucide-react';
+import { Send, MessageSquare, RefreshCw, Trash2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getChatMessages, createChatMessage, ChatMessage } from '@/api/chat';
-import { useToast } from '@/hooks/use-toast';
 
 const CommunityChat = () => {
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -31,47 +29,26 @@ const CommunityChat = () => {
 
   const { data: messagesData, isLoading, error, refetch } = useQuery({
     queryKey: ['chat-messages'],
-    queryFn: async () => {
-      console.log('Fetching chat messages...');
-      const response = await getChatMessages();
-      console.log('Chat messages response:', response);
-      return response;
-    },
-    refetchInterval: 2000, // Refetch every 2 seconds for real-time updates
-    enabled: !!user && (user.role === 'admin' || user.role === 'seller')
+    queryFn: getChatMessages,
+    refetchInterval: 5000, // Reduced from 2000ms to 5000ms for better performance
+    enabled: !!user && (user.role === 'admin' || user.role === 'seller'),
+    staleTime: 30000, // Cache for 30 seconds
   });
 
   const createMessageMutation = useMutation({
-    mutationFn: async (message: string) => {
-      console.log('Sending message:', message);
-      const response = await createChatMessage(message);
-      console.log('Message sent response:', response);
-      return response;
-    },
-    onSuccess: (data) => {
-      console.log('Message created successfully:', data);
+    mutationFn: createChatMessage,
+    onSuccess: () => {
       setNewMessage('');
-      // Immediately refetch to show the new message
       queryClient.invalidateQueries({ queryKey: ['chat-messages'] });
-      refetch();
-      toast({
-        title: "Message sent",
-        description: "Your message has been posted to the community chat.",
-      });
       scrollToBottom();
+      // Removed toast notification for better UX
     },
     onError: (error: any) => {
       console.error('Error sending message:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to send message';
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
     }
   });
 
-  // Extract messages from response - handle both direct array and data wrapper
+  // Extract messages from response
   const messages = Array.isArray(messagesData) ? messagesData : (messagesData?.data || []);
 
   const handleSendMessage = (e: React.FormEvent) => {
@@ -99,14 +76,13 @@ const CommunityChat = () => {
     return (
       <DashboardLayout currentPage="community-chat">
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-lg text-gray-600">Loading chat...</div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
         </div>
       </DashboardLayout>
     );
   }
 
   if (error) {
-    console.error('Chat error:', error);
     return (
       <DashboardLayout currentPage="community-chat">
         <div className="flex items-center justify-center min-h-[400px]">
@@ -150,7 +126,7 @@ const CommunityChat = () => {
               Discussion for Vendors & Admins ({messages.length} messages)
             </CardTitle>
             <p className="text-sm text-gray-600">
-              Share ideas, ask questions, and collaborate with other vendors and administrators. Updates in real-time.
+              Share ideas, ask questions, and collaborate with other vendors and administrators.
             </p>
           </CardHeader>
           
@@ -165,7 +141,7 @@ const CommunityChat = () => {
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-1">
-                        <span className="font-medium text-gray-900">{message.user.name}</span>
+                        <span className="font-medium text-gray-900">{message.user.name.split(' ')[0]}</span>
                         <span className={`px-2 py-1 rounded-full text-xs ${
                           message.user.role.toLowerCase() === 'admin' 
                             ? 'bg-red-100 text-red-800' 
@@ -176,6 +152,11 @@ const CommunityChat = () => {
                         <span className="text-xs text-gray-500">
                           {new Date(message.createdAt).toLocaleString()}
                         </span>
+                        {(message.userId === user.id || user.role === 'admin') && (
+                          <button className="text-red-500 hover:text-red-700 text-xs">
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
                       </div>
                       <div className="bg-white p-3 rounded-lg shadow-sm border">
                         <p className="text-gray-800">{message.message}</p>
@@ -218,7 +199,7 @@ const CommunityChat = () => {
                 </Button>
               </form>
               <p className="text-xs text-gray-500 mt-2">
-                {newMessage.length}/500 characters • Messages update in real-time
+                {newMessage.length}/500 characters
               </p>
             </div>
           </CardContent>

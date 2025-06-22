@@ -1,14 +1,16 @@
 
 import express from 'express';
-import { registerUser, authUser, logoutUser, getAllUsers, verifyToken } from '../controllers/authController.js';
-import { protect } from '../middleware/authMiddleware.js';
+import { registerUser, authUser, verifyToken, getAllUsers, logoutUser, getUserProfile, updateUserProfile } from '../controllers/authController.js';
+import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
 
-const authRouter = express.Router();
+const router = express.Router();
 
-authRouter.post('/register', registerUser);
-authRouter.post('/login', authUser);
-authRouter.post('/logout', logoutUser);
-authRouter.get('/users', getAllUsers);
-authRouter.get('/verify-token', protect, verifyToken);
+router.post('/register', registerUser);
+router.post('/login', authUser);
+router.get('/verify-token', protect, verifyToken);
+router.get('/profile', protect, getUserProfile);
+router.put('/profile', protect, updateUserProfile);
+router.get('/users', protect, authorizeRoles('admin'), getAllUsers);
+router.post('/logout', logoutUser);
 
-export default authRouter;
+export default router;

@@ -10,17 +10,17 @@ import { Link, useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { AuthContext } from '@/contexts/AuthContext';
-import { getCart, placeOrder, Cart as CartType } from '@/api/orders';
+import { useCart } from '@/hooks/useCart';
+import { placeOrder } from '@/api/orders';
 import { useToast } from '@/hooks/use-toast';
 
 const Checkout = () => {
   const navigate = useNavigate();
   const auth = useContext(AuthContext);
   const { toast } = useToast();
+  const { cart, isLoading } = useCart();
   const [paymentMethod, setPaymentMethod] = useState('CARD');
   const [sameAsBilling, setSameAsBilling] = useState(true);
-  const [cart, setCart] = useState<CartType | null>(null);
-  const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   
   // Form data
@@ -32,32 +32,6 @@ const Checkout = () => {
     streetLine: '',
     shippingAddress: ''
   });
-
-  useEffect(() => {
-    const fetchCart = async () => {
-      if (!auth?.user) {
-        navigate('/login');
-        return;
-      }
-
-      try {
-        const response = await getCart();
-        setCart(response.data);
-        console.log('Cart data loaded:', response.data);
-      } catch (error) {
-        console.error('Error fetching cart:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load cart data",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCart();
-  }, [auth?.user, navigate, toast]);
 
   const handleCompleteOrder = async () => {
     if (!cart || cart.items.length === 0) {
@@ -84,28 +58,18 @@ const Checkout = () => {
         ? `${formData.streetLine}, ${formData.location}`
         : formData.shippingAddress || `${formData.streetLine}, ${formData.location}`;
 
-      console.log('Placing order with data:', {
-        shippingAddress,
-        paymentMethod,
-        cartItems: cart.items.length
-      });
-
       const orderResponse = await placeOrder({
         shippingAddress,
         paymentMethod
       });
-
-      console.log('Order placed successfully:', orderResponse.data);
       
       toast({
         title: "Success",
         description: "Order placed successfully!",
       });
 
-      // Navigate to order complete page
       navigate('/order-complete');
     } catch (error: any) {
-      console.error('Error placing order:', error);
       toast({
         title: "Error",
         description: error.response?.data?.message || "Failed to place order",
@@ -140,12 +104,12 @@ const Checkout = () => {
     );
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-white">
         <Header />
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-lg text-gray-600">Loading checkout...</div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
         </div>
         <Footer />
       </div>
@@ -154,7 +118,7 @@ const Checkout = () => {
 
   const cartItems = cart?.items || [];
   const subtotal = cartItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-  const shippingTax = 12000;
+  const shippingTax = 12000; // Consistent delivery fee
   const total = subtotal + shippingTax;
 
   return (
@@ -310,7 +274,7 @@ const Checkout = () => {
                   <span>{subtotal.toLocaleString()} Rwf</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Shipping Tax</span>
+                  <span>Delivery Fee</span>
                   <span>{shippingTax.toLocaleString()} Rwf</span>
                 </div>
                 <div className="flex justify-between font-bold text-lg pt-2 border-t">

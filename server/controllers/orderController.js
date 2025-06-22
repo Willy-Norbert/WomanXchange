@@ -1,6 +1,7 @@
+
 import asyncHandler from 'express-async-handler';
 import prisma from '../prismaClient.js';
-import { notify } from '../utils/notify.js'; // Make sure this is imported
+import { notify } from '../utils/notify.js';
 import generateToken from '../utils/generateToken.js';
 import bcrypt from 'bcryptjs';
 
@@ -35,15 +36,8 @@ export const addToCart = asyncHandler(async (req, res) => {
     });
   }
 
-  // Notify seller that product was added to a cart
-  if (product.createdById) {
-    await notify({
-      userId,
-      message: `Product "${product.name}" was added to cart by a buyer.`,
-      recipientRole: 'SELLER',
-      relatedOrderId: null,
-    });
-  }
+  // Removed notification to seller when product is added to cart
+  // This was causing unnecessary spam notifications
 
   const updatedCart = await prisma.cart.findUnique({
     where: { id: cart.id },
