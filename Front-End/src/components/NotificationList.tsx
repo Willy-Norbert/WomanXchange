@@ -14,6 +14,7 @@ const NotificationList = () => {
   const { data: notifications, isLoading } = useQuery({
     queryKey: ['notifications'],
     queryFn: getNotifications,
+    staleTime: 30000,
   });
 
   const markReadMutation = useMutation({
@@ -58,8 +59,8 @@ const NotificationList = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+      <div className="flex items-center justify-center p-4">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-500"></div>
       </div>
     );
   }
@@ -67,73 +68,63 @@ const NotificationList = () => {
   const notificationList = notifications?.data || [];
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center space-x-2 mb-6">
-        <Bell className="w-5 h-5" />
-        <h2 className="text-lg font-semibold">Notifications</h2>
-        <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-sm">
-          {notificationList.length}
-        </span>
-      </div>
-
+    <div className="space-y-2 max-h-96 overflow-y-auto">
       {notificationList.length === 0 ? (
-        <Card className="p-6 text-center">
-          <Bell className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">No notifications yet</p>
-        </Card>
+        <div className="p-4 text-center text-gray-500">
+          <Bell className="w-6 h-6 mx-auto mb-2 text-gray-400" />
+          <p className="text-sm">No notifications</p>
+        </div>
       ) : (
-        <div className="space-y-3">
-          {notificationList.map((notification) => (
-            <Card
-              key={notification.id}
-              className={`p-4 ${notification.isRead ? 'bg-gray-50' : 'bg-blue-50 border-blue-200'}`}
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <p className={`${notification.isRead ? 'text-gray-700' : 'text-blue-900 font-medium'}`}>
-                    {notification.message}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {new Date(notification.createdAt).toLocaleDateString()} at{' '}
-                    {new Date(notification.createdAt).toLocaleTimeString()}
-                  </p>
-                </div>
-                
-                <div className="flex items-center space-x-2 ml-4">
-                  {!notification.isRead && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleMarkRead(notification.id)}
-                      disabled={markReadMutation.isPending}
-                      className="hover:bg-blue-100"
-                    >
-                      {markReadMutation.isPending ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-                      ) : (
-                        <X className="w-4 h-4" />
-                      )}
-                    </Button>
-                  )}
-                  
+        notificationList.map((notification) => (
+          <div
+            key={notification.id}
+            className={`p-3 border rounded-lg ${notification.isRead ? 'bg-gray-50' : 'bg-blue-50 border-blue-200'}`}
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex-1 pr-2">
+                <p className={`text-sm ${notification.isRead ? 'text-gray-700' : 'text-blue-900 font-medium'}`}>
+                  {notification.message}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {new Date(notification.createdAt).toLocaleDateString()} at{' '}
+                  {new Date(notification.createdAt).toLocaleTimeString()}
+                </p>
+              </div>
+              
+              <div className="flex items-center space-x-1">
+                {!notification.isRead && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleDelete(notification.id)}
-                    disabled={deleteMutation.isPending}
-                    className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                    onClick={() => handleMarkRead(notification.id)}
+                    disabled={markReadMutation.isPending}
+                    className="hover:bg-blue-100 p-1 h-auto"
                   >
-                    {deleteMutation.isPending ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500"></div>
+                    {markReadMutation.isPending ? (
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500"></div>
                     ) : (
-                      <Trash2 className="w-4 h-4" />
+                      <X className="w-3 h-3" />
                     )}
                   </Button>
-                </div>
+                )}
+                
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDelete(notification.id)}
+                  disabled={deleteMutation.isPending}
+                  className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 h-auto"
+                >
+                  {deleteMutation.isPending ? (
+                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-500"></div>
+                  ) : (
+                    <Trash2 className="w-3 h-3" />
+                  )}
+                </Button>
               </div>
-            </Card>
-          ))}
-        </div>
+            </div>
+          </div>
+        ))
       )}
     </div>
   );

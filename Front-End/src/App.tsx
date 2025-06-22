@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -27,6 +26,7 @@ import NotFound from "./pages/NotFound";
 import Profile from "./pages/Profile";
 import CommunityChat from "./pages/CommunityChat";
 import AdminProducts from "./pages/AdminProducts";
+import AdminCategories from "./pages/AdminCategories";
 import { AuthProvider } from './contexts/AuthContext'; 
 import { LanguageProvider } from './contexts/LanguageContext';
 
@@ -64,6 +64,7 @@ const App = () => (
               <Route path="/cart" element={<Cart />} />
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/order-complete" element={<OrderComplete />} />
+              <Route path="/admin-categories" element={<AdminCategories />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

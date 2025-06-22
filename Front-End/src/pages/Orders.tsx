@@ -1,116 +1,56 @@
 
-import React, { useContext, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { AuthContext } from '../contexts/AuthContext';
+import React, { useContext } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, Eye, CheckCircle, Clock } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { getAllOrders, updateOrderStatus } from '@/api/orders';
-import { confirmPaymentByAdmin } from '@/api/payments';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { CheckCircle, Clock, Package, DollarSign } from 'lucide-react';
+import { getAllOrders, confirmOrderPayment } from '@/api/orders';
+import { AuthContext } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { useLanguage } from '@/contexts/LanguageContext';
 
 const Orders = () => {
-  const { t } = useLanguage();
   const { user } = useContext(AuthContext);
-  const navigate = useNavigate();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    if (!user) {
-      navigate('/login');
-      return;
-    }
-    if (user.role === 'buyer') {
-      navigate('/');
-    }
-  }, [user, navigate]);
-
-  const { data: ordersData, isLoading, error, refetch } = useQuery({
-    queryKey: ['orders'],
-    queryFn: getAllOrders
+  const { data: ordersData, isLoading } = useQuery({
+    queryKey: ['admin-orders'],
+    queryFn: getAllOrders,
+    enabled: !!user && (user.role === 'admin' || user.role === 'seller'),
   });
 
-  const orders = ordersData?.data || [];
-
-  const handleConfirmPayment = async (orderId: number) => {
-    try {
-      await confirmPaymentByAdmin(orderId);
+  const confirmPaymentMutation = useMutation({
+    mutationFn: confirmOrderPayment,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
       toast({
-        title: "Success",
-        description: "Payment confirmed successfully",
+        title: "Payment confirmed",
+        description: "Order payment has been confirmed and customer notified",
       });
-      refetch();
-    } catch (error: any) {
-      console.error('Error confirming payment:', error);
+    },
+    onError: (error: any) => {
       toast({
         title: "Error",
         description: error.response?.data?.message || "Failed to confirm payment",
         variant: "destructive",
       });
     }
-  };
+  });
 
-  const handleUpdateOrderStatus = async (orderId: number, isPaid?: boolean, isDelivered?: boolean) => {
-    try {
-      await updateOrderStatus(orderId, isPaid, isDelivered);
-      toast({
-        title: "Success",
-        description: "Order status updated successfully",
-      });
-      refetch();
-    } catch (error: any) {
-      console.error('Error updating order status:', error);
-      toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to update order status",
-        variant: "destructive",
-      });
-    }
-  };
+  const orders = ordersData?.data || [];
 
-  const getPaymentStatusBadge = (order: any) => {
-    if (order.isConfirmedByAdmin) {
-      return <Badge className="bg-green-100 text-green-800">{t('orders.confirmed_by_admin')}</Badge>;
-    } else if (order.isPaid) {
-      return <Badge className="bg-yellow-100 text-yellow-800">{t('orders.awaiting_admin')}</Badge>;
-    } else if (order.paymentCode) {
-      return <Badge className="bg-blue-100 text-blue-800">{t('orders.payment_code_generated')}</Badge>;
-    } else {
-      return <Badge variant="secondary">{t('orders.pending_payment_status')}</Badge>;
-    }
+  const handleConfirmPayment = (orderId: number) => {
+    confirmPaymentMutation.mutate(orderId);
   };
-
-  const getDeliveryStatusBadge = (order: any) => {
-    if (order.isDelivered) {
-      return <Badge className="bg-green-100 text-green-800">{t('orders.delivered')}</Badge>;
-    } else {
-      return <Badge className="bg-gray-100 text-gray-800">{t('orders.not_delivered')}</Badge>;
-    }
-  };
-
-  if (!user || user.role === 'buyer') {
-    return null;
-  }
 
   if (isLoading) {
     return (
       <DashboardLayout currentPage="orders">
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-lg text-gray-600">{t('common.loading')}</div>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  if (error) {
-    return (
-      <DashboardLayout currentPage="orders">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-lg text-red-600">{t('error.failed_load_products')}</div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
         </div>
       </DashboardLayout>
     );
@@ -119,128 +59,83 @@ const Orders = () => {
   return (
     <DashboardLayout currentPage="orders">
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">{t('orders.title')}</h1>
-          <Button onClick={() => refetch()} variant="outline">
-            {t('orders.refresh')}
-          </Button>
-        </div>
-        
-        {/* Search */}
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <Input 
-            placeholder={t('orders.search_orders')} 
-            className="pl-10 bg-gray-50 border-gray-200"
-          />
+        <div className="flex items-center space-x-3">
+          <Package className="w-8 h-8 text-purple-600" />
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            Order Management
+          </h1>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-lg border">
-            <h3 className="text-sm font-medium text-gray-600">{t('orders.total_orders')}</h3>
-            <p className="text-2xl font-bold">{orders.length}</p>
-          </div>
-          <div className="bg-white p-4 rounded-lg border">
-            <h3 className="text-sm font-medium text-gray-600">{t('orders.paid_orders')}</h3>
-            <p className="text-2xl font-bold text-green-600">
-              {orders.filter((order: any) => order.isPaid).length}
-            </p>
-          </div>
-          <div className="bg-white p-4 rounded-lg border">
-            <h3 className="text-sm font-medium text-gray-600">{t('orders.pending_payment')}</h3>
-            <p className="text-2xl font-bold text-yellow-600">
-              {orders.filter((order: any) => !order.isPaid).length}
-            </p>
-          </div>
-          <div className="bg-white p-4 rounded-lg border">
-            <h3 className="text-sm font-medium text-gray-600">{t('orders.total_revenue')}</h3>
-            <p className="text-2xl font-bold text-blue-600">
-              {orders.reduce((sum: number, order: any) => sum + order.totalPrice, 0).toLocaleString()} Rwf
-            </p>
-          </div>
-        </div>
-
-        {/* Orders Table */}
-        <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-900 text-white">
-              <tr>
-                <th className="px-6 py-4 text-left text-sm font-medium">{t('orders.order_id')}</th>
-                <th className="px-6 py-4 text-left text-sm font-medium">{t('orders.customer')}</th>
-                <th className="px-6 py-4 text-left text-sm font-medium">{t('orders.total_price')}</th>
-                <th className="px-6 py-4 text-left text-sm font-medium">{t('orders.payment_status')}</th>
-                <th className="px-6 py-4 text-left text-sm font-medium">{t('orders.delivery_status')}</th>
-                <th className="px-6 py-4 text-left text-sm font-medium">{t('orders.date')}</th>
-                <th className="px-6 py-4 text-left text-sm font-medium">{t('orders.actions')}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {orders.length > 0 ? (
-                orders.map((order: any) => (
-                  <tr key={order.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm text-gray-900">#{order.id}</td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      <div>
-                        <div className="font-medium">{order.user?.name || t('orders.customer')}</div>
-                        <div className="text-gray-500 text-xs">{order.user?.email}</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 font-semibold">
-                      {order.totalPrice.toLocaleString()} Rwf
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      {getPaymentStatusBadge(order)}
-                      {order.paymentCode && (
-                        <div className="text-xs text-gray-500 mt-1">
-                          Code: {order.paymentCode}
+        <Card>
+          <CardHeader>
+            <CardTitle>All Orders ({orders.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {orders.length === 0 ? (
+              <div className="text-center py-8">
+                <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">No orders found</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Order ID</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead>Total</TableHead>
+                    <TableHead>Payment</TableHead>
+                    <TableHead>Delivery</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {orders.map((order: any) => (
+                    <TableRow key={order.id}>
+                      <TableCell className="font-medium">#{order.id}</TableCell>
+                      <TableCell>{order.user?.name || 'Guest'}</TableCell>
+                      <TableCell>{order.totalPrice.toLocaleString()} Rwf</TableCell>
+                      <TableCell>
+                        <Badge variant={order.isPaid ? 'default' : 'secondary'}>
+                          {order.isPaid ? 'Paid' : 'Pending'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={order.isDelivered ? 'default' : 'secondary'}>
+                          {order.isDelivered ? 'Delivered' : 'Pending'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(order.createdAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end space-x-2">
+                          {!order.isPaid && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleConfirmPayment(order.id)}
+                              disabled={confirmPaymentMutation.isPending}
+                              className="bg-green-600 hover:bg-green-700 text-white"
+                            >
+                              {confirmPaymentMutation.isPending ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                              ) : (
+                                <>
+                                  <CheckCircle className="w-4 h-4 mr-1" />
+                                  Confirm Payment
+                                </>
+                              )}
+                            </Button>
+                          )}
                         </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      {getDeliveryStatusBadge(order)}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {new Date(order.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      <div className="flex space-x-2">
-                        {order.isPaid && !order.isConfirmedByAdmin && user.role === 'admin' && (
-                          <Button
-                            size="sm"
-                            onClick={() => handleConfirmPayment(order.id)}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            <CheckCircle className="w-4 h-4 mr-1" />
-                            {t('orders.confirm_payment')}
-                          </Button>
-                        )}
-                        {order.isConfirmedByAdmin && !order.isDelivered && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleUpdateOrderStatus(order.id, undefined, true)}
-                          >
-                            {t('orders.mark_delivered')}
-                          </Button>
-                        )}
-                        <Button variant="ghost" size="sm">
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
-                    {t('orders.no_orders')}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   );

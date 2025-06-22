@@ -1,240 +1,248 @@
 
-import React, { useContext, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { AuthContext } from '../contexts/AuthContext';
+import React, { useContext, useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { AuthContext } from '@/contexts/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { User, Mail, Phone, MapPin, Calendar, Save } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Building, FileText } from 'lucide-react';
+import { getUserProfile, updateProfile } from '@/api/profile';
 import { useToast } from '@/hooks/use-toast';
 
 const Profile = () => {
-  const { user } = useContext(AuthContext);
-  const navigate = useNavigate();
+  const { user, updateUser } = useContext(AuthContext);
   const { toast } = useToast();
-  
+  const queryClient = useQueryClient();
+  const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
+    name: '',
+    email: '',
     phone: '',
     address: '',
     bio: '',
     company: '',
   });
 
-  const [isEditing, setIsEditing] = useState(false);
+  const { data: profileData, isLoading } = useQuery({
+    queryKey: ['user-profile'],
+    queryFn: getUserProfile,
+    enabled: !!user,
+  });
 
-  if (!user) {
-    navigate('/login');
-    return null;
-  }
+  const updateProfileMutation = useMutation({
+    mutationFn: updateProfile,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['user-profile'] });
+      // Update the auth context with new user data
+      updateUser({ ...user, ...data });
+      setIsEditing(false);
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to update profile",
+        variant: "destructive",
+      });
+    }
+  });
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+  useEffect(() => {
+    if (profileData) {
+      setFormData({
+        name: profileData.name || '',
+        email: profileData.email || '',
+        phone: profileData.phone || '',
+        address: profileData.address || '',
+        bio: profileData.bio || '',
+        company: profileData.company || '',
+      });
+    }
+  }, [profileData]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateProfileMutation.mutate(formData);
   };
 
-  const handleSave = () => {
-    // Here you would typically make an API call to update the user profile
-    toast({
-      title: "Profile Updated",
-      description: "Your profile has been successfully updated.",
-    });
+  const handleCancel = () => {
+    if (profileData) {
+      setFormData({
+        name: profileData.name || '',
+        email: profileData.email || '',
+        phone: profileData.phone || '',
+        address: profileData.address || '',
+        bio: profileData.bio || '',
+        company: profileData.company || '',
+      });
+    }
     setIsEditing(false);
   };
 
-  const getRoleBadgeColor = (role: string) => {
-    switch (role) {
-      case 'admin':
-        return 'bg-red-100 text-red-800';
-      case 'seller':
-        return 'bg-blue-100 text-blue-800';
-      case 'buyer':
-        return 'bg-green-100 text-green-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
+  if (isLoading) {
+    return (
+      <DashboardLayout currentPage="profile">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout currentPage="profile">
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-900">Profile Settings</h1>
-          <Button
-            onClick={() => setIsEditing(!isEditing)}
-            variant={isEditing ? "outline" : "default"}
-          >
-            {isEditing ? 'Cancel' : 'Edit Profile'}
-          </Button>
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div className="flex items-center space-x-3">
+          <User className="w-8 h-8 text-purple-600" />
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            Profile Settings
+          </h1>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Profile Overview */}
-          <Card className="lg:col-span-1">
-            <CardHeader className="text-center">
-              <div className="mx-auto w-24 h-24 bg-purple-400 rounded-full flex items-center justify-center text-white font-bold text-2xl mb-4">
-                {user.name.charAt(0).toUpperCase()}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Personal Information</CardTitle>
+            {!isEditing ? (
+              <Button onClick={() => setIsEditing(true)} variant="outline">
+                Edit Profile
+              </Button>
+            ) : (
+              <div className="space-x-2">
+                <Button onClick={handleCancel} variant="outline">
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleSubmit}
+                  disabled={updateProfileMutation.isPending}
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                >
+                  {updateProfileMutation.isPending ? 'Saving...' : 'Save Changes'}
+                </Button>
               </div>
-              <CardTitle className="text-xl">{user.name}</CardTitle>
-              <Badge className={`mx-auto w-fit ${getRoleBadgeColor(user.role)}`}>
-                {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-              </Badge>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center space-x-3 text-gray-600">
-                <Mail className="w-4 h-4" />
-                <span className="text-sm">{user.email}</span>
-              </div>
-              <div className="flex items-center space-x-3 text-gray-600">
-                <Calendar className="w-4 h-4" />
-                <span className="text-sm">Joined January 2024</span>
-              </div>
-              <div className="flex items-center space-x-3 text-gray-600">
-                <User className="w-4 h-4" />
-                <span className="text-sm">Active Member</span>
-              </div>
-            </CardContent>
-          </Card>
+            )}
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="flex items-center space-x-2 text-sm font-medium">
+                    <User className="w-4 h-4" />
+                    <span>Full Name</span>
+                  </label>
+                  {isEditing ? (
+                    <Input
+                      value={formData.name}
+                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      required
+                    />
+                  ) : (
+                    <p className="text-gray-700 p-2 bg-gray-50 rounded">{profileData?.name || 'Not provided'}</p>
+                  )}
+                </div>
 
-          {/* Profile Details */}
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <User className="w-5 h-5" />
-                <span>Personal Information</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                  />
+                  <label className="flex items-center space-x-2 text-sm font-medium">
+                    <Mail className="w-4 h-4" />
+                    <span>Email Address</span>
+                  </label>
+                  {isEditing ? (
+                    <Input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({...formData, email: e.target.value})}
+                      required
+                    />
+                  ) : (
+                    <p className="text-gray-700 p-2 bg-gray-50 rounded">{profileData?.email || 'Not provided'}</p>
+                  )}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    placeholder="+250 7XX XXX XXX"
-                  />
+                  <label className="flex items-center space-x-2 text-sm font-medium">
+                    <Phone className="w-4 h-4" />
+                    <span>Phone Number</span>
+                  </label>
+                  {isEditing ? (
+                    <Input
+                      value={formData.phone}
+                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    />
+                  ) : (
+                    <p className="text-gray-700 p-2 bg-gray-50 rounded">{profileData?.phone || 'Not provided'}</p>
+                  )}
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="company">Company/Organization</Label>
-                  <Input
-                    id="company"
-                    name="company"
-                    value={formData.company}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    placeholder="Your company name"
-                  />
+                  <label className="flex items-center space-x-2 text-sm font-medium">
+                    <Building className="w-4 h-4" />
+                    <span>Company</span>
+                  </label>
+                  {isEditing ? (
+                    <Input
+                      value={formData.company}
+                      onChange={(e) => setFormData({...formData, company: e.target.value})}
+                    />
+                  ) : (
+                    <p className="text-gray-700 p-2 bg-gray-50 rounded">{profileData?.company || 'Not provided'}</p>
+                  )}
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
-                <Input
-                  id="address"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  disabled={!isEditing}
-                  placeholder="Your full address"
-                />
+                <label className="flex items-center space-x-2 text-sm font-medium">
+                  <MapPin className="w-4 h-4" />
+                  <span>Address</span>
+                </label>
+                {isEditing ? (
+                  <Input
+                    value={formData.address}
+                    onChange={(e) => setFormData({...formData, address: e.target.value})}
+                  />
+                ) : (
+                  <p className="text-gray-700 p-2 bg-gray-50 rounded">{profileData?.address || 'Not provided'}</p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="bio">Bio</Label>
-                <Textarea
-                  id="bio"
-                  name="bio"
-                  value={formData.bio}
-                  onChange={handleInputChange}
-                  disabled={!isEditing}
-                  placeholder="Tell us about yourself..."
-                  rows={4}
-                />
+                <label className="flex items-center space-x-2 text-sm font-medium">
+                  <FileText className="w-4 h-4" />
+                  <span>Bio</span>
+                </label>
+                {isEditing ? (
+                  <Textarea
+                    value={formData.bio}
+                    onChange={(e) => setFormData({...formData, bio: e.target.value})}
+                    rows={4}
+                  />
+                ) : (
+                  <p className="text-gray-700 p-2 bg-gray-50 rounded min-h-[100px]">{profileData?.bio || 'Not provided'}</p>
+                )}
               </div>
+            </form>
+          </CardContent>
+        </Card>
 
-              {isEditing && (
-                <div className="flex justify-end space-x-4">
-                  <Button variant="outline" onClick={() => setIsEditing(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleSave} className="bg-purple-600 hover:bg-purple-700">
-                    <Save className="w-4 h-4 mr-2" />
-                    Save Changes
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Account Settings */}
         <Card>
           <CardHeader>
-            <CardTitle>Account Settings</CardTitle>
+            <CardTitle>Account Information</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between p-4 border rounded-lg">
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <h3 className="font-medium">Email Notifications</h3>
-                <p className="text-sm text-gray-600">Receive email updates about your orders and account</p>
+                <label className="text-sm font-medium text-gray-600">Account Role</label>
+                <p className="text-lg font-semibold capitalize">{user?.role?.toLowerCase()}</p>
               </div>
-              <Button variant="outline" size="sm">
-                Configure
-              </Button>
-            </div>
-            
-            <div className="flex items-center justify-between p-4 border rounded-lg">
               <div>
-                <h3 className="font-medium">Change Password</h3>
-                <p className="text-sm text-gray-600">Update your account password</p>
+                <label className="text-sm font-medium text-gray-600">Member Since</label>
+                <p className="text-lg font-semibold">
+                  {profileData?.createdAt ? new Date(profileData.createdAt).toLocaleDateString() : 'Unknown'}
+                </p>
               </div>
-              <Button variant="outline" size="sm">
-                Change
-              </Button>
-            </div>
-            
-            <div className="flex items-center justify-between p-4 border rounded-lg border-red-200">
-              <div>
-                <h3 className="font-medium text-red-700">Delete Account</h3>
-                <p className="text-sm text-gray-600">Permanently remove your account and all data</p>
-              </div>
-              <Button variant="destructive" size="sm">
-                Delete
-              </Button>
             </div>
           </CardContent>
         </Card>

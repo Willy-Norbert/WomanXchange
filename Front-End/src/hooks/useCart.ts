@@ -9,22 +9,32 @@ export const useCart = () => {
   const { user } = useContext(AuthContext);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [guestId, setGuestId] = useState<string>(() => {
+    if (!user) {
+      const stored = localStorage.getItem('guestCartId');
+      if (stored) return stored;
+      const newId = `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      localStorage.setItem('guestCartId', newId);
+      return newId;
+    }
+    return '';
+  });
 
   const { data: cart, isLoading, error } = useQuery({
-    queryKey: ['cart'],
-    queryFn: getCart,
-    enabled: !!user,
-    staleTime: 5000, // Reduced for better real-time updates
+    queryKey: ['cart', user?.id || guestId],
+    queryFn: () => getCart(user ? undefined : guestId),
+    staleTime: 1000, // Reduced for better real-time updates
   });
 
   const addToCartMutation = useMutation({
     mutationFn: ({ productId, quantity }: { productId: number; quantity: number }) => {
-      if (!user) {
-        throw new Error('Please login to add items to cart');
-      }
-      return addToCart(productId, quantity);
+      return addToCart(productId, quantity, user ? undefined : guestId);
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (data.data?.guestId && !user) {
+        setGuestId(data.data.guestId);
+        localStorage.setItem('guestCartId', data.data.guestId);
+      }
       queryClient.invalidateQueries({ queryKey: ['cart'] });
       toast({
         title: "Added to cart",
@@ -42,10 +52,7 @@ export const useCart = () => {
 
   const removeFromCartMutation = useMutation({
     mutationFn: (productId: number) => {
-      if (!user) {
-        throw new Error('Please login to manage cart');
-      }
-      return removeFromCart(productId);
+      return removeFromCart(productId, user ? undefined : guestId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cart'] });

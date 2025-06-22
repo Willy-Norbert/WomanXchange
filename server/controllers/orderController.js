@@ -5,20 +5,33 @@ import { notify } from '../utils/notify.js';
 import generateToken from '../utils/generateToken.js';
 import bcrypt from 'bcryptjs';
 
-// Add or Update Product in Cart
+// Add or Update Product in Cart (supports guest users)
 export const addToCart = asyncHandler(async (req, res) => {
-  const userId = req.user.id;
   const { productId, quantity } = req.body;
-
+  
   const product = await prisma.product.findUnique({ where: { id: productId } });
   if (!product) {
     res.status(404);
     throw new Error('Product not found');
   }
 
-  let cart = await prisma.cart.findUnique({ where: { userId } });
-  if (!cart) {
-    cart = await prisma.cart.create({ data: { userId } });
+  let cart;
+  
+  // Check if user is logged in
+  if (req.user) {
+    // Logged in user
+    const userId = req.user.id;
+    cart = await prisma.cart.findUnique({ where: { userId } });
+    if (!cart) {
+      cart = await prisma.cart.create({ data: { userId } });
+    }
+  } else {
+    // Guest user - use session or create temporary cart
+    const guestId = req.body.guestId || `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    cart = await prisma.cart.findFirst({ where: { guestId } });
+    if (!cart) {
+      cart = await prisma.cart.create({ data: { guestId } });
+    }
   }
 
   const existingItem = await prisma.cartItem.findFirst({
@@ -36,22 +49,26 @@ export const addToCart = asyncHandler(async (req, res) => {
     });
   }
 
-  // NO ADMIN NOTIFICATION FOR CART ADDITIONS - This was removed as requested
-
   const updatedCart = await prisma.cart.findUnique({
     where: { id: cart.id },
     include: { items: { include: { product: true } } }
   });
 
-  res.json(updatedCart);
+  res.json({ ...updatedCart, guestId: cart.guestId });
 });
 
-// Remove Product from Cart
+// Remove Product from Cart (supports guest users)
 export const removeFromCart = asyncHandler(async (req, res) => {
-  const userId = req.user.id;
-  const { productId } = req.body;
+  const { productId, guestId } = req.body;
 
-  const cart = await prisma.cart.findUnique({ where: { userId } });
+  let cart;
+  if (req.user) {
+    const userId = req.user.id;
+    cart = await prisma.cart.findUnique({ where: { userId } });
+  } else if (guestId) {
+    cart = await prisma.cart.findFirst({ where: { guestId } });
+  }
+
   if (!cart) {
     res.status(404);
     throw new Error('Cart not found');
@@ -69,14 +86,23 @@ export const removeFromCart = asyncHandler(async (req, res) => {
   res.json(updatedCart);
 });
 
-// Get User Cart
+// Get User Cart (supports guest users)
 export const getCart = asyncHandler(async (req, res) => {
-  const userId = req.user.id;
-
-  const cart = await prisma.cart.findUnique({
-    where: { userId },
-    include: { items: { include: { product: true } } }
-  });
+  const { guestId } = req.query;
+  
+  let cart;
+  if (req.user) {
+    const userId = req.user.id;
+    cart = await prisma.cart.findUnique({
+      where: { userId },
+      include: { items: { include: { product: true } } }
+    });
+  } else if (guestId) {
+    cart = await prisma.cart.findFirst({
+      where: { guestId },
+      include: { items: { include: { product: true } } }
+    });
+  }
 
   res.json(cart || { items: [] });
 });
@@ -155,9 +181,41 @@ export const getAllOrders = asyncHandler(async (req, res) => {
     include: {
       user: { select: { id: true, name: true, email: true } },
       items: { include: { product: true } }
-    }
+    },
+    orderBy: { createdAt: 'desc' }
   });
   res.json(orders);
+});
+
+// Admin: Confirm Order Payment
+export const confirmOrderPayment = asyncHandler(async (req, res) => {
+  const orderId = Number(req.params.id);
+
+  const order = await prisma.order.findUnique({ where: { id: orderId } });
+  if (!order) {
+    res.status(404);
+    throw new Error('Order not found');
+  }
+
+  const updatedOrder = await prisma.order.update({
+    where: { id: orderId },
+    data: {
+      isPaid: true,
+      paidAt: new Date(),
+      isConfirmedByAdmin: true,
+      confirmedAt: new Date()
+    },
+  });
+
+  // Notify buyer that admin confirmed payment
+  await notify({
+    userId: order.userId,
+    message: `Your payment for Order #${order.id} has been confirmed by admin.`,
+    recipientRole: 'BUYER',
+    relatedOrderId: order.id,
+  });
+
+  res.json(updatedOrder);
 });
 
 // Admin: Update Order Status (paid, delivered)

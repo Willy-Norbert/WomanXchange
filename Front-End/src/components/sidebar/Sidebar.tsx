@@ -1,7 +1,7 @@
 
 import React, { useContext } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { BarChart3, Users, Package, FileText, ShoppingCart, TrendingUp, MessageSquare, UserCheck } from 'lucide-react';
+import { BarChart3, Users, Package, FileText, ShoppingCart, TrendingUp, MessageSquare, UserCheck, FolderOpen } from 'lucide-react';
 import { AuthContext } from '../../contexts/AuthContext';
 
 interface SidebarProps {
@@ -17,6 +17,7 @@ const menuItems = [
 
 const managementItems = [
   { label: 'Products', path: '/admin-products', roles: ['admin', 'seller'] },
+  { label: 'Categories', path: '/admin-categories', roles: ['admin', 'seller'] },
   { label: 'Orders', path: '/orders', roles: ['admin', 'seller'] },
   { label: 'Reports', path: '/reports', roles: ['admin', 'seller'] },
 ];
