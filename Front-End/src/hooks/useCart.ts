@@ -9,29 +9,35 @@ export const useCart = () => {
   const { user } = useContext(AuthContext);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Generate guest ID on first use and persist it
   const [guestId, setGuestId] = useState<string>(() => {
-    if (!user) {
-      const stored = localStorage.getItem('guestCartId');
-      if (stored) return stored;
-      const newId = `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      localStorage.setItem('guestCartId', newId);
-      return newId;
-    }
-    return '';
+    // Always generate guest ID regardless of auth status
+    const stored = localStorage.getItem('guestCartId');
+    if (stored) return stored;
+    const newId = `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    localStorage.setItem('guestCartId', newId);
+    return newId;
   });
 
+  // Use guest ID for non-authenticated users, user ID for authenticated users
+  const cartKey = user ? user.id : guestId;
+
   const { data: cart, isLoading, error } = useQuery({
-    queryKey: ['cart', user?.id || guestId],
+    queryKey: ['cart', cartKey],
     queryFn: () => getCart(user ? undefined : guestId),
-    staleTime: 5000, // 5 seconds stale time for better performance
-    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
+    staleTime: 5000,
+    gcTime: 10 * 60 * 1000,
   });
 
   const addToCartMutation = useMutation({
     mutationFn: ({ productId, quantity }: { productId: number; quantity: number }) => {
+      console.log('Adding to cart:', { productId, quantity, guestId: user ? undefined : guestId });
       return addToCart(productId, quantity, user ? undefined : guestId);
     },
     onSuccess: (data) => {
+      console.log('Add to cart success:', data);
+      // Update guest ID if returned from server for non-authenticated users
       if (data.data?.guestId && !user) {
         setGuestId(data.data.guestId);
         localStorage.setItem('guestCartId', data.data.guestId);
@@ -43,6 +49,7 @@ export const useCart = () => {
       });
     },
     onError: (error: any) => {
+      console.error('Add to cart error:', error);
       toast({
         title: "Error",
         description: error.response?.data?.message || "Failed to add item to cart",

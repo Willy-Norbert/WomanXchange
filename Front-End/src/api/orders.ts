@@ -1,3 +1,4 @@
+
 import api from './api';
 
 export interface CartItem {
@@ -14,7 +15,8 @@ export interface CartItem {
 
 export interface Cart {
   id: number;
-  userId: number;
+  userId?: number;
+  guestId?: string;
   items: CartItem[];
 }
 
@@ -48,18 +50,24 @@ export interface PlaceOrderData {
 
 export const getCart = (guestId?: string) => {
   const params = guestId ? { guestId } : {};
+  console.log('Getting cart with params:', params);
   return api.get<Cart>('/orders/cart', { params });
 };
 
 export const addToCart = (productId: number, quantity: number, guestId?: string) => {
-  const data = { productId, quantity };
-  if (guestId) data.guestId = guestId;
+  const data: any = { productId, quantity };
+  if (guestId) {
+    data.guestId = guestId;
+  }
+  console.log('API addToCart called with:', data);
   return api.post('/orders/cart', data);
 };
 
 export const removeFromCart = (productId: number, guestId?: string) => {
-  const data = { productId };
-  if (guestId) data.guestId = guestId;
+  const data: any = { productId };
+  if (guestId) {
+    data.guestId = guestId;
+  }
   return api.delete('/orders/cart', { data });
 };
 
@@ -73,6 +81,5 @@ export const getAllOrders = () => api.get<Order[]>('/orders/all');
 export const updateOrderStatus = (id: number, isPaid?: boolean, isDelivered?: boolean) =>
   api.put(`/orders/${id}/status`, { isPaid, isDelivered });
 
-// New function for admin to confirm payment
 export const confirmOrderPayment = (id: number) =>
   api.put(`/orders/${id}/confirm-payment`);
