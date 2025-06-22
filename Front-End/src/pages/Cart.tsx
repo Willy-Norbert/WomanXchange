@@ -14,26 +14,6 @@ const Cart = () => {
   const auth = useContext(AuthContext);
   const { cart, isLoading, error, removeFromCart, isRemovingFromCart } = useCart();
 
-  if (!auth?.user) {
-    return (
-      <div className="min-h-screen bg-white">
-        <Header />
-        <div className="container mx-auto px-4 py-8 max-w-md">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold mb-6">{t('cart.please_login')}</h1>
-            <p className="text-gray-600 mb-6">{t('cart.login_to_view')}</p>
-            <Link to="/login">
-              <Button className="bg-purple-500 hover:bg-purple-600 text-white">
-                {t('auth.login')}
-              </Button>
-            </Link>
-          </div>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white">
@@ -61,7 +41,7 @@ const Cart = () => {
   const cartItems = cart?.items || [];
   const subtotal = cartItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
   const discount = Math.round(subtotal * 0.2);
-  const deliveryFee = 12000; // Fixed delivery fee - consistent across the app
+  const deliveryFee = 12000; // Fixed delivery fee
   const total = subtotal - discount + deliveryFee;
 
   return (
@@ -143,12 +123,24 @@ const Cart = () => {
             </div>
 
             {/* Checkout Button */}
-            <Link to="/checkout">
-              <Button className="w-full bg-purple-500 hover:bg-purple-600 text-white py-4 rounded-full">
-                {t('cart.go_to_checkout')}
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
-            </Link>
+            {auth?.user ? (
+              <Link to="/checkout">
+                <Button className="w-full bg-purple-500 hover:bg-purple-600 text-white py-4 rounded-full">
+                  {t('cart.go_to_checkout')}
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </Button>
+              </Link>
+            ) : (
+              <div className="text-center">
+                <p className="text-gray-600 mb-4">Please log in to proceed to checkout</p>
+                <Link to="/login">
+                  <Button className="w-full bg-purple-500 hover:bg-purple-600 text-white py-4 rounded-full">
+                    Log In to Checkout
+                    <ArrowRight className="w-5 h-5 ml-2" />
+                  </Button>
+                </Link>
+              </div>
+            )}
           </>
         )}
       </div>

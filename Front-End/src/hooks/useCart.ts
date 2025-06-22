@@ -23,7 +23,8 @@ export const useCart = () => {
   const { data: cart, isLoading, error } = useQuery({
     queryKey: ['cart', user?.id || guestId],
     queryFn: () => getCart(user ? undefined : guestId),
-    staleTime: 1000, // Reduced for better real-time updates
+    staleTime: 5000, // 5 seconds stale time for better performance
+    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
   });
 
   const addToCartMutation = useMutation({

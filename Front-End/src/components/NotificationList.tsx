@@ -3,7 +3,6 @@ import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Bell, X, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { getNotifications, markNotificationRead, deleteNotification } from '@/api/notifications';
 import { useToast } from '@/hooks/use-toast';
 
@@ -14,7 +13,8 @@ const NotificationList = () => {
   const { data: notifications, isLoading } = useQuery({
     queryKey: ['notifications'],
     queryFn: getNotifications,
-    staleTime: 30000,
+    staleTime: 10000, // Reduced for better real-time feel
+    refetchInterval: 15000, // Auto-refresh every 15 seconds
   });
 
   const markReadMutation = useMutation({
@@ -99,6 +99,7 @@ const NotificationList = () => {
                     onClick={() => handleMarkRead(notification.id)}
                     disabled={markReadMutation.isPending}
                     className="hover:bg-blue-100 p-1 h-auto"
+                    title="Mark as read"
                   >
                     {markReadMutation.isPending ? (
                       <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500"></div>
@@ -114,6 +115,7 @@ const NotificationList = () => {
                   onClick={() => handleDelete(notification.id)}
                   disabled={deleteMutation.isPending}
                   className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 h-auto"
+                  title="Delete notification"
                 >
                   {deleteMutation.isPending ? (
                     <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-500"></div>

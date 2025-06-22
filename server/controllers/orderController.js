@@ -2,12 +2,10 @@
 import asyncHandler from 'express-async-handler';
 import prisma from '../prismaClient.js';
 import { notify } from '../utils/notify.js';
-import generateToken from '../utils/generateToken.js';
-import bcrypt from 'bcryptjs';
 
 // Add or Update Product in Cart (supports guest users)
 export const addToCart = asyncHandler(async (req, res) => {
-  const { productId, quantity } = req.body;
+  const { productId, quantity, guestId } = req.body;
   
   const product = await prisma.product.findUnique({ where: { id: productId } });
   if (!product) {
@@ -26,11 +24,11 @@ export const addToCart = asyncHandler(async (req, res) => {
       cart = await prisma.cart.create({ data: { userId } });
     }
   } else {
-    // Guest user - use session or create temporary cart
-    const guestId = req.body.guestId || `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    cart = await prisma.cart.findFirst({ where: { guestId } });
+    // Guest user - use provided guestId or create new one
+    const finalGuestId = guestId || `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    cart = await prisma.cart.findFirst({ where: { guestId: finalGuestId } });
     if (!cart) {
-      cart = await prisma.cart.create({ data: { guestId } });
+      cart = await prisma.cart.create({ data: { guestId: finalGuestId } });
     }
   }
 
@@ -169,7 +167,8 @@ export const getUserOrders = asyncHandler(async (req, res) => {
     where: { userId },
     include: {
       items: { include: { product: true } }
-    }
+    },
+    orderBy: { createdAt: 'desc' }
   });
 
   res.json(orders);

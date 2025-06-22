@@ -32,9 +32,9 @@ const CommunityChat = () => {
   const { data: messagesData, isLoading, error, refetch } = useQuery({
     queryKey: ['chat-messages'],
     queryFn: getChatMessages,
-    refetchInterval: 3000,
+    refetchInterval: 2000, // Faster polling for real-time feel
     enabled: !!user && (user.role === 'admin' || user.role === 'seller'),
-    staleTime: 10000,
+    staleTime: 1000, // Very short stale time for real-time updates
   });
 
   const createMessageMutation = useMutation({

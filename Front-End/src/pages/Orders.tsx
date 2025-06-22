@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { CheckCircle, Clock, Package, DollarSign } from 'lucide-react';
+import { CheckCircle, Clock, Package, DollarSign, Eye } from 'lucide-react';
 import { getAllOrders, confirmOrderPayment } from '@/api/orders';
 import { AuthContext } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -16,10 +16,11 @@ const Orders = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: ordersData, isLoading } = useQuery({
+  const { data: ordersData, isLoading, error } = useQuery({
     queryKey: ['admin-orders'],
     queryFn: getAllOrders,
     enabled: !!user && (user.role === 'admin' || user.role === 'seller'),
+    staleTime: 30000, // 30 seconds stale time
   });
 
   const confirmPaymentMutation = useMutation({
@@ -56,6 +57,16 @@ const Orders = () => {
     );
   }
 
+  if (error) {
+    return (
+      <DashboardLayout currentPage="orders">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-lg text-red-600">Failed to load orders</div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout currentPage="orders">
       <div className="space-y-6">
@@ -82,6 +93,7 @@ const Orders = () => {
                   <TableRow>
                     <TableHead>Order ID</TableHead>
                     <TableHead>Customer</TableHead>
+                    <TableHead>Items</TableHead>
                     <TableHead>Total</TableHead>
                     <TableHead>Payment</TableHead>
                     <TableHead>Delivery</TableHead>
@@ -93,12 +105,29 @@ const Orders = () => {
                   {orders.map((order: any) => (
                     <TableRow key={order.id}>
                       <TableCell className="font-medium">#{order.id}</TableCell>
-                      <TableCell>{order.user?.name || 'Guest'}</TableCell>
-                      <TableCell>{order.totalPrice.toLocaleString()} Rwf</TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{order.user?.name || 'Guest'}</div>
+                          <div className="text-sm text-gray-500">{order.user?.email}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {order.items?.length || 0} item(s)
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-semibold">
+                        {order.totalPrice.toLocaleString()} Rwf
+                      </TableCell>
                       <TableCell>
                         <Badge variant={order.isPaid ? 'default' : 'secondary'}>
                           {order.isPaid ? 'Paid' : 'Pending'}
                         </Badge>
+                        {order.isConfirmedByAdmin && (
+                          <Badge variant="outline" className="ml-1 text-green-600 border-green-600">
+                            Admin Confirmed
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge variant={order.isDelivered ? 'default' : 'secondary'}>
@@ -123,6 +152,24 @@ const Orders = () => {
                                 <>
                                   <CheckCircle className="w-4 h-4 mr-1" />
                                   Confirm Payment
+                                </>
+                              )}
+                            </Button>
+                          )}
+                          {order.isPaid && !order.isConfirmedByAdmin && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleConfirmPayment(order.id)}
+                              disabled={confirmPaymentMutation.isPending}
+                              variant="outline"
+                              className="border-green-600 text-green-600 hover:bg-green-50"
+                            >
+                              {confirmPaymentMutation.isPending ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-500"></div>
+                              ) : (
+                                <>
+                                  <CheckCircle className="w-4 h-4 mr-1" />
+                                  Admin Confirm
                                 </>
                               )}
                             </Button>
