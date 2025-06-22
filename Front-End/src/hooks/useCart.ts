@@ -28,7 +28,7 @@ export const useCart = () => {
   // Create a stable query key that changes when user auth state changes
   const queryKey = user ? ['cart', 'authenticated', user.id] : ['cart', 'anonymous', cartId];
 
-  const { data: cart, isLoading, error } = useQuery({
+  const { data: cartResponse, isLoading, error } = useQuery({
     queryKey,
     queryFn: () => {
       console.log('useCart query: calling getCart with cartId:', cartId, 'user:', !!user);
@@ -41,12 +41,16 @@ export const useCart = () => {
     refetchOnWindowFocus: false,
   });
 
+  // Extract cart data from the response
+  const cart = cartResponse?.data?.data;
+
   console.log('useCart hook state:', {
     user: !!user,
     cartId,
     isLoading,
-    cart: cart?.data,
-    cartItems: cart?.data?.items,
+    cartResponse: cartResponse?.data,
+    cart: cart,
+    cartItems: cart?.items,
     queryKey,
     error
   });
@@ -104,17 +108,17 @@ export const useCart = () => {
     }
   });
 
-  const cartItemsCount = cart?.data?.items?.reduce((total: number, item: any) => total + item.quantity, 0) || 0;
+  const cartItemsCount = cart?.items?.reduce((total: number, item: any) => total + item.quantity, 0) || 0;
 
   console.log('useCart hook final return:', {
-    cart: cart?.data,
+    cart: cart,
     cartItemsCount,
-    hasItems: cart?.data?.items?.length > 0,
-    itemsLength: cart?.data?.items?.length
+    hasItems: cart?.items?.length > 0,
+    itemsLength: cart?.items?.length
   });
 
   return {
-    cart: cart?.data,
+    cart: cart,
     cartItemsCount,
     isLoading,
     error,
