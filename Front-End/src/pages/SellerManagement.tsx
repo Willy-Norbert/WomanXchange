@@ -1,4 +1,3 @@
-
 import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
@@ -7,11 +6,27 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Search, CheckCircle, XCircle, Clock, Plus } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/api/api';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { useForm } from 'react-hook-form';
 
 interface Seller {
   id: number;
@@ -25,6 +40,13 @@ interface Seller {
   createdAt: string;
 }
 
+interface CreateSellerData {
+  name: string;
+  email: string;
+  password: string;
+  role: 'seller';
+}
+
 const SellerManagement = () => {
   const { t } = useLanguage();
   const { user, loading } = useContext(AuthContext);
@@ -32,203 +54,247 @@ const SellerManagement = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  const form = useForm<CreateSellerData>({
+    defaultValues: { name: '', email: '', password: '', role: 'seller' },
+  });
 
   useEffect(() => {
     if (loading) return;
-
-    if (!user) {
-      navigate('/login');
-      return;
-    }
-
-    if (user.role !== 'ADMIN') {
-      navigate('/dashboard');
-      return;
-    }
+    if (!user) return navigate('/login');
+    if (user.role !== 'ADMIN') navigate('/dashboard');
   }, [user, loading, navigate]);
 
   const { data: sellersData, isLoading, error } = useQuery({
     queryKey: ['sellers'],
-    queryFn: async () => {
-      const response = await api.get('/sellers/pending');
-      return response;
-    },
+    queryFn: () => api.get('/sellers/pending'),
     enabled: !!user && user.role === 'ADMIN',
   });
 
-  const updateSellerStatusMutation = useMutation({
-    mutationFn: async ({ sellerId, status, isActive }: { sellerId: number; status: string; isActive: boolean }) => {
-      const response = await api.put(`/sellers/${sellerId}/status`, {
-        status,
-        isActive
-      });
-      return response;
+  // ✅ Create Seller mutation (reuses auth/register endpoint)
+  const createSellerMutation = useMutation({
+    mutationFn: (data: CreateSellerData) => {
+      console.log('Creating seller:', data);
+      return api.post('/auth/register', data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sellers'] });
-      toast({
-        title: "Success",
-        description: "Seller status updated successfully.",
-      });
+      queryClient.invalidateQueries(['sellers']);
+      setIsCreateModalOpen(false);
+      form.reset();
+      toast({ title: 'Success', description: 'Seller created successfully.' });
     },
-    onError: (error: any) => {
-      const errorMessage = error.response?.data?.message || 'Failed to update seller status';
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    }
+    onError: (err: any) => {
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to create seller';
+      toast({ title: 'Error', description: errorMessage, variant: 'destructive' });
+    },
+  });
+
+  const updateSellerStatusMutation = useMutation({
+    mutationFn: ({ sellerId, status, isActive }: any) =>
+      api.put(`/sellers/${sellerId}/status`, { status, isActive }),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['sellers']);
+      toast({ title: 'Success', description: 'Seller status updated.' });
+    },
+    onError: (err: any) => {
+      const errorMessage = err.response?.data?.message || err.message || 'Error updating status';
+      toast({ title: 'Error', description: errorMessage, variant: 'destructive' });
+    },
   });
 
   const sellers: Seller[] = sellersData?.data || [];
-  
-  const filteredSellers = sellers.filter((seller) =>
-    seller.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    seller.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    seller.businessName.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredSellers = sellers.filter((s) =>
+    [s.name, s.email, s.businessName].some((str) =>
+      str.toLowerCase().includes(searchTerm.toLowerCase())
+    )
   );
 
-  const handleStatusUpdate = (sellerId: number, newStatus: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED') => {
-    const isActive = newStatus === 'ACTIVE';
-    updateSellerStatusMutation.mutate({
-      sellerId,
-      status: newStatus,
-      isActive
-    });
+  const handleStatusUpdate = (id: number, newStatus: any) =>
+    updateSellerStatusMutation.mutate({ sellerId: id, status: newStatus, isActive: newStatus === 'ACTIVE' });
+
+  const getStatusBadge = (s: Seller) =>
+    s.sellerStatus === 'ACTIVE' && s.isActive ? (
+      <Badge className="bg-green-100 text-green-800">Active</Badge>
+    ) : s.sellerStatus === 'SUSPENDED' ? (
+      <Badge className="bg-red-100 text-red-800">Suspended</Badge>
+    ) : (
+      <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>
+    );
+
+  const counts = {
+    total: sellers.length,
+    active: sellers.filter((s) => s.sellerStatus === 'ACTIVE' && s.isActive).length,
+    pending: sellers.filter((s) => s.sellerStatus === 'INACTIVE').length,
+    suspended: sellers.filter((s) => s.sellerStatus === 'SUSPENDED').length,
   };
 
-  const getStatusBadge = (seller: Seller) => {
-    if (seller.sellerStatus === 'ACTIVE' && seller.isActive) {
-      return <Badge className="bg-green-100 text-green-800">Active</Badge>;
-    } else if (seller.sellerStatus === 'SUSPENDED') {
-      return <Badge className="bg-red-100 text-red-800">Suspended</Badge>;
-    } else {
-      return <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>;
-    }
-  };
-
-  const getStatusCounts = () => {
-    const active = sellers.filter(s => s.sellerStatus === 'ACTIVE' && s.isActive).length;
-    const pending = sellers.filter(s => s.sellerStatus === 'INACTIVE').length;
-    const suspended = sellers.filter(s => s.sellerStatus === 'SUSPENDED').length;
-    
-    return { active, pending, suspended, total: sellers.length };
-  };
-
-  if (loading || isLoading) {
+  if (loading || isLoading)
     return (
       <DashboardLayout currentPage="seller-management">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-lg text-gray-600">Loading...</div>
+        <div className="flex items-center justify-center min-h-[400px]">{t('common.loading')}</div>
+      </DashboardLayout>
+    );
+
+  if (!user || user.role !== 'ADMIN') return null;
+
+  if (error)
+    return (
+      <DashboardLayout currentPage="seller-management">
+        <div className="flex items-center justify-center min-h-[400px] text-red-600">
+          {t('error.failed_load_products')}
         </div>
       </DashboardLayout>
     );
-  }
-
-  if (!user || user.role !== 'ADMIN') {
-    return null;
-  }
-
-  if (error) {
-    return (
-      <DashboardLayout currentPage="seller-management">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-lg text-red-600">Failed to load sellers</div>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  const statusCounts = getStatusCounts();
 
   return (
     <DashboardLayout currentPage="seller-management">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">Seller Management</h1>
+          <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => form.reset()}>
+                <Plus className="w-4 h-4 mr-2" /> Add Seller
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Add New Seller</DialogTitle>
+              </DialogHeader>
+              <Form {...form}>
+                <form
+                  onSubmit={form.handleSubmit(data => createSellerMutation.mutate(data))}
+                  className="space-y-4"
+                >
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    rules={{ required: 'Name required' }}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Full Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="John Doe" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    rules={{
+                      required: 'Email required',
+                      pattern: { value: /^[^@]+@[^@]+\.[^@]+$/, message: 'Invalid email' },
+                    }}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email Address</FormLabel>
+                        <FormControl>
+                          <Input type="email" placeholder="john@example.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    rules={{
+                      required: 'Password required',
+                      minLength: { value: 6, message: 'Min 6 chars' },
+                    }}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        <FormControl>
+                          <Input type="password" placeholder="••••••" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="flex gap-2 pt-4">
+                    <Button type="submit" disabled={createSellerMutation.isLoading} className="flex-1">
+                      {createSellerMutation.isLoading ? 'Creating...' : 'Create Seller'}
+                    </Button>
+                    <Button variant="outline" type="button" onClick={() => form.reset()} className="flex-1">
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
         </div>
 
-        {/* Status Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Sellers</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{statusCounts.total}</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-green-600">Active</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-green-600">{statusCounts.active}</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-yellow-600">Pending</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-yellow-600">{statusCounts.pending}</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-red-600">Suspended</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-red-600">{statusCounts.suspended}</p>
-            </CardContent>
-          </Card>
+          {['Total Sellers', 'Active', 'Pending', 'Suspended'].map((title, idx) => (
+            <Card key={title}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">{title}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p
+                  className={`text-2xl font-bold ${
+                    title === 'Active'
+                      ? 'text-green-600'
+                      : title === 'Pending'
+                      ? 'text-yellow-600'
+                      : title === 'Suspended'
+                      ? 'text-red-600'
+                      : ''
+                  }`}
+                >
+                  {idx === 0
+                    ? counts.total
+                    : idx === 1
+                    ? counts.active
+                    : idx === 2
+                    ? counts.pending
+                    : counts.suspended}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
-        {/* Search */}
         <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <Input 
-            placeholder="Search sellers..." 
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Input
+            placeholder="Search sellers..."
             className="pl-10 bg-gray-50 border-gray-200"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={e => setSearchTerm(e.target.value)}
           />
         </div>
 
-        {/* Sellers Table */}
         <div className="bg-white rounded-lg shadow-sm border">
           <div className="p-6 border-b">
             <h2 className="text-xl font-semibold">All Sellers ({filteredSellers.length})</h2>
           </div>
-
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">SELLER</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">BUSINESS</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">CONTACT</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">STATUS</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">JOINED</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">ACTIONS</th>
+                {['SELLER', 'BUSINESS', 'CONTACT', 'STATUS', 'JOINED', 'ACTIONS'].map(col => (
+                  <th key={col} className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                    {col}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filteredSellers.length > 0 ? (
-                filteredSellers.map((seller) => (
+                filteredSellers.map(seller => (
                   <tr key={seller.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-purple-400 rounded-full flex items-center justify-center text-white font-medium">
-                          {seller.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <div className="font-medium">{seller.name}</div>
-                          <div className="text-sm text-gray-500">{seller.email}</div>
-                        </div>
+                    <td className="px-6 py-4 flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-purple-400 rounded-full flex items-center justify-center text-white font-medium">
+                        {seller.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="font-medium">{seller.name}</div>
+                        <div className="text-sm text-gray-500">{seller.email}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -238,58 +304,51 @@ const SellerManagement = () => {
                     <td className="px-6 py-4">
                       <div className="text-sm">{seller.phone}</div>
                     </td>
-                    <td className="px-6 py-4">
-                      {getStatusBadge(seller)}
-                    </td>
+                    <td className="px-6 py-4">{getStatusBadge(seller)}</td>
                     <td className="px-6 py-4 text-sm text-gray-900">
                       {new Date(seller.createdAt).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex space-x-2">
-                        {seller.sellerStatus === 'INACTIVE' && (
-                          <Button
-                            size="sm"
-                            className="bg-green-600 hover:bg-green-700"
-                            onClick={() => handleStatusUpdate(seller.id, 'ACTIVE')}
-                            disabled={updateSellerStatusMutation.isPending}
-                          >
-                            <CheckCircle className="w-4 h-4 mr-1" />
-                            Approve
-                          </Button>
-                        )}
-                        
-                        {seller.sellerStatus === 'ACTIVE' && seller.isActive && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-red-200 text-red-600 hover:bg-red-50"
-                            onClick={() => handleStatusUpdate(seller.id, 'SUSPENDED')}
-                            disabled={updateSellerStatusMutation.isPending}
-                          >
-                            <XCircle className="w-4 h-4 mr-1" />
-                            Suspend
-                          </Button>
-                        )}
-                        
-                        {(seller.sellerStatus === 'SUSPENDED' || !seller.isActive) && (
-                          <Button
-                            size="sm"
-                            className="bg-blue-600 hover:bg-blue-700"
-                            onClick={() => handleStatusUpdate(seller.id, 'ACTIVE')}
-                            disabled={updateSellerStatusMutation.isPending}
-                          >
-                            <Clock className="w-4 h-4 mr-1" />
-                            Reactivate
-                          </Button>
-                        )}
-                      </div>
+                    <td className="px-6 py-4 flex space-x-2">
+                      {seller.sellerStatus === 'INACTIVE' && (
+                        <Button
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700"
+                          onClick={() => handleStatusUpdate(seller.id, 'ACTIVE')}
+                          disabled={updateSellerStatusMutation.isLoading}
+                        >
+                          <CheckCircle className="w-4 h-4 mr-1" /> Approve
+                        </Button>
+                      )}
+                      {seller.sellerStatus === 'ACTIVE' && seller.isActive && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-red-200 text-red-600 hover:bg-red-50"
+                          onClick={() => handleStatusUpdate(seller.id, 'SUSPENDED')}
+                          disabled={updateSellerStatusMutation.isLoading}
+                        >
+                          <XCircle className="w-4 h-4 mr-1" /> Suspend
+                        </Button>
+                      )}
+                      {(seller.sellerStatus === 'SUSPENDED' || !seller.isActive) && (
+                        <Button
+                          size="sm"
+                          className="bg-blue-600 hover:bg-blue-700"
+                          onClick={() => handleStatusUpdate(seller.id, 'ACTIVE')}
+                          disabled={updateSellerStatusMutation.isLoading}
+                        >
+                          <Clock className="w-4 h-4 mr-1" /> Reactivate
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
                   <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                    {searchTerm ? `No sellers found matching "${searchTerm}"` : 'No sellers found'}
+                    {searchTerm
+                      ? `No sellers found matching "${searchTerm}"`
+                      : 'No sellers found'}
                   </td>
                 </tr>
               )}

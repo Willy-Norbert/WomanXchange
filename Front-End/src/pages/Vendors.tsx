@@ -67,7 +67,7 @@ const Vendors = () => {
     refetchInterval: 5000, // Refetch every 5 seconds for live updates
   });
 
-  const createVendorMutation = useMutation({
+ const createVendorMutation = useMutation({
     mutationFn: async (data: CreateVendorData) => {
       console.log('Creating vendor:', data);
       const response = await api.post('/auth/register', data);
@@ -91,7 +91,7 @@ const Vendors = () => {
         variant: "destructive",
       });
     }
-  });
+  }); 
 
   // Filter vendors from the users data
   const allUsers = usersData?.data || [];
