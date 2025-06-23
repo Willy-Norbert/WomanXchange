@@ -2,11 +2,12 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { StatsCard } from '@/components/dashboard/StatsCard';
-import { BarChart3, Clock, Users, Package } from 'lucide-react';
+import { BarChart3, Clock, Users, Package, Plus, Eye } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { AuthContext } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/api/api';
 
@@ -39,6 +40,21 @@ interface SellerOrder {
   }>;
 }
 
+interface SellerProduct {
+  id: number;
+  name: string;
+  price: number;
+  stock: number;
+  coverImage: string;
+  category: {
+    name: string;
+  };
+  _count: {
+    orderItems: number;
+    reviews: number;
+  };
+}
+
 const VendorDashboard = () => {
   const { t } = useLanguage();
   const { user, loading } = useContext(AuthContext);
@@ -58,6 +74,7 @@ const VendorDashboard = () => {
     }
   }, [user, loading, navigate]);
 
+  // Fetch seller-specific stats
   const { data: statsData, isLoading: statsLoading } = useQuery({
     queryKey: ['seller-stats'],
     queryFn: async () => {
@@ -67,10 +84,31 @@ const VendorDashboard = () => {
     enabled: !!user && user.role === 'SELLER',
   });
 
+  // Fetch seller-specific orders
   const { data: ordersData, isLoading: ordersLoading } = useQuery({
     queryKey: ['seller-orders'],
     queryFn: async () => {
       const response = await api.get('/sellers/my-orders');
+      return response.data;
+    },
+    enabled: !!user && user.role === 'SELLER',
+  });
+
+  // Fetch seller-specific products
+  const { data: productsData, isLoading: productsLoading } = useQuery({
+    queryKey: ['seller-products'],
+    queryFn: async () => {
+      const response = await api.get('/sellers/my-products');
+      return response.data;
+    },
+    enabled: !!user && user.role === 'SELLER',
+  });
+
+  // Fetch seller-specific customers
+  const { data: customersData, isLoading: customersLoading } = useQuery({
+    queryKey: ['seller-customers'],
+    queryFn: async () => {
+      const response = await api.get('/sellers/my-customers');
       return response.data;
     },
     enabled: !!user && user.role === 'SELLER',
@@ -82,11 +120,29 @@ const VendorDashboard = () => {
 
   const stats: SellerStats = statsData || { totalProducts: 0, totalOrders: 0, totalRevenue: 0, totalCustomers: 0 };
   const recentOrders: SellerOrder[] = (ordersData || []).slice(0, 5);
+  const products: SellerProduct[] = (productsData || []).slice(0, 5);
+  const customers = (customersData || []).slice(0, 5);
 
   return (
     <DashboardLayout currentPage="dashboard">
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-gray-900">{t('admin.sidebar.dashboard')}</h1>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h1 className="text-2xl font-bold text-gray-900">Seller Dashboard</h1>
+          <div className="flex gap-2">
+            <Link to="/admin-products">
+              <Button className="bg-blue-600 hover:bg-blue-700">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Product
+              </Button>
+            </Link>
+            <Link to="/customers">
+              <Button variant="outline">
+                <Eye className="w-4 h-4 mr-2" />
+                View All Customers
+              </Button>
+            </Link>
+          </div>
+        </div>
         
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -98,7 +154,7 @@ const VendorDashboard = () => {
           />
           <StatsCard
             title="Total Revenue"
-            value={statsLoading ? "..." : `$${stats.totalRevenue.toFixed(2)}`}
+            value={statsLoading ? "..." : `${stats.totalRevenue.toLocaleString()} Rwf`}
             icon={Clock}
             color="text-green-500"
           />
@@ -116,20 +172,49 @@ const VendorDashboard = () => {
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Summary Sales Chart */}
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg font-medium">{t('dashboard.summary_sales')}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-64 bg-gradient-to-r from-purple-100 to-purple-50 rounded-lg flex items-center justify-center">
-                  <p className="text-gray-500">{t('dashboard.chart_placeholder')}</p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* My Products */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-medium flex justify-between items-center">
+                My Products
+                <Link to="/admin-products">
+                  <Button variant="ghost" size="sm">View All</Button>
+                </Link>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {productsLoading ? (
+                <div className="flex items-center justify-center h-32">
+                  <div className="text-gray-500">Loading products...</div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              ) : products.length > 0 ? (
+                <div className="space-y-3">
+                  {products.map((product) => (
+                    <div key={product.id} className="flex items-center space-x-3 p-2 border rounded-lg">
+                      <img 
+                        src={product.coverImage} 
+                        alt={product.name}
+                        className="w-10 h-10 rounded object-cover"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>
+                        <p className="text-sm text-gray-500">{product.category.name}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium">{product.price.toLocaleString()} Rwf</p>
+                        <p className="text-xs text-gray-500">Stock: {product.stock}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  No products found. <Link to="/admin-products" className="text-blue-600 underline">Create your first product</Link>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Revenue Overview */}
           <Card>
@@ -140,13 +225,21 @@ const VendorDashboard = () => {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Total Revenue</span>
-                  <span className="font-semibold">${stats.totalRevenue.toFixed(2)}</span>
+                  <span className="font-semibold">{stats.totalRevenue.toLocaleString()} Rwf</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Avg. Order Value</span>
                   <span className="font-semibold">
-                    ${stats.totalOrders > 0 ? (stats.totalRevenue / stats.totalOrders).toFixed(2) : '0.00'}
+                    {stats.totalOrders > 0 ? (stats.totalRevenue / stats.totalOrders).toFixed(0) : '0'} Rwf
                   </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Total Orders</span>
+                  <span className="font-semibold">{stats.totalOrders}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Total Customers</span>
+                  <span className="font-semibold">{stats.totalCustomers}</span>
                 </div>
               </div>
             </CardContent>
@@ -156,7 +249,12 @@ const VendorDashboard = () => {
         {/* Recent Orders Table */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg font-medium">{t('dashboard.recent_orders')}</CardTitle>
+            <CardTitle className="text-lg font-medium flex justify-between items-center">
+              Recent Orders
+              <Link to="/orders">
+                <Button variant="ghost" size="sm">View All</Button>
+              </Link>
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {ordersLoading ? (
@@ -200,7 +298,7 @@ const VendorDashboard = () => {
                           {new Date(order.createdAt).toLocaleDateString()}
                         </td>
                         <td className="px-4 py-3 text-sm font-semibold">
-                          ${order.totalPrice.toFixed(2)}
+                          {order.totalPrice.toLocaleString()} Rwf
                         </td>
                         <td className="px-4 py-3">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -224,20 +322,52 @@ const VendorDashboard = () => {
           </CardContent>
         </Card>
 
-        {/* User Profile Update */}
-        <div className="mt-auto pt-8">
-          <div className="flex items-center space-x-3 px-4 py-3 bg-purple-100 rounded-lg max-w-xs">
-            <div className="w-12 h-12 bg-purple-300 rounded-full flex items-center justify-center">
-              <span className="text-purple-800 font-semibold">
-                {user.name.charAt(0).toUpperCase()}
-              </span>
-            </div>
-            <div>
-              <p className="text-purple-900 font-medium">{user.name}</p>
-              <p className="text-purple-700 text-sm">{t('dashboard.vendor_role')}</p>
-            </div>
-          </div>
-        </div>
+        {/* Recent Customers */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-medium flex justify-between items-center">
+              Recent Customers
+              <Link to="/customers">
+                <Button variant="ghost" size="sm">View All</Button>
+              </Link>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {customersLoading ? (
+              <div className="flex items-center justify-center h-32">
+                <div className="text-gray-500">Loading customers...</div>
+              </div>
+            ) : customers.length > 0 ? (
+              <div className="space-y-3">
+                {customers.map((customer: any) => (
+                  <div key={customer.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                        <span className="text-purple-600 font-medium">
+                          {customer.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{customer.name}</p>
+                        <p className="text-sm text-gray-500">{customer.email}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium">{customer._count.orders} orders</p>
+                      <p className="text-xs text-gray-500">
+                        Joined {new Date(customer.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                No customers found
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   );

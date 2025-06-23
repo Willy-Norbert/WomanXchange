@@ -20,7 +20,7 @@ router.post('/request', submitSellerRequest);
 router.get('/pending', protect, authorizeRoles('admin'), getPendingSellers);
 router.put('/:sellerId/status', protect, authorizeRoles('admin'), updateSellerStatus);
 
-// Seller-specific routes
+// Seller-specific routes - ONLY for active sellers
 router.get('/my-products', protect, authorizeRoles('seller'), getSellerProducts);
 router.get('/my-customers', protect, authorizeRoles('seller'), getSellerCustomers);
 router.get('/my-orders', protect, authorizeRoles('seller'), getSellerOrders);

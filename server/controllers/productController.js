@@ -7,29 +7,47 @@ export const createProduct = asyncHandler(async (req, res) => {
   const { name, description, price, stock, categoryId, coverImage } = req.body;
   const productCoverImage = coverImage || 'https://aannet.org/global_graphics/default-store-350x350.jpg';
   
-  // Check if seller is active
-  const seller = await prisma.user.findUnique({
-    where: { id: req.user.id },
-    select: { sellerStatus: true, isActive: true }
-  });
+  console.log('Creating product for user:', req.user.id, 'Role:', req.user.role);
+  
+  // Check if seller is active (only for sellers, admins can create freely)
+  if (req.user.role.toLowerCase() === 'seller') {
+    const seller = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { sellerStatus: true, isActive: true }
+    });
 
-  if (seller.sellerStatus !== 'ACTIVE' || !seller.isActive) {
-    res.status(403);
-    throw new Error('Your seller account is not active. Please contact admin.');
+    console.log('Seller status check:', seller);
+
+    if (seller.sellerStatus !== 'ACTIVE' || !seller.isActive) {
+      res.status(403);
+      throw new Error('Your seller account is not active. Please contact admin.');
+    }
   }
   
   const product = await prisma.product.create({
     data: {
       name,
       description,
-      price,
-      stock,
-      categoryId,
+      price: parseFloat(price),
+      stock: parseInt(stock),
+      categoryId: parseInt(categoryId),
       coverImage: productCoverImage,
       createdById: req.user.id,
-      isVisible: true, // Products are visible only if seller is active
+      isVisible: true,
     },
+    include: {
+      category: true,
+      createdBy: {
+        select: {
+          id: true,
+          name: true,
+          businessName: true
+        }
+      }
+    }
   });
+
+  console.log('Product created successfully:', product.id);
 
   await notify({
     userId: req.user.id,
@@ -42,7 +60,28 @@ export const createProduct = asyncHandler(async (req, res) => {
 });
 
 export const getProducts = asyncHandler(async (req, res) => {
-  // Only return visible products from active sellers
+  // If it's a seller requesting, show only their products
+  if (req.user && req.user.role.toLowerCase() === 'seller') {
+    const products = await prisma.product.findMany({
+      where: {
+        createdById: req.user.id
+      },
+      include: { 
+        category: true,
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            businessName: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    return res.json(products);
+  }
+
+  // For public/admin access - only return visible products from active sellers
   const products = await prisma.product.findMany({
     where: {
       isVisible: true,
@@ -88,7 +127,12 @@ export const getProductById = asyncHandler(async (req, res) => {
     throw new Error('Product not found');
   }
 
-  // Check if product should be visible
+  // If user is the seller who owns this product, allow access regardless of visibility
+  if (req.user && req.user.role.toLowerCase() === 'seller' && product.createdById === req.user.id) {
+    return res.json(product);
+  }
+
+  // For other users, check if product should be visible
   if (!product.isVisible || 
       product.createdBy?.sellerStatus !== 'ACTIVE' || 
       !product.createdBy?.isActive) {
@@ -155,11 +199,21 @@ export const updateProduct = asyncHandler(async (req, res) => {
     data: {
       name: req.body.name,
       description: req.body.description,
-      price: req.body.price,
-      stock: req.body.stock,
+      price: parseFloat(req.body.price),
+      stock: parseInt(req.body.stock),
       coverImage: req.body.coverImage,
-      categoryId: req.body.categoryId,
+      categoryId: parseInt(req.body.categoryId),
     },
+    include: {
+      category: true,
+      createdBy: {
+        select: {
+          id: true,
+          name: true,
+          businessName: true
+        }
+      }
+    }
   });
 
   await notify({
