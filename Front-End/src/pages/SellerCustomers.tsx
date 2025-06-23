@@ -70,7 +70,10 @@ const SellerCustomers = () => {
     );
   }
 
-  const customers: SellerCustomer[] = customersData || [];
+  // Ensure customers is always an array
+  const customers: SellerCustomer[] = Array.isArray(customersData) ? customersData : [];
+
+  console.log('Seller customers data:', { customersData, customers });
 
   return (
     <DashboardLayout currentPage="customers">
@@ -111,7 +114,7 @@ const SellerCustomers = () => {
                 <ShoppingBag className="w-8 h-8 text-green-500" />
                 <div>
                   <p className="text-2xl font-bold">
-                    {customers.reduce((sum, customer) => sum + customer._count.orders, 0)}
+                    {customers.reduce((sum, customer) => sum + (customer._count?.orders || 0), 0)}
                   </p>
                   <p className="text-gray-600">Total Orders</p>
                 </div>
@@ -188,7 +191,7 @@ const SellerCustomers = () => {
                         </td>
                         <td className="px-4 py-3">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            {customer._count.orders} orders
+                            {customer._count?.orders || 0} orders
                           </span>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-900">
