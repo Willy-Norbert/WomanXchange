@@ -51,11 +51,13 @@ export const useDashboardData = (userRole?: string) => {
   });
 
   if (userRole?.toLowerCase() === 'seller') {
-    // Return seller-specific data
-    const sellerStats = sellerStatsData || { totalProducts: 0, totalOrders: 0, totalRevenue: 0, totalCustomers: 0 };
-    const sellerOrders = sellerOrdersData || [];
-    const sellerProducts = sellerProductsData || [];
-    const sellerCustomers = sellerCustomersData || [];
+    // Return seller-specific data with proper array handling
+    const sellerStats = sellerStatsData?.data || { totalProducts: 0, totalOrders: 0, totalRevenue: 0, totalCustomers: 0 };
+    const sellerOrders = Array.isArray(sellerOrdersData?.data) ? sellerOrdersData.data : [];
+    const sellerProducts = Array.isArray(sellerProductsData?.data) ? sellerProductsData.data : [];
+    const sellerCustomers = Array.isArray(sellerCustomersData?.data) ? sellerCustomersData.data : [];
+
+    console.log('Seller data:', { sellerStats, sellerOrders, sellerProducts, sellerCustomers });
 
     return {
       totalSales: Math.round(sellerStats.totalRevenue / 1000),
@@ -87,10 +89,12 @@ export const useDashboardData = (userRole?: string) => {
     };
   }
 
-  // Admin data (existing logic)
-  const orders = ordersData?.data || [];
-  const users = usersData?.data || [];
-  const products = productsData?.data || [];
+  // Admin data (existing logic) with proper array handling
+  const orders = Array.isArray(ordersData?.data) ? ordersData.data : [];
+  const users = Array.isArray(usersData?.data) ? usersData.data : [];
+  const products = Array.isArray(productsData?.data) ? productsData.data : [];
+
+  console.log('Admin data:', { orders, users, products });
 
   // Calculate statistics
   const totalRevenue = orders.reduce((sum: number, order: any) => sum + order.totalPrice, 0);
