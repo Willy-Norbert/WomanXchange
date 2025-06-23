@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
@@ -15,6 +14,7 @@ interface ProductFormProps {
   editingProduct: any;
   categories: any[];
   onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onUrlChange: (url: string) => void;
   previewImage: string | null;
   isLoading: boolean;
   onCancel: () => void;
@@ -25,6 +25,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   editingProduct,
   categories,
   onFileChange,
+  onUrlChange,
   previewImage,
   isLoading,
   onCancel
@@ -99,6 +100,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         <FormField name="coverImage" control={form.control} render={({ field }) => (
           <ImageUpload 
             onFileChange={onFileChange}
+            onUrlChange={onUrlChange}
             previewImage={previewImage}
             field={field}
           />

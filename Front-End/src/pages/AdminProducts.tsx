@@ -1,4 +1,3 @@
-
 import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
@@ -26,7 +25,9 @@ const AdminProducts = () => {
   const {
     selectedFile,
     previewImage,
+    imageUrl,
     handleFileChange,
+    handleUrlChange,
     uploadImage,
     resetImageUpload,
     setPreviewImage
@@ -57,7 +58,7 @@ const AdminProducts = () => {
     createProductMutation,
     updateProductMutation,
     deleteProductMutation
-  } = useProductMutations(uploadImage, selectedFile, resetForm);
+  } = useProductMutations(uploadImage, selectedFile, imageUrl, resetForm);
 
   const products = productsData?.data || [];
   const categories = categoriesData?.data || [];
@@ -123,6 +124,7 @@ const AdminProducts = () => {
                 editingProduct={editingProduct}
                 categories={categories}
                 onFileChange={handleFileChange}
+                onUrlChange={handleUrlChange}
                 previewImage={previewImage}
                 isLoading={createProductMutation.isPending || updateProductMutation.isPending}
                 onCancel={resetForm}

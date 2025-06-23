@@ -6,14 +6,15 @@ import { useLanguage } from '@/contexts/LanguageContext';
 export const useImageUpload = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string>('');
   const { toast } = useToast();
   const { t } = useLanguage();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      
       setSelectedFile(file);
+      setImageUrl(''); // Clear URL when file is selected
       
       // Create preview URL
       const reader = new FileReader();
@@ -24,18 +25,21 @@ export const useImageUpload = () => {
     }
   };
 
+  const handleUrlChange = (url: string) => {
+    setImageUrl(url);
+    setSelectedFile(null); // Clear file when URL is entered
+    setPreviewImage(url); // Set preview to the URL directly
+  };
+
   const uploadImage = async (file: File) => {
     try {
       console.log('Starting image upload...');
       
-      // Create a FormData object
       const formData = new FormData();
       formData.append('image', file);
       
-      // Get the token for authentication
       const token = localStorage.getItem('token');
       
-      // Send to your backend API endpoint using the correct base URL
       const response = await fetch('http://localhost:5000/api/upload', {
         method: 'POST',
         headers: {
@@ -54,7 +58,8 @@ export const useImageUpload = () => {
       
       const data = await response.json();
       console.log('Upload successful:', data);
-      return data.imagePath;
+      // Return the full URL for uploaded images
+      return `http://localhost:5000${data.imagePath}`;
     } catch (error) {
       console.error('Error uploading image:', error);
       throw error;
@@ -64,12 +69,15 @@ export const useImageUpload = () => {
   const resetImageUpload = () => {
     setSelectedFile(null);
     setPreviewImage(null);
+    setImageUrl('');
   };
 
   return {
     selectedFile,
     previewImage,
+    imageUrl,
     handleFileChange,
+    handleUrlChange,
     uploadImage,
     resetImageUpload,
     setPreviewImage
