@@ -48,9 +48,20 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     }
   }, [editingProduct, form]);
 
+  const handleSubmit = (data: CreateProductData) => {
+    // Ensure price and stock are numbers
+    const formattedData = {
+      ...data,
+      price: Number(data.price),
+      stock: Number(data.stock),
+      categoryId: Number(data.categoryId)
+    };
+    onSubmit(formattedData);
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
         <FormField name="name" control={form.control} render={({ field }) => (
           <FormItem>
             <FormLabel>{t('products.name')}</FormLabel>
@@ -70,7 +81,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             <FormItem>
               <FormLabel>{t('products.price')}</FormLabel>
               <FormControl>
-                <Input type="number" onChange={(e) => field.onChange(Number(e.target.value))} {...field} />
+                <Input type="number" step="0.01" {...field} onChange={(e) => field.onChange(e.target.value)} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -79,7 +90,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             <FormItem>
               <FormLabel>{t('products.stock')}</FormLabel>
               <FormControl>
-                <Input type="number" onChange={(e) => field.onChange(Number(e.target.value))} {...field} />
+                <Input type="number" {...field} onChange={(e) => field.onChange(e.target.value)} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -95,7 +106,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         <FormField name="categoryId" control={form.control} render={({ field }) => (
           <FormItem>
             <FormLabel>{t('products.category')}</FormLabel>
-            <Select onValueChange={(v) => field.onChange(Number(v))} defaultValue={field.value?.toString()}>
+            <Select onValueChange={(v) => field.onChange(v)} defaultValue={field.value?.toString()}>
               <FormControl>
                 <SelectTrigger><SelectValue placeholder={t('products.select_category')} /></SelectTrigger>
               </FormControl>

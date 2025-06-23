@@ -20,7 +20,6 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ onFileChange, previewI
         <div className="space-y-2">
           <Input 
             type="file" 
-            accept="image/*" 
             onChange={onFileChange}
           />
           {previewImage && (

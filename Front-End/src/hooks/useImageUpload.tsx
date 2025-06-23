@@ -13,27 +13,6 @@ export const useImageUpload = () => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       
-      // Validate file size (5MB limit)
-      if (file.size > 5 * 1024 * 1024) {
-        toast({ 
-          title: t('common.error'), 
-          description: 'File size must be less than 5MB', 
-          variant: 'destructive' 
-        });
-        return;
-      }
-      
-      // Validate file type
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-      if (!allowedTypes.includes(file.type)) {
-        toast({ 
-          title: t('common.error'), 
-          description: 'Only JPEG, PNG, GIF, and WebP images are allowed', 
-          variant: 'destructive' 
-        });
-        return;
-      }
-      
       setSelectedFile(file);
       
       // Create preview URL
