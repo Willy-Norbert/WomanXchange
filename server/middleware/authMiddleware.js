@@ -31,6 +31,8 @@ export const protect = asyncHandler(async (req, res, next) => {
           name: true,
           email: true,
           role: true,
+          sellerStatus: true,
+          isActive: true,
         },
       });
 
@@ -40,7 +42,7 @@ export const protect = asyncHandler(async (req, res, next) => {
         throw new Error('User not found');
       }
 
-      console.log('Auth middleware: User found:', user.email);
+      console.log('Auth middleware: User found:', user.email, 'Role:', user.role);
       req.user = user;
       next();
     } catch (error) {
@@ -58,17 +60,42 @@ export const protect = asyncHandler(async (req, res, next) => {
 // Role-based access control
 export const authorizeRoles = (...roles) => {
   return (req, res, next) => {
-    const userRole = req.user.role?.toLowerCase();  // 💡 normalize to lowercase
-    const allowedRoles = roles.map(r => r.toLowerCase()); // 💡 also normalize allowed roles
+    const userRole = req.user.role?.toLowerCase();
+    const allowedRoles = roles.map(r => r.toLowerCase());
+
+    console.log('Role authorization check:');
+    console.log('User role:', userRole);
+    console.log('Allowed roles:', allowedRoles);
+    console.log('User details:', {
+      id: req.user.id,
+      email: req.user.email,
+      role: req.user.role,
+      sellerStatus: req.user.sellerStatus,
+      isActive: req.user.isActive
+    });
+
+    // Special check for sellers - they must be active
+    if (userRole === 'seller') {
+      if (req.user.sellerStatus !== 'ACTIVE' || !req.user.isActive) {
+        console.log('Seller not active:', {
+          sellerStatus: req.user.sellerStatus,
+          isActive: req.user.isActive
+        });
+        res.status(403);
+        throw new Error('Your seller account is not active. Please contact admin.');
+      }
+    }
 
     if (!allowedRoles.includes(userRole)) {
+      console.log('Role authorization failed');
       res.status(403);
       throw new Error(`Role (${req.user.role}) not authorized`);
     }
+    
+    console.log('Role authorization passed');
     next();
   };
 };
-
 
 // Error handler middleware
 export const errorHandler = (err, req, res, next) => {

@@ -3,22 +3,91 @@ import { useQuery } from '@tanstack/react-query';
 import { getAllOrders } from '@/api/orders';
 import api from '@/api/api';
 
-export const useDashboardData = () => {
+export const useDashboardData = (userRole?: string) => {
+  // Only fetch admin data if user is admin
+  const isAdmin = userRole?.toLowerCase() === 'admin';
+  
   const { data: ordersData, isLoading: ordersLoading, error: ordersError } = useQuery({
     queryKey: ['dashboard-orders'],
-    queryFn: getAllOrders
+    queryFn: getAllOrders,
+    enabled: isAdmin
   });
 
   const { data: usersData, isLoading: usersLoading, error: usersError } = useQuery({
     queryKey: ['dashboard-users'],
-    queryFn: () => api.get('/auth/users')
+    queryFn: () => api.get('/auth/users'),
+    enabled: isAdmin
   });
 
   const { data: productsData, isLoading: productsLoading, error: productsError } = useQuery({
     queryKey: ['dashboard-products'],
-    queryFn: () => api.get('/products')
+    queryFn: () => api.get('/products'),
+    enabled: isAdmin
   });
 
+  // For sellers, fetch their specific data
+  const { data: sellerStatsData, isLoading: sellerStatsLoading, error: sellerStatsError } = useQuery({
+    queryKey: ['seller-stats'],
+    queryFn: () => api.get('/sellers/my-stats'),
+    enabled: userRole?.toLowerCase() === 'seller'
+  });
+
+  const { data: sellerOrdersData, isLoading: sellerOrdersLoading, error: sellerOrdersError } = useQuery({
+    queryKey: ['seller-orders'],
+    queryFn: () => api.get('/sellers/my-orders'),
+    enabled: userRole?.toLowerCase() === 'seller'
+  });
+
+  const { data: sellerProductsData, isLoading: sellerProductsLoading, error: sellerProductsError } = useQuery({
+    queryKey: ['seller-products'],
+    queryFn: () => api.get('/sellers/my-products'),
+    enabled: userRole?.toLowerCase() === 'seller'
+  });
+
+  const { data: sellerCustomersData, isLoading: sellerCustomersLoading, error: sellerCustomersError } = useQuery({
+    queryKey: ['seller-customers'],
+    queryFn: () => api.get('/sellers/my-customers'),
+    enabled: userRole?.toLowerCase() === 'seller'
+  });
+
+  if (userRole?.toLowerCase() === 'seller') {
+    // Return seller-specific data
+    const sellerStats = sellerStatsData || { totalProducts: 0, totalOrders: 0, totalRevenue: 0, totalCustomers: 0 };
+    const sellerOrders = sellerOrdersData || [];
+    const sellerProducts = sellerProductsData || [];
+    const sellerCustomers = sellerCustomersData || [];
+
+    return {
+      totalSales: Math.round(sellerStats.totalRevenue / 1000),
+      dailySales: sellerOrders.filter((order: any) => {
+        const orderDate = new Date(order.createdAt);
+        const today = new Date();
+        return orderDate.toDateString() === today.toDateString();
+      }).length,
+      dailyUsers: sellerCustomers.length,
+      totalProducts: sellerStats.totalProducts,
+      recentOrders: sellerOrders.slice(0, 10),
+      totalRevenue: sellerStats.totalRevenue,
+      paidRevenue: sellerOrders.filter((order: any) => order.isPaid).reduce((sum: number, order: any) => sum + order.totalPrice, 0),
+      totalOrders: sellerStats.totalOrders,
+      totalUsers: sellerStats.totalCustomers,
+      buyers: sellerStats.totalCustomers,
+      sellers: 0, // Sellers don't see other sellers
+      admins: 0, // Sellers don't see admin count
+      userRoleData: [
+        { name: 'My Customers', value: sellerStats.totalCustomers }
+      ],
+      monthlyOrdersData: [],
+      paymentStatusData: [
+        { name: 'Paid', value: sellerOrders.filter((order: any) => order.isPaid).length },
+        { name: 'Pending', value: sellerOrders.filter((order: any) => !order.isPaid).length }
+      ],
+      loading: sellerStatsLoading || sellerOrdersLoading || sellerProductsLoading || sellerCustomersLoading,
+      error: sellerStatsError || sellerOrdersError || sellerProductsError || sellerCustomersError ? 'Failed to load seller data' : null
+    };
+  }
+
+  // Admin data (existing logic)
   const orders = ordersData?.data || [];
   const users = usersData?.data || [];
   const products = productsData?.data || [];

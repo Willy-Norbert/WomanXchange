@@ -37,7 +37,7 @@ const Dashboard = () => {
     paymentStatusData,
     loading: dashboardLoading, 
     error 
-  } = useDashboardData();
+  } = useDashboardData(user?.role);
 
   useEffect(() => {
     console.log('🏠 Dashboard: useEffect - authLoading:', authLoading, 'user:', user);
@@ -97,14 +97,16 @@ const Dashboard = () => {
     );
   }
 
+  const isAdmin = user.role?.toLowerCase() === 'admin';
+  const isSeller = user.role?.toLowerCase() === 'seller';
+
   return (
     <DashboardLayout currentPage="dashboard">
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <h1 className="text-2xl font-bold text-gray-900">
-            {user.role === 'ADMIN' || user.role === 'admin' ? 'Admin Dashboard' : 'Seller Dashboard'}
+            {isAdmin ? 'Admin Dashboard' : 'Seller Dashboard'}
           </h1>
-       
         </div>
         
         {/* Stats Cards */}
@@ -128,7 +130,7 @@ const Dashboard = () => {
             color="text-purple-500"
           />
           <StatsCard
-            title="Total Users"
+            title={isSeller ? "My Customers" : "Total Users"}
             value={totalUsers.toString()}
             icon={Users}
             color="text-orange-500"
@@ -137,66 +139,75 @@ const Dashboard = () => {
 
         {/* Secondary Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      
           <StatsCard
-            title="Products"
+            title={isSeller ? "My Products" : "Products"}
             value={totalProducts.toString()}
             icon={Package}
             color="text-green-500"
           />
-          <StatsCard
-            title="Buyers"
-            value={buyers.toString()}
-            icon={Users}
-            color="text-purple-500"
-          />
-          <StatsCard
-            title="Sellers"
-            value={sellers.toString()}
-            icon={BarChart3}
-            color="text-orange-500"
-          />
+          {isAdmin && (
+            <>
+              <StatsCard
+                title="Buyers"
+                value={buyers.toString()}
+                icon={Users}
+                color="text-purple-500"
+              />
+              <StatsCard
+                title="Sellers"
+                value={sellers.toString()}
+                icon={BarChart3}
+                color="text-orange-500"
+              />
+            </>
+          )}
         </div>
 
-        {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <ChartComponent
-            type="bar"
-            data={monthlyOrdersData}
-            title="Monthly Orders"
-            dataKey="orders"
-            height={300}
-          />
-          <ChartComponent
-            type="pie"
-            data={userRoleData}
-            title="User Roles Distribution"
-            dataKey="value"
-            height={300}
-          />
-        </div>
+        {/* Charts Section - Only for Admin */}
+        {isAdmin && (
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <ChartComponent
+                type="bar"
+                data={monthlyOrdersData}
+                title="Monthly Orders"
+                dataKey="orders"
+                height={300}
+              />
+              <ChartComponent
+                type="pie"
+                data={userRoleData}
+                title="User Roles Distribution"
+                dataKey="value"
+                height={300}
+              />
+            </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <ChartComponent
-            type="line"
-            data={monthlyOrdersData}
-            title="Monthly Revenue Trend"
-            dataKey="revenue"
-            height={300}
-          />
-          <ChartComponent
-            type="pie"
-            data={paymentStatusData}
-            title="Payment Status"
-            dataKey="value"
-            height={300}
-          />
-        </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <ChartComponent
+                type="line"
+                data={monthlyOrdersData}
+                title="Monthly Revenue Trend"
+                dataKey="revenue"
+                height={300}
+              />
+              <ChartComponent
+                type="pie"
+                data={paymentStatusData}
+                title="Payment Status"
+                dataKey="value"
+                height={300}
+              />
+            </div>
+          </>
+        )}
 
         {/* Recent Orders Table */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg font-medium">Recent Orders</CardTitle>
+            <CardTitle className="text-lg font-medium">
+              {isSeller ? "My Recent Orders" : "Recent Orders"}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -244,7 +255,7 @@ const Dashboard = () => {
                   ) : (
                     <tr>
                       <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                        No orders found
+                        {isSeller ? "No orders found for your products" : "No orders found"}
                       </td>
                     </tr>
                   )}
@@ -302,22 +313,34 @@ const Dashboard = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg font-medium">User Statistics</CardTitle>
+              <CardTitle className="text-lg font-medium">
+                {isSeller ? "My Statistics" : "User Statistics"}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Total Users:</span>
+                  <span className="text-gray-600">{isSeller ? "My Customers:" : "Total Users:"}</span>
                   <span className="font-bold">{totalUsers}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Buyers:</span>
-                  <span className="font-bold text-purple-600">{buyers}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Sellers:</span>
-                  <span className="font-bold text-blue-600">{sellers}</span>
-                </div>
+                {isAdmin && (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Buyers:</span>
+                      <span className="font-bold text-purple-600">{buyers}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Sellers:</span>
+                      <span className="font-bold text-blue-600">{sellers}</span>
+                    </div>
+                  </>
+                )}
+                {isSeller && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">My Products:</span>
+                    <span className="font-bold text-green-600">{totalProducts}</span>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -5,7 +5,7 @@ import { AuthContext } from '../contexts/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, Mail, Phone, Calendar, ShoppingBag } from 'lucide-react';
+import { Search, Mail, Phone, Calendar, ShoppingBag, Users } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/api/api';
 import { useLanguage } from '@/contexts/LanguageContext';

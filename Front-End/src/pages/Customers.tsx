@@ -31,7 +31,7 @@ const Customers = () => {
     return <SellerCustomers />;
   }
 
-  // Admin view - show all users
+  // Admin view - show all users (only if user is admin)
   const { data: usersData, isLoading, error } = useQuery({
     queryKey: ['all-users'],
     queryFn: async () => {
@@ -42,6 +42,12 @@ const Customers = () => {
   });
 
   if (!user || user.role === 'buyer') {
+    return null;
+  }
+
+  // If user is not admin, redirect to dashboard
+  if (user.role !== 'ADMIN') {
+    navigate('/dashboard');
     return null;
   }
 
