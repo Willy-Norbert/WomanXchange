@@ -29,6 +29,7 @@ import AdminProducts from "./pages/AdminProducts";
 import AdminCategories from "./pages/AdminCategories";
 import { AuthProvider } from './contexts/AuthContext'; 
 import { LanguageProvider } from './contexts/LanguageContext';
+import AboutUs from '@/pages/About';
 
 const queryClient = new QueryClient();
 
@@ -46,6 +47,7 @@ const App = () => (
               <Route path="/categories" element={<Categories />} />
               <Route path="/product/:id" element={<SingleProduct />} />
               <Route path="/contact" element={<Contact />} />
+              <Route path="/about" element={<AboutUs />} />
               
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
