@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -18,6 +17,10 @@ model User {
   address   String?
   bio       String?
   company   String?
+  businessName String?
+  gender    String?
+  isActive  Boolean   @default(true)
+  sellerStatus SellerStatus @default(INACTIVE)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
@@ -35,6 +38,12 @@ enum Role {
   SELLER
 }
 
+enum SellerStatus {
+  INACTIVE
+  ACTIVE
+  SUSPENDED
+}
+
 model Product {
   id           Int       @id @default(autoincrement())
   name         String
@@ -48,6 +57,7 @@ model Product {
   createdById  Int?
   averageRating Float    @default(0)
   numReviews   Int       @default(0)
+  isVisible    Boolean   @default(true)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
