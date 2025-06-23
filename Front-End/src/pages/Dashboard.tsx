@@ -5,7 +5,7 @@ import { AuthContext } from '../contexts/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { ChartComponent } from '@/components/dashboard/ChartComponent';
-import { BarChart3, Clock, Users, Package, Plus, DollarSign, ShoppingCart, TrendingUp } from 'lucide-react';
+import { BarChart3, Clock, Users, Package, Plus,  ShoppingCart, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useDashboardData } from '@/hooks/useDashboardData';
@@ -114,7 +114,7 @@ const Dashboard = () => {
           <StatsCard
             title="Total Revenue"
             value={`${totalRevenue.toLocaleString()} Rwf`}
-            icon={DollarSign}
+            icon={TrendingUp}
             color="text-green-500"
           />
           <StatsCard
