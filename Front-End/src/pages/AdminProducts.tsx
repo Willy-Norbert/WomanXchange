@@ -25,6 +25,8 @@ const AdminProducts = () => {
   const queryClient = useQueryClient();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const form = useForm<CreateProductData>({
     defaultValues: {
@@ -52,12 +54,60 @@ const AdminProducts = () => {
     queryFn: getCategories
   });
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSelectedFile(file);
+      
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadImage = async (file: File) => {
+    try {
+      // Create a FormData object
+      const formData = new FormData();
+      formData.append('image', file);
+      
+      // Send to your backend API endpoint
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error('Image upload failed');
+      }
+      
+      const data = await response.json();
+      return data.imagePath; // This should be the path where the image is saved in public folder
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      throw error;
+    }
+  };
+
   const createProductMutation = useMutation({
-    mutationFn: createProduct,
+    mutationFn: async (data: CreateProductData) => {
+      let imageUrl = data.coverImage;
+      
+      if (selectedFile) {
+        imageUrl = await uploadImage(selectedFile);
+      }
+      
+      return createProduct({ ...data, coverImage: imageUrl });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       setIsCreateModalOpen(false);
       form.reset();
+      setSelectedFile(null);
+      setPreviewImage(null);
       toast({ title: t('common.success'), description: t('products.created') });
     },
     onError: () => {
@@ -66,11 +116,21 @@ const AdminProducts = () => {
   });
 
   const updateProductMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<CreateProductData> }) => updateProduct(id, data),
+    mutationFn: async ({ id, data }: { id: string; data: Partial<CreateProductData> }) => {
+      let imageUrl = data.coverImage;
+      
+      if (selectedFile) {
+        imageUrl = await uploadImage(selectedFile);
+      }
+      
+      return updateProduct(id, { ...data, coverImage: imageUrl });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       setEditingProduct(null);
       form.reset();
+      setSelectedFile(null);
+      setPreviewImage(null);
       toast({ title: t('common.success'), description: t('products.updated') });
     },
     onError: () => {
@@ -101,6 +161,7 @@ const AdminProducts = () => {
   const handleEdit = (product: any) => {
     setEditingProduct(product);
     form.reset({ ...product });
+    setPreviewImage(product.coverImage);
     setIsCreateModalOpen(true);
   };
 
@@ -113,6 +174,8 @@ const AdminProducts = () => {
   const resetForm = () => {
     setEditingProduct(null);
     form.reset();
+    setSelectedFile(null);
+    setPreviewImage(null);
     setIsCreateModalOpen(false);
   };
 
@@ -193,7 +256,26 @@ const AdminProducts = () => {
                   <FormField name="coverImage" control={form.control} render={({ field }) => (
                     <FormItem>
                       <FormLabel>{t('products.image')}</FormLabel>
-                      <FormControl><Input {...field} /></FormControl>
+                      <FormControl>
+                        <div className="space-y-2">
+                          <Input 
+                            type="file" 
+                            accept="image/*" 
+                            onChange={handleFileChange}
+                          />
+                          {previewImage && (
+                            <div className="mt-2">
+                              <img 
+                                src={previewImage} 
+                                alt="Preview" 
+                                className="w-32 h-32 object-cover rounded"
+                              />
+                            </div>
+                          )}
+                          {/* Hidden input to maintain form values */}
+                          <input type="hidden" {...field} />
+                        </div>
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
@@ -250,7 +332,13 @@ const AdminProducts = () => {
                 <tbody className="divide-y divide-gray-200">
                   {products.length > 0 ? products.map((product) => (
                     <tr key={product.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3"><img src={product.coverImage} className="w-12 h-12 object-cover rounded" /></td>
+                      <td className="px-4 py-3">
+                        <img 
+                          src={product.coverImage} 
+                          className="w-12 h-12 object-cover rounded" 
+                          alt={product.name}
+                        />
+                      </td>
                       <td className="px-4 py-3">{product.name}</td>
                       <td className="px-4 py-3">{product.category?.name || 'N/A'}</td>
                       <td className="px-4 py-3">{product.price.toLocaleString()} Rwf</td>
