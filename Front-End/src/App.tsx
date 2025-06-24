@@ -10,6 +10,7 @@ import { Toaster } from '@/components/ui/toaster';
 import Index from './pages/Index';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import CommunityChat from './pages/CommunityChat';
 import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
 import AdminProducts from './pages/AdminProducts';
@@ -59,8 +60,9 @@ function App() {
               <Route path="/terms" element={<Terms />} />
 
               {/* Protected routes */}
+              <Route path="/community-chat" element={<CommunityChat />} />
               <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/admin/products" element={<AdminProducts />} />
+    
               <Route path="/admin/categories" element={<AdminCategories />} />
               <Route path="/categories" element={<Categories />} />
               <Route path="/orders" element={<Orders />} />

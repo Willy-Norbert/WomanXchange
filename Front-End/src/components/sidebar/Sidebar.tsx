@@ -10,7 +10,7 @@ interface SidebarProps {
 
 const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3, path: '/dashboard', roles: ['admin', 'seller'] },
-  { id: 'customers', label: 'Customers', icon: Users, path: '/customers', roles: ['admin', 'seller'] },
+  { id: 'customers', label: 'Users', icon: Users, path: '/user-management', roles: ['admin', 'seller'] },
   // { id: 'vendors', label: 'Vendors', icon: UserCheck, path: '/vendors', roles: ['admin'] },
   { id: 'seller-management', label: 'Vendor', icon: Settings, path: '/seller-management', roles: ['admin'] },
   { id: 'community-chat', label: 'Community Chat', icon: MessageSquare, path: '/community-chat', roles: ['admin', 'seller'] },

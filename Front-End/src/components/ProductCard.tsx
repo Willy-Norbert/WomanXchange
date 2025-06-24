@@ -37,7 +37,7 @@ const ProductCard = ({ id, image, title, price, originalPrice, rating = 5 }: Pro
   };
 
   return (
-    <Link to={`/product/${id}`} className="block">
+    <Link to={`/products/${id}`} className="block">
       <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 group hover:scale-105">
         <div className="relative overflow-hidden rounded-t-xl">
           <img 

@@ -78,6 +78,7 @@ const App = () => {
               <Route path="/chat" element={<CommunityChat />} />
               
               {/* Dashboard Routes */}
+                      <Route path="/community-chat" element={<CommunityChat />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/admin/products" element={<AdminProducts />} />
               <Route path="/admin/categories" element={<AdminCategories />} />
