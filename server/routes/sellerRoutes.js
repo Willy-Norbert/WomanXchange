@@ -11,19 +11,19 @@ import {
 } from '../controllers/sellerController.js';
 import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
 
-const router = express.Router();
+const sellerRouter = express.Router();
 
-// Public route for seller requests
-router.post('/request', submitSellerRequest);
+// Public route for seller registration
+sellerRouter.post('/request', submitSellerRequest);
 
 // Admin routes for managing sellers
-router.get('/pending', protect, authorizeRoles('admin'), getPendingSellers);
-router.put('/:sellerId/status', protect, authorizeRoles('admin'), updateSellerStatus);
+sellerRouter.get('/pending', protect, authorizeRoles('admin'), getPendingSellers);
+sellerRouter.put('/:sellerId/status', protect, authorizeRoles('admin'), updateSellerStatus);
 
-// Seller-specific routes - ONLY for active sellers
-router.get('/my-products', protect, authorizeRoles('seller'), getSellerProducts);
-router.get('/my-customers', protect, authorizeRoles('seller'), getSellerCustomers);
-router.get('/my-orders', protect, authorizeRoles('seller'), getSellerOrders);
-router.get('/my-stats', protect, authorizeRoles('seller'), getSellerStats);
+// Seller-specific routes
+sellerRouter.get('/my-stats', protect, authorizeRoles('seller'), getSellerStats);
+sellerRouter.get('/my-orders', protect, authorizeRoles('seller'), getSellerOrders);
+sellerRouter.get('/my-products', protect, authorizeRoles('seller'), getSellerProducts);
+sellerRouter.get('/my-customers', protect, authorizeRoles('seller'), getSellerCustomers);
 
-export default router;
+export default sellerRouter;

@@ -69,7 +69,7 @@ export const addToCart = asyncHandler(async (req, res) => {
     }
   });
 
-  console.log('Returning updated cart with full product details:', JSON.stringify(updatedCart, null, 2));
+  console.log('Returning updated cart with full product details');
   res.json({ data: updatedCart, cartId: cart.id });
 });
 
@@ -176,7 +176,7 @@ export const getCart = asyncHandler(async (req, res) => {
     }
   }
 
-  console.log('Returning cart data with full product details:', JSON.stringify({ data: cart || { items: [] } }, null, 2));
+  console.log('Returning cart data');
   res.json({ data: cart || { items: [] }, cartId: cart?.id });
 });
 
@@ -184,6 +184,8 @@ export const getCart = asyncHandler(async (req, res) => {
 export const placeOrder = asyncHandler(async (req, res) => {
   const userId = req.user.id;
   const { shippingAddress, paymentMethod } = req.body;
+
+  console.log('Placing order for user:', userId);
 
   const cart = await prisma.cart.findUnique({
     where: { userId },
@@ -217,11 +219,15 @@ export const placeOrder = asyncHandler(async (req, res) => {
       }
     },
     include: {
-      items: true,
+      items: { include: { product: true } },
+      user: { select: { id: true, name: true, email: true } }
     }
   });
 
+  // Clear cart after order
   await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
+
+  console.log('Order created successfully:', order.id);
 
   await notify({
     userId,
@@ -237,34 +243,127 @@ export const placeOrder = asyncHandler(async (req, res) => {
 export const getUserOrders = asyncHandler(async (req, res) => {
   const userId = req.user.id;
 
+  console.log('Getting orders for user:', userId);
+
   const orders = await prisma.order.findMany({
     where: { userId },
     include: {
-      items: { include: { product: true } }
+      items: { include: { product: true } },
+      user: { select: { id: true, name: true, email: true } }
     },
     orderBy: { createdAt: 'desc' }
   });
 
+  console.log('User orders found:', orders.length);
   res.json(orders);
 });
 
 // Admin: Get All Orders
 export const getAllOrders = asyncHandler(async (req, res) => {
+  console.log('Getting all orders for admin/seller, user role:', req.user?.role);
+  
+  let whereClause = {};
+  
+  // If seller, only get orders for their products
+  if (req.user.role.toLowerCase() === 'seller') {
+    whereClause = {
+      items: {
+        some: {
+          product: {
+            createdById: req.user.id
+          }
+        }
+      }
+    };
+  }
+  
   const orders = await prisma.order.findMany({
+    where: whereClause,
     include: {
       user: { select: { id: true, name: true, email: true } },
-      items: { include: { product: true } }
+      items: { 
+        include: { 
+          product: {
+            include: {
+              createdBy: {
+                select: {
+                  id: true,
+                  name: true,
+                  businessName: true
+                }
+              }
+            }
+          }
+        } 
+      }
     },
     orderBy: { createdAt: 'desc' }
   });
+  
+  console.log('All orders found:', orders.length);
   res.json(orders);
 });
 
-// Admin: Confirm Order Payment
-export const confirmOrderPayment = asyncHandler(async (req, res) => {
-  const orderId = Number(req.params.id);
+// Update Order Status (Admin/Seller)
+export const updateOrderStatus = asyncHandler(async (req, res) => {
+  const orderId = parseInt(req.params.id);
+  const { isPaid, isDelivered } = req.body;
 
-  const order = await prisma.order.findUnique({ where: { id: orderId } });
+  console.log('Updating order status:', orderId, { isPaid, isDelivered });
+
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: { user: true }
+  });
+
+  if (!order) {
+    res.status(404);
+    throw new Error('Order not found');
+  }
+
+  const updateData = {};
+  if (typeof isPaid === 'boolean') {
+    updateData.isPaid = isPaid;
+    if (isPaid) updateData.paidAt = new Date();
+  }
+  if (typeof isDelivered === 'boolean') {
+    updateData.isDelivered = isDelivered;
+    if (isDelivered) updateData.deliveredAt = new Date();
+  }
+
+  const updatedOrder = await prisma.order.update({
+    where: { id: orderId },
+    data: updateData,
+    include: {
+      user: { select: { id: true, name: true, email: true } },
+      items: { include: { product: true } }
+    }
+  });
+
+  console.log('Order status updated successfully');
+
+  // Notify user of status change
+  await notify({
+    userId: req.user.id,
+    message: `Order #${orderId} status updated.`,
+    recipientRole: 'BUYER',
+    relatedOrderId: orderId,
+  });
+
+  res.json(updatedOrder);
+});
+
+// Confirm Order Payment (Admin)
+export const confirmOrderPayment = asyncHandler(async (req, res) => {
+  const orderId = parseInt(req.params.id);
+
+  console.log('Confirming payment for order:', orderId);
+
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: { user: true }
+  });
+
   if (!order) {
     res.status(404);
     throw new Error('Order not found');
@@ -278,49 +377,20 @@ export const confirmOrderPayment = asyncHandler(async (req, res) => {
       isConfirmedByAdmin: true,
       confirmedAt: new Date()
     },
+    include: {
+      user: { select: { id: true, name: true, email: true } },
+      items: { include: { product: true } }
+    }
   });
 
+  console.log('Payment confirmed successfully');
+
+  // Notify user of payment confirmation
   await notify({
-    userId: order.userId,
-    message: `Your payment for Order #${order.id} has been confirmed by admin.`,
+    userId: req.user.id,
+    message: `Payment confirmed for order #${orderId}.`,
     recipientRole: 'BUYER',
-    relatedOrderId: order.id,
-  });
-
-  res.json(updatedOrder);
-});
-
-// Admin: Update Order Status (paid, delivered)
-export const updateOrderStatus = asyncHandler(async (req, res) => {
-  const orderId = Number(req.params.id);
-  const { isPaid, isDelivered } = req.body;
-
-  const order = await prisma.order.findUnique({ where: { id: orderId } });
-  if (!order) {
-    res.status(404);
-    throw new Error('Order not found');
-  }
-
-  const dataToUpdate = {};
-  if (typeof isPaid === 'boolean') {
-    dataToUpdate.isPaid = isPaid;
-    if (isPaid) dataToUpdate.paidAt = new Date();
-  }
-  if (typeof isDelivered === 'boolean') {
-    dataToUpdate.isDelivered = isDelivered;
-    if (isDelivered) dataToUpdate.deliveredAt = new Date();
-  }
-
-  const updatedOrder = await prisma.order.update({
-    where: { id: orderId },
-    data: dataToUpdate,
-  });
-
-  await notify({
-    userId: order.userId,
-    message: `Order #${order.id} status updated by admin.`,
-    recipientRole: 'BUYER',
-    relatedOrderId: order.id,
+    relatedOrderId: orderId,
   });
 
   res.json(updatedOrder);
