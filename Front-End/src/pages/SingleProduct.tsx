@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams } from 'react-router-dom';
 import { Star, Heart, ShoppingCart, Plus, Minus } from 'lucide-react';
@@ -15,7 +16,7 @@ const SingleProduct = () => {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
   const { user } = useContext(AuthContext);
-  const { addToCart, isAddingToCart, refetchCart } = useCart();
+  const { addToCart, isAddingToCart } = useCart();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
@@ -41,20 +42,15 @@ const SingleProduct = () => {
         const response = await getProductById(id);
         console.log('Product fetch response:', response);
         
-        // Handle the response data structure correctly
-        const productData = response.data?.data || response.data;
-        
-        if (productData) {
-          setProduct(productData);
-          console.log('Product loaded successfully:', productData);
+        if (response.data) {
+          setProduct(response.data);
+          console.log('Product loaded successfully:', response.data);
         } else {
           throw new Error('No product data received');
         }
       } catch (err: any) {
         console.error('Error fetching product:', err);
-        const errorMessage = err.response?.status === 404 
-          ? 'Product not found' 
-          : err.response?.data?.message || err.message || 'Failed to load product';
+        const errorMessage = err.response?.data?.message || err.message || 'Failed to load product';
         setError(errorMessage);
         
         toast({
@@ -74,20 +70,12 @@ const SingleProduct = () => {
     if (!product) return;
     
     try {
-      console.log('Adding product to cart:', product.id, 'quantity:', quantity);
       await addToCart({ productId: product.id, quantity });
-      
-      // Force cart refetch to update badge
-      setTimeout(() => {
-        refetchCart();
-      }, 500);
-      
       toast({
         title: "Success",
         description: `${product.name} added to cart`,
       });
     } catch (err: any) {
-      console.error('Add to cart error:', err);
       toast({
         title: "Error",
         description: err.response?.data?.message || "Failed to add to cart",

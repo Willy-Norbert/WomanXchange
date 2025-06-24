@@ -1,21 +1,12 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { useCart } from '@/hooks/useCart';
 
 const CartBadge = () => {
-  const { cartItemsCount, isLoading, refetchCart } = useCart();
-
-  // Auto-refresh cart data periodically
-  useEffect(() => {
-    const interval = setInterval(() => {
-      refetchCart();
-    }, 5000); // Refresh every 5 seconds
-
-    return () => clearInterval(interval);
-  }, [refetchCart]);
+  const { cartItemsCount, isLoading } = useCart();
 
   console.log('CartBadge render - cartItemsCount:', cartItemsCount, 'isLoading:', isLoading);
 

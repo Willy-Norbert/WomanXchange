@@ -17,13 +17,12 @@ productRouter.route('/')
   .get(getProducts)
   .post(protect, authorizeRoles('seller', 'admin'), createProduct);
 
-// Make sure this route comes BEFORE the /:productId/reviews route
 productRouter.route('/:id')
   .get(getProductById)
   .put(protect, authorizeRoles('seller', 'admin'), updateProduct)
   .delete(protect, authorizeRoles('seller', 'admin'), deleteProduct);
 
-// Nested review routes - must come AFTER individual product routes
+// Nested review routes
 productRouter.use('/:productId/reviews', reviewRoutes);
 
 export default productRouter;

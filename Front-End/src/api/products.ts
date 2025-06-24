@@ -28,10 +28,7 @@ export interface CreateProductData {
 
 export const getProducts = () => api.get<Product[]>('/products');
 
-export const getProductById = (id: string) => {
-  console.log('API: Fetching product with ID:', id);
-  return api.get<Product>(`/products/${id}`);
-};
+export const getProductById = (id: string) => api.get<Product>(`/products/${id}`);
 
 export const createProduct = (data: CreateProductData) => 
   api.post<Product>('/products', data);

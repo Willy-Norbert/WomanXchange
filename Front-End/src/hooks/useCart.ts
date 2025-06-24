@@ -36,15 +36,15 @@ export const useCart = () => {
       console.log('useCart query: calling getCart with cartId:', cartId, 'user:', !!user);
       return getCart(cartId);
     },
-    staleTime: 500, // Very short stale time for immediate updates
-    gcTime: 5 * 60 * 1000,
+    staleTime: 1000, // Reduced stale time for more frequent updates
+    gcTime: 10 * 60 * 1000,
     retry: 1,
     refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 
-  // Extract cart data from the response - handle different response structures
-  const cart = cartResponse?.data?.data || cartResponse?.data;
+  // Extract cart data from the response
+  const cart = cartResponse?.data?.data;
 
   console.log('useCart hook state:', {
     user: !!user,
@@ -75,11 +75,7 @@ export const useCart = () => {
       
       // Invalidate and refetch cart queries immediately
       queryClient.invalidateQueries({ queryKey: ['cart'] });
-      
-      // Force immediate refetch
-      setTimeout(() => {
-        refetch();
-      }, 100);
+      refetch(); // Force immediate refetch
       
       toast({
         title: "Added to cart",
@@ -104,12 +100,7 @@ export const useCart = () => {
     onSuccess: () => {
       console.log('Remove from cart success');
       queryClient.invalidateQueries({ queryKey: ['cart'] });
-      
-      // Force immediate refetch
-      setTimeout(() => {
-        refetch();
-      }, 100);
-      
+      refetch(); // Force immediate refetch
       toast({
         title: "Item removed",
         description: "Item has been removed from your cart",
