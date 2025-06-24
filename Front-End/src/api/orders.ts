@@ -68,7 +68,7 @@ export interface CreateOrderData {
 }
 
 export const getCart = (cartId?: number | null) => {
-  console.log('Getting cart with cartId:', cartId);
+  console.log('API: Getting cart with cartId:', cartId);
   const params = cartId ? { cartId: cartId.toString() } : {};
   return api.get<Cart>('/orders/cart', { params });
 };
@@ -91,22 +91,40 @@ export const placeOrder = (data: PlaceOrderData) =>
 export const createOrder = (data: CreateOrderData) =>
   api.post<Order>('/orders/create', data);
 
-export const getUserOrders = () => api.get<Order[]>('/orders');
+export const getUserOrders = () => {
+  console.log('API: Getting user orders');
+  return api.get<Order[]>('/orders');
+};
 
-export const getAllOrders = () => api.get<Order[]>('/orders/all');
+export const getAllOrders = () => {
+  console.log('API: Getting all orders');
+  return api.get<Order[]>('/orders/all');
+};
 
 // Get individual order by ID
-export const getOrderById = (id: number) => api.get<Order>(`/orders/${id}`);
+export const getOrderById = (id: number) => {
+  console.log('API: Getting order by ID:', id);
+  return api.get<Order>(`/orders/${id}`);
+};
 
-export const updateOrderStatus = (id: number, isPaid?: boolean, isDelivered?: boolean) =>
-  api.put(`/orders/${id}/status`, { isPaid, isDelivered });
+export const updateOrderStatus = (id: number, isPaid?: boolean, isDelivered?: boolean) => {
+  console.log('API: Updating order status:', id, { isPaid, isDelivered });
+  return api.put(`/orders/${id}/status`, { isPaid, isDelivered });
+};
 
-export const confirmOrderPayment = (id: number) =>
-  api.put(`/orders/${id}/confirm-payment`);
+export const confirmOrderPayment = (id: number) => {
+  console.log('API: Confirming order payment:', id);
+  return api.put(`/orders/${id}/confirm-payment`);
+};
 
 // Delete order (Admin only)
-export const deleteOrder = (id: number) => api.delete(`/orders/${id}`);
+export const deleteOrder = (id: number) => {
+  console.log('API: Deleting order:', id);
+  return api.delete(`/orders/${id}`);
+};
 
 // Update order (Admin only)
-export const updateOrder = (id: number, data: Partial<CreateOrderData>) =>
-  api.put(`/orders/${id}`, data);
+export const updateOrder = (id: number, data: Partial<CreateOrderData>) => {
+  console.log('API: Updating order:', id, data);
+  return api.put(`/orders/${id}`, data);
+};

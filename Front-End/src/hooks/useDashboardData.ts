@@ -12,9 +12,11 @@ export const useDashboardData = (userRole?: string) => {
   
   const { data: ordersData, isLoading: ordersLoading, error: ordersError } = useQuery({
     queryKey: ['dashboard-orders', userRole],
-    queryFn: () => {
+    queryFn: async () => {
       console.log('Fetching orders for role:', userRole);
-      return getAllOrders();
+      const response = await getAllOrders();
+      console.log('Orders response:', response);
+      return response;
     },
     enabled: isAdmin || isSeller,
     retry: 2,
@@ -23,9 +25,11 @@ export const useDashboardData = (userRole?: string) => {
 
   const { data: usersData, isLoading: usersLoading, error: usersError } = useQuery({
     queryKey: ['dashboard-users'],
-    queryFn: () => {
+    queryFn: async () => {
       console.log('Fetching users data');
-      return api.get('/auth/users');
+      const response = await api.get('/auth/users');
+      console.log('Users response:', response);
+      return response;
     },
     enabled: isAdmin,
     retry: 2,
@@ -34,9 +38,11 @@ export const useDashboardData = (userRole?: string) => {
 
   const { data: productsData, isLoading: productsLoading, error: productsError } = useQuery({
     queryKey: ['dashboard-products', userRole],
-    queryFn: () => {
+    queryFn: async () => {
       console.log('Fetching products data');
-      return api.get('/products');
+      const response = await api.get('/products');
+      console.log('Products response:', response);
+      return response;
     },
     enabled: isAdmin || isSeller,
     retry: 2,
@@ -46,9 +52,11 @@ export const useDashboardData = (userRole?: string) => {
   // For sellers, fetch their specific data
   const { data: sellerStatsData, isLoading: sellerStatsLoading, error: sellerStatsError } = useQuery({
     queryKey: ['seller-stats'],
-    queryFn: () => {
+    queryFn: async () => {
       console.log('Fetching seller stats');
-      return api.get('/sellers/my-stats');
+      const response = await api.get('/sellers/my-stats');
+      console.log('Seller stats response:', response);
+      return response;
     },
     enabled: isSeller,
     retry: 2,
@@ -57,9 +65,11 @@ export const useDashboardData = (userRole?: string) => {
 
   const { data: sellerOrdersData, isLoading: sellerOrdersLoading, error: sellerOrdersError } = useQuery({
     queryKey: ['seller-orders'],
-    queryFn: () => {
+    queryFn: async () => {
       console.log('Fetching seller orders');
-      return api.get('/sellers/my-orders');
+      const response = await api.get('/sellers/my-orders');
+      console.log('Seller orders response:', response);
+      return response;
     },
     enabled: isSeller,
     retry: 2,
@@ -68,9 +78,11 @@ export const useDashboardData = (userRole?: string) => {
 
   const { data: sellerProductsData, isLoading: sellerProductsLoading, error: sellerProductsError } = useQuery({
     queryKey: ['seller-products'],
-    queryFn: () => {
+    queryFn: async () => {
       console.log('Fetching seller products');
-      return api.get('/sellers/my-products');
+      const response = await api.get('/sellers/my-products');
+      console.log('Seller products response:', response);
+      return response;
     },
     enabled: isSeller,
     retry: 2,
@@ -79,9 +91,11 @@ export const useDashboardData = (userRole?: string) => {
 
   const { data: sellerCustomersData, isLoading: sellerCustomersLoading, error: sellerCustomersError } = useQuery({
     queryKey: ['seller-customers'],
-    queryFn: () => {
+    queryFn: async () => {
       console.log('Fetching seller customers');
-      return api.get('/sellers/my-customers');
+      const response = await api.get('/sellers/my-customers');
+      console.log('Seller customers response:', response);
+      return response;
     },
     enabled: isSeller,
     retry: 2,
@@ -128,11 +142,24 @@ export const useDashboardData = (userRole?: string) => {
   }
 
   // Admin data (existing logic) with proper array handling and error checking
-  const orders = Array.isArray(ordersData?.data) ? ordersData.data : [];
-  const users = Array.isArray(usersData?.data) ? usersData.data : [];
-  const products = Array.isArray(productsData?.data) ? productsData.data : [];
+  // Handle different response structures for orders data
+  const ordersArray = ordersData?.data?.data || ordersData?.data || [];
+  const orders = Array.isArray(ordersArray) ? ordersArray : [];
+  
+  const usersArray = usersData?.data?.data || usersData?.data || [];
+  const users = Array.isArray(usersArray) ? usersArray : [];
+  
+  const productsArray = productsData?.data?.data || productsData?.data || [];
+  const products = Array.isArray(productsArray) ? productsArray : [];
 
-  console.log('Admin data processed:', { orders: orders.length, users: users.length, products: products.length });
+  console.log('Admin data processed:', { 
+    orders: orders.length, 
+    users: users.length, 
+    products: products.length,
+    ordersData: ordersData?.data,
+    usersData: usersData?.data,
+    productsData: productsData?.data
+  });
 
   // Calculate statistics
   const totalRevenue = orders.reduce((sum: number, order: any) => sum + (order.totalPrice || 0), 0);
