@@ -7,7 +7,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AuthContext } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
-import { getProductReviews, createProductReview } from '@/api/reviews';
+import api from '@/api/api';
+
+interface Review {
+  id: number;
+  rating: number;
+  comment: string;
+  user: {
+    name: string;
+  };
+  createdAt: string;
+}
 
 interface ProductReviewsProps {
   productId: string;
@@ -25,16 +35,23 @@ const ProductReviews = ({ productId }: ProductReviewsProps) => {
   // Fetch reviews from backend
   const { data: reviewsData, isLoading, error } = useQuery({
     queryKey: ['reviews', productId],
-    queryFn: () => getProductReviews(productId),
+    queryFn: async () => {
+      console.log('Fetching reviews for product:', productId);
+      const response = await api.get(`/products/${productId}/reviews`);
+      console.log('Reviews response:', response.data);
+      return response;
+    }
   });
 
   const reviews = reviewsData?.data || [];
 
   // Submit review mutation
   const submitReviewMutation = useMutation({
-    mutationFn: (reviewData: { rating: number; comment: string }) => {
+    mutationFn: async (reviewData: { rating: number; comment: string }) => {
       console.log('Submitting review:', reviewData, 'for product:', productId);
-      return createProductReview(productId, reviewData);
+      const response = await api.post(`/products/${productId}/reviews`, reviewData);
+      console.log('Review submission response:', response.data);
+      return response;
     },
     onSuccess: () => {
       toast({
@@ -45,7 +62,6 @@ const ProductReviews = ({ productId }: ProductReviewsProps) => {
       setRating(5);
       setShowForm(false);
       queryClient.invalidateQueries({ queryKey: ['reviews', productId] });
-      queryClient.invalidateQueries({ queryKey: ['all-reviews'] }); // Refresh testimonial section
     },
     onError: (error: any) => {
       console.error('Review submission error:', error);
@@ -192,7 +208,7 @@ const ProductReviews = ({ productId }: ProductReviewsProps) => {
         {/* Reviews List */}
         <div className="space-y-4">
           {reviews.length > 0 ? (
-            reviews.map((review: any) => (
+            reviews.map((review: Review) => (
               <div key={review.id} className="border-b pb-4 last:border-b-0">
                 <div className="flex items-center space-x-3 mb-2">
                   <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">

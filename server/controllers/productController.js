@@ -60,11 +60,8 @@ export const createProduct = asyncHandler(async (req, res) => {
 });
 
 export const getProducts = asyncHandler(async (req, res) => {
-  console.log('Getting products - User:', req.user?.id, 'Role:', req.user?.role);
-  
   // If it's a seller requesting, show only their products
   if (req.user && req.user.role.toLowerCase() === 'seller') {
-    console.log('Fetching products for seller:', req.user.id);
     const products = await prisma.product.findMany({
       where: {
         createdById: req.user.id
@@ -81,16 +78,15 @@ export const getProducts = asyncHandler(async (req, res) => {
       },
       orderBy: { createdAt: 'desc' }
     });
-    console.log('Seller products found:', products.length);
     return res.json(products);
   }
 
-  // For public/admin access - return visible products from active sellers
-  console.log('Fetching public products');
+  // For public/admin access - only return visible products from active sellers
   const products = await prisma.product.findMany({
     where: {
       isVisible: true,
       createdBy: {
+        sellerStatus: 'ACTIVE',
         isActive: true
       }
     },
@@ -104,10 +100,7 @@ export const getProducts = asyncHandler(async (req, res) => {
         }
       }
     },
-    orderBy: { createdAt: 'desc' }
   });
-  
-  console.log('Public products found:', products.length);
   res.json(products);
 });
 
