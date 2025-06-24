@@ -7,6 +7,9 @@ export interface User {
   email: string;
   role: string;
   phone?: string;
+  address?: string;
+  bio?: string;
+  company?: string;
   isActive: boolean;
   sellerStatus?: string;
   businessName?: string;
@@ -17,11 +20,32 @@ export interface UpdateUserData {
   name?: string;
   email?: string;
   role?: string;
+  phone?: string;
+  address?: string;
+  bio?: string;
+  company?: string;
   isActive?: boolean;
+}
+
+export interface CreateUserData {
+  name: string;
+  email: string;
+  role: string;
+  password: string;
+  phone?: string;
+  address?: string;
+  bio?: string;
+  company?: string;
 }
 
 // Get all users (Admin only)
 export const getAllUsers = () => api.get<User[]>('/auth/users');
+
+// Get single user (Admin only)
+export const getUser = (userId: number) => api.get<User>(`/auth/users/${userId}`);
+
+// Create user (Admin only)
+export const createUser = (data: CreateUserData) => api.post<User>('/auth/users', data);
 
 // Delete user (Admin only)
 export const deleteUser = (userId: number) => api.delete(`/auth/users/${userId}`);

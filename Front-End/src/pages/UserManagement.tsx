@@ -12,18 +12,16 @@ import {
   Eye, 
   Users, 
   UserPlus,
-  UserMinus,
-  Shield
+  Plus
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getAllUsers, deleteUser, updateUser, User, UpdateUserData } from '@/api/users';
+import { getAllUsers, getUser, createUser, deleteUser, updateUser, User, UpdateUserData, CreateUserData } from '@/api/users';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   Form,
@@ -49,12 +47,34 @@ const UserManagement = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  const form = useForm<UpdateUserData>();
+  const editForm = useForm<UpdateUserData>();
+  const createForm = useForm<CreateUserData>();
 
   const { data: usersData, isLoading, error } = useQuery({
     queryKey: ['users'],
     queryFn: getAllUsers,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: createUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setIsCreateModalOpen(false);
+      createForm.reset();
+      toast({
+        title: "Success",
+        description: "User created successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to create user",
+        variant: "destructive",
+      });
+    },
   });
 
   const deleteMutation = useMutation({
@@ -81,7 +101,7 @@ const UserManagement = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setIsEditModalOpen(false);
-      form.reset();
+      editForm.reset();
       toast({
         title: "Success",
         description: "User updated successfully",
@@ -110,10 +130,14 @@ const UserManagement = () => {
 
   const handleEdit = (user: User) => {
     setSelectedUser(user);
-    form.reset({
+    editForm.reset({
       name: user.name,
       email: user.email,
       role: user.role.toLowerCase(),
+      phone: user.phone || '',
+      address: user.address || '',
+      bio: user.bio || '',
+      company: user.company || '',
       isActive: user.isActive,
     });
     setIsEditModalOpen(true);
@@ -124,10 +148,14 @@ const UserManagement = () => {
     setIsViewModalOpen(true);
   };
 
-  const onSubmit = (data: UpdateUserData) => {
+  const onEditSubmit = (data: UpdateUserData) => {
     if (selectedUser) {
       updateMutation.mutate({ userId: selectedUser.id, data });
     }
+  };
+
+  const onCreateSubmit = (data: CreateUserData) => {
+    createMutation.mutate(data);
   };
 
   const getRoleBadge = (role: string) => {
@@ -138,25 +166,6 @@ const UserManagement = () => {
     };
     return roleColors[role.toLowerCase() as keyof typeof roleColors] || 'bg-gray-100 text-gray-800';
   };
-
-  const getStatusBadge = (user: User) => {
-    if (user.role.toLowerCase() === 'seller') {
-      return user.isActive && user.sellerStatus === 'ACTIVE' ? (
-        <Badge className="bg-green-100 text-green-800">Active</Badge>
-      ) : (
-        <Badge className="bg-yellow-100 text-yellow-800">Inactive</Badge>
-      );
-    }
-    return user.isActive ? (
-      <Badge className="bg-green-100 text-green-800">Active</Badge>
-    ) : (
-      <Badge className="bg-red-100 text-red-800">Inactive</Badge>
-    );
-  };
-
-  const buyers = users.filter((u: User) => u.role.toLowerCase() === 'buyer');
-  const sellers = users.filter((u: User) => u.role.toLowerCase() === 'seller');
-  const admins = users.filter((u: User) => u.role.toLowerCase() === 'admin');
 
   if (isLoading) {
     return (
@@ -181,57 +190,12 @@ const UserManagement = () => {
   return (
     <DashboardLayout currentPage="user-management">
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-2">
-                <Users className="w-8 h-8 text-purple-500" />
-                <div>
-                  <p className="text-2xl font-bold">{users.length}</p>
-                  <p className="text-gray-600">Total Users</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-2">
-                <UserPlus className="w-8 h-8 text-green-500" />
-                <div>
-                  <p className="text-2xl font-bold">{buyers.length}</p>
-                  <p className="text-gray-600">Buyers</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-2">
-                <UserMinus className="w-8 h-8 text-blue-500" />
-                <div>
-                  <p className="text-2xl font-bold">{sellers.length}</p>
-                  <p className="text-gray-600">Sellers</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-2">
-                <Shield className="w-8 h-8 text-red-500" />
-                <div>
-                  <p className="text-2xl font-bold">{admins.length}</p>
-                  <p className="text-gray-600">Admins</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
+          <Button onClick={() => setIsCreateModalOpen(true)} className="bg-purple-600 hover:bg-purple-700">
+            <Plus className="w-4 h-4 mr-2" />
+            Create User
+          </Button>
         </div>
 
         {/* Search */}
@@ -259,7 +223,6 @@ const UserManagement = () => {
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Email</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Role</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Status</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Joined</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Actions</th>
                   </tr>
                 </thead>
@@ -287,9 +250,10 @@ const UserManagement = () => {
                           {user.role}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3">{getStatusBadge(user)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900">
-                        {new Date(user.createdAt).toLocaleDateString()}
+                      <td className="px-4 py-3">
+                        <Badge className={user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                          {user.isActive ? 'Active' : 'Inactive'}
+                        </Badge>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex space-x-2">
@@ -328,16 +292,111 @@ const UserManagement = () => {
           </CardContent>
         </Card>
 
+        {/* Create User Modal */}
+        <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Create New User</DialogTitle>
+            </DialogHeader>
+            <Form {...createForm}>
+              <form onSubmit={createForm.handleSubmit(onCreateSubmit)} className="space-y-4">
+                <FormField
+                  control={createForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} required />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={createForm.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input type="email" {...field} required />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={createForm.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" {...field} required />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={createForm.control}
+                  name="role"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Role</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select role" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="buyer">Buyer</SelectItem>
+                          <SelectItem value="seller">Seller</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex gap-2 pt-4">
+                  <Button
+                    type="submit"
+                    disabled={createMutation.isPending}
+                    className="flex-1"
+                  >
+                    {createMutation.isPending ? 'Creating...' : 'Create User'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    type="button"
+                    onClick={() => setIsCreateModalOpen(false)}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+
         {/* Edit User Modal */}
         <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Edit User</DialogTitle>
             </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <Form {...editForm}>
+              <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
                 <FormField
-                  control={form.control}
+                  control={editForm.control}
                   name="name"
                   render={({ field }) => (
                     <FormItem>
@@ -351,7 +410,7 @@ const UserManagement = () => {
                 />
                 
                 <FormField
-                  control={form.control}
+                  control={editForm.control}
                   name="email"
                   render={({ field }) => (
                     <FormItem>
@@ -365,7 +424,7 @@ const UserManagement = () => {
                 />
 
                 <FormField
-                  control={form.control}
+                  control={editForm.control}
                   name="role"
                   render={({ field }) => (
                     <FormItem>
@@ -433,12 +492,20 @@ const UserManagement = () => {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">Status</label>
-                  <div>{getStatusBadge(selectedUser)}</div>
+                  <Badge className={selectedUser.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                    {selectedUser.isActive ? 'Active' : 'Inactive'}
+                  </Badge>
                 </div>
-                {selectedUser.businessName && (
+                {selectedUser.phone && (
                   <div>
-                    <label className="text-sm font-medium text-gray-700">Business Name</label>
-                    <p className="text-sm text-gray-900">{selectedUser.businessName}</p>
+                    <label className="text-sm font-medium text-gray-700">Phone</label>
+                    <p className="text-sm text-gray-900">{selectedUser.phone}</p>
+                  </div>
+                )}
+                {selectedUser.address && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Address</label>
+                    <p className="text-sm text-gray-900">{selectedUser.address}</p>
                   </div>
                 )}
                 <div>

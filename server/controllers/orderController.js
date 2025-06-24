@@ -1,4 +1,3 @@
-
 import asyncHandler from 'express-async-handler';
 import prisma from '../prismaClient.js';
 import { notify } from '../utils/notify.js';
@@ -239,6 +238,64 @@ export const placeOrder = asyncHandler(async (req, res) => {
   res.status(201).json(order);
 });
 
+// Create Order by Admin/Seller
+export const createOrder = asyncHandler(async (req, res) => {
+  const { userId, shippingAddress, paymentMethod, items, totalPrice } = req.body;
+
+  console.log('Creating order for user:', userId, 'by:', req.user.role);
+
+  // Validate user exists
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    res.status(404);
+    throw new Error('User not found');
+  }
+
+  // If seller, validate they can only create orders with their products
+  if (req.user.role.toLowerCase() === 'seller') {
+    const productIds = items.map(item => item.productId);
+    const products = await prisma.product.findMany({
+      where: { 
+        id: { in: productIds },
+        createdById: req.user.id
+      }
+    });
+    
+    if (products.length !== productIds.length) {
+      res.status(403);
+      throw new Error('You can only create orders with your own products');
+    }
+  }
+
+  const order = await prisma.order.create({
+    data: {
+      userId,
+      shippingAddress,
+      paymentMethod,
+      totalPrice,
+      isPaid: false,
+      items: {
+        create: items
+      }
+    },
+    include: {
+      items: { include: { product: true } },
+      user: { select: { id: true, name: true, email: true } }
+    }
+  });
+
+  console.log('Order created successfully by admin/seller:', order.id);
+
+  await notify({
+    userId: req.user.id,
+    message: `Order #${order.id} created by ${req.user.role} for user ${user.name}.`,
+    recipientRole: 'BUYER',
+    relatedOrderId: order.id,
+  });
+
+  res.status(201).json(order);
+});
+
 // Get User Orders
 export const getUserOrders = asyncHandler(async (req, res) => {
   const userId = req.user.id;
@@ -302,6 +359,92 @@ export const getAllOrders = asyncHandler(async (req, res) => {
   
   console.log('All orders found:', orders.length);
   res.json(orders);
+});
+
+// Update Order (Admin/Seller)
+export const updateOrder = asyncHandler(async (req, res) => {
+  const orderId = parseInt(req.params.id);
+  const { userId, shippingAddress, paymentMethod, items, totalPrice } = req.body;
+
+  console.log('Updating order:', orderId);
+
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: { user: true, items: true }
+  });
+
+  if (!order) {
+    res.status(404);
+    throw new Error('Order not found');
+  }
+
+  // Update order details
+  const updateData = {};
+  if (userId) updateData.userId = userId;
+  if (shippingAddress) updateData.shippingAddress = shippingAddress;
+  if (paymentMethod) updateData.paymentMethod = paymentMethod;
+  if (totalPrice) updateData.totalPrice = totalPrice;
+
+  // Update order
+  const updatedOrder = await prisma.order.update({
+    where: { id: orderId },
+    data: updateData,
+    include: {
+      user: { select: { id: true, name: true, email: true } },
+      items: { include: { product: true } }
+    }
+  });
+
+  // Update items if provided
+  if (items && items.length > 0) {
+    // Delete existing items
+    await prisma.orderItem.deleteMany({
+      where: { orderId }
+    });
+
+    // Create new items
+    await prisma.orderItem.createMany({
+      data: items.map(item => ({
+        orderId,
+        productId: item.productId,
+        quantity: item.quantity,
+        price: item.price
+      }))
+    });
+  }
+
+  console.log('Order updated successfully');
+
+  res.json(updatedOrder);
+});
+
+// Delete Order (Admin only)
+export const deleteOrder = asyncHandler(async (req, res) => {
+  const orderId = parseInt(req.params.id);
+
+  console.log('Deleting order:', orderId);
+
+  const order = await prisma.order.findUnique({
+    where: { id: orderId }
+  });
+
+  if (!order) {
+    res.status(404);
+    throw new Error('Order not found');
+  }
+
+  // Delete order items first
+  await prisma.orderItem.deleteMany({
+    where: { orderId }
+  });
+
+  // Delete order
+  await prisma.order.delete({
+    where: { id: orderId }
+  });
+
+  console.log('Order deleted successfully');
+  res.json({ message: 'Order deleted successfully' });
 });
 
 // Update Order Status (Admin/Seller)
