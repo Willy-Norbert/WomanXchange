@@ -1,6 +1,60 @@
+
 import asyncHandler from 'express-async-handler';
 import prisma from '../prismaClient.js';
 import { notify } from '../utils/notify.js';
+
+// Get Order by ID (Admin/Seller)
+export const getOrderById = asyncHandler(async (req, res) => {
+  const orderId = parseInt(req.params.id);
+
+  console.log('Getting order by ID:', orderId, 'for user role:', req.user?.role);
+
+  let whereClause = { id: orderId };
+  
+  // If seller, only get orders for their products
+  if (req.user.role.toLowerCase() === 'seller') {
+    whereClause = {
+      id: orderId,
+      items: {
+        some: {
+          product: {
+            createdById: req.user.id
+          }
+        }
+      }
+    };
+  }
+
+  const order = await prisma.order.findFirst({
+    where: whereClause,
+    include: {
+      user: { select: { id: true, name: true, email: true } },
+      items: { 
+        include: { 
+          product: {
+            include: {
+              createdBy: {
+                select: {
+                  id: true,
+                  name: true,
+                  businessName: true
+                }
+              }
+            }
+          }
+        } 
+      }
+    }
+  });
+
+  if (!order) {
+    res.status(404);
+    throw new Error('Order not found');
+  }
+
+  console.log('Order found:', order.id);
+  res.json(order);
+});
 
 // Add or Update Product in Cart (no authentication required)
 export const addToCart = asyncHandler(async (req, res) => {
@@ -368,14 +422,30 @@ export const updateOrder = asyncHandler(async (req, res) => {
 
   console.log('Updating order:', orderId);
 
-  const order = await prisma.order.findUnique({
-    where: { id: orderId },
+  let whereClause = { id: orderId };
+  
+  // If seller, only update orders for their products
+  if (req.user.role.toLowerCase() === 'seller') {
+    whereClause = {
+      id: orderId,
+      items: {
+        some: {
+          product: {
+            createdById: req.user.id
+          }
+        }
+      }
+    };
+  }
+
+  const order = await prisma.order.findFirst({
+    where: whereClause,
     include: { user: true, items: true }
   });
 
   if (!order) {
     res.status(404);
-    throw new Error('Order not found');
+    throw new Error('Order not found or unauthorized');
   }
 
   // Update order details
@@ -454,14 +524,30 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
 
   console.log('Updating order status:', orderId, { isPaid, isDelivered });
 
-  const order = await prisma.order.findUnique({
-    where: { id: orderId },
+  let whereClause = { id: orderId };
+  
+  // If seller, only update orders for their products
+  if (req.user.role.toLowerCase() === 'seller') {
+    whereClause = {
+      id: orderId,
+      items: {
+        some: {
+          product: {
+            createdById: req.user.id
+          }
+        }
+      }
+    };
+  }
+
+  const order = await prisma.order.findFirst({
+    where: whereClause,
     include: { user: true }
   });
 
   if (!order) {
     res.status(404);
-    throw new Error('Order not found');
+    throw new Error('Order not found or unauthorized');
   }
 
   const updateData = {};

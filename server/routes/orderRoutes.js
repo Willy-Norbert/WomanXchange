@@ -11,7 +11,8 @@ import {
   updateOrderStatus,
   updateOrder,
   deleteOrder,
-  confirmOrderPayment
+  confirmOrderPayment,
+  getOrderById
 } from '../controllers/orderController.js';
 import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
 
@@ -33,7 +34,10 @@ orderRouter.post('/create', protect, authorizeRoles('admin', 'seller'), createOr
 
 // Admin routes
 orderRouter.get('/all', protect, authorizeRoles('admin', 'seller'), getAllOrders);
+
+// Individual order operations
 orderRouter.route('/:id')
+  .get(protect, authorizeRoles('admin', 'seller'), getOrderById)
   .put(protect, authorizeRoles('admin', 'seller'), updateOrder)
   .delete(protect, authorizeRoles('admin'), deleteOrder);
 

@@ -95,6 +95,9 @@ export const getUserOrders = () => api.get<Order[]>('/orders');
 
 export const getAllOrders = () => api.get<Order[]>('/orders/all');
 
+// Get individual order by ID
+export const getOrderById = (id: number) => api.get<Order>(`/orders/${id}`);
+
 export const updateOrderStatus = (id: number, isPaid?: boolean, isDelivered?: boolean) =>
   api.put(`/orders/${id}/status`, { isPaid, isDelivered });
 
