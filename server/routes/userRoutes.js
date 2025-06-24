@@ -5,6 +5,8 @@ import {
   authUser, 
   verifyToken, 
   getAllUsers, 
+  getUser,
+  createUser,
   deleteUser,
   updateUser,
   logoutUser, 
@@ -28,8 +30,13 @@ router.get('/profile', protect, getUserProfile);
 router.put('/profile', protect, updateUserProfile);
 
 // Admin only routes
-router.get('/users', protect, authorizeRoles('admin'), getAllUsers);
-router.delete('/users/:userId', protect, authorizeRoles('admin'), deleteUser);
-router.put('/users/:userId', protect, authorizeRoles('admin'), updateUser);
+router.route('/users')
+  .get(protect, authorizeRoles('admin'), getAllUsers)
+  .post(protect, authorizeRoles('admin'), createUser);
+
+router.route('/users/:userId')
+  .get(protect, authorizeRoles('admin'), getUser)
+  .put(protect, authorizeRoles('admin'), updateUser)
+  .delete(protect, authorizeRoles('admin'), deleteUser);
 
 export default router;

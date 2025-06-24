@@ -1,4 +1,3 @@
-
 import asyncHandler from 'express-async-handler';
 import prisma from '../prismaClient.js';
 import generateToken from '../utils/generateToken.js';
@@ -161,6 +160,84 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
   });
 
   res.json(updatedUser);
+});
+
+// Get single user (Admin only)
+export const getUser = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  
+  console.log('Getting user:', userId);
+  
+  const user = await prisma.user.findUnique({
+    where: { id: parseInt(userId) },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      phone: true,
+      address: true,
+      bio: true,
+      company: true,
+      isActive: true,
+      sellerStatus: true,
+      businessName: true,
+      createdAt: true
+    }
+  });
+
+  if (!user) {
+    res.status(404);
+    throw new Error('User not found');
+  }
+
+  console.log('User found successfully');
+  res.json(user);
+});
+
+// Create user (Admin only)
+export const createUser = asyncHandler(async (req, res) => {
+  const { name, email, password, role, phone, address, bio, company } = req.body;
+  
+  console.log('Creating user:', email);
+
+  const userExists = await prisma.user.findUnique({ where: { email } });
+  if (userExists) {
+    res.status(400);
+    throw new Error('User already exists');
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  const user = await prisma.user.create({
+    data: {
+      name,
+      email,
+      password: hashedPassword,
+      role: role.toUpperCase(),
+      ...(phone && { phone }),
+      ...(address && { address }),
+      ...(bio && { bio }),
+      ...(company && { company })
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      phone: true,
+      address: true,
+      bio: true,
+      company: true,
+      isActive: true,
+      sellerStatus: true,
+      businessName: true,
+      createdAt: true
+    }
+  });
+
+  console.log('User created successfully');
+  res.status(201).json(user);
 });
 
 // Get all users (Admin only)
