@@ -283,5 +283,5 @@ enum FileType {
   PDF
   AUDIO
   VIDEO
-  DOCUMENT
+  DOCUMENT
 }
