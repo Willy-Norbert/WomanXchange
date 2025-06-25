@@ -1,4 +1,3 @@
-
 import asyncHandler from 'express-async-handler';
 import prisma from '../prismaClient.js';
 import { notify } from '../utils/notify.js';
@@ -221,6 +220,7 @@ export const placeOrder = asyncHandler(async (req, res) => {
     }
   });
 
+  // Clear the cart after successful order placement
   await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
 
   await notify({
@@ -279,6 +279,12 @@ export const confirmOrderPayment = asyncHandler(async (req, res) => {
       confirmedAt: new Date()
     },
   });
+
+  // Clear user's cart after payment confirmation
+  const userCart = await prisma.cart.findUnique({ where: { userId: order.userId } });
+  if (userCart) {
+    await prisma.cartItem.deleteMany({ where: { cartId: userCart.id } });
+  }
 
   await notify({
     userId: order.userId,

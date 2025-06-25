@@ -13,8 +13,8 @@ const NotificationList = () => {
   const { data: notifications, isLoading } = useQuery({
     queryKey: ['notifications'],
     queryFn: getNotifications,
-    staleTime: 10000, // Reduced for better real-time feel
-    refetchInterval: 15000, // Auto-refresh every 15 seconds
+    staleTime: 10000,
+    refetchInterval: 15000,
   });
 
   const markReadMutation = useMutation({
@@ -49,12 +49,14 @@ const NotificationList = () => {
     }
   });
 
-  const handleMarkRead = (id: number) => {
-    markReadMutation.mutate(id);
-  };
-
-  const handleDelete = (id: number) => {
-    deleteMutation.mutate(id);
+  const handleNotificationClick = (notification: any) => {
+    if (!notification.isRead) {
+      markReadMutation.mutate(notification.id);
+    }
+    // Auto-delete notification after marking as read
+    setTimeout(() => {
+      deleteMutation.mutate(notification.id);
+    }, 1000);
   };
 
   if (isLoading) {
@@ -78,7 +80,10 @@ const NotificationList = () => {
         notificationList.map((notification) => (
           <div
             key={notification.id}
-            className={`p-3 border rounded-lg ${notification.isRead ? 'bg-gray-50' : 'bg-blue-50 border-blue-200'}`}
+            onClick={() => handleNotificationClick(notification)}
+            className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+              notification.isRead ? 'bg-gray-50 hover:bg-gray-100' : 'bg-blue-50 border-blue-200 hover:bg-blue-100'
+            }`}
           >
             <div className="flex items-start justify-between">
               <div className="flex-1 pr-2">
@@ -92,27 +97,13 @@ const NotificationList = () => {
               </div>
               
               <div className="flex items-center space-x-1">
-                {!notification.isRead && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleMarkRead(notification.id)}
-                    disabled={markReadMutation.isPending}
-                    className="hover:bg-blue-100 p-1 h-auto"
-                    title="Mark as read"
-                  >
-                    {markReadMutation.isPending ? (
-                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500"></div>
-                    ) : (
-                      <X className="w-3 h-3" />
-                    )}
-                  </Button>
-                )}
-                
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleDelete(notification.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteMutation.mutate(notification.id);
+                  }}
                   disabled={deleteMutation.isPending}
                   className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 h-auto"
                   title="Delete notification"
