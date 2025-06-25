@@ -1,4 +1,3 @@
-
 import React, { useState, useContext } from 'react';
 import { Star, ShoppingCart, MessageSquare, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -29,7 +28,7 @@ const ProductCard = ({
   title, 
   price, 
   originalPrice, 
-  rating = 5, 
+  rating = 0, 
   numReviews = 0,
   averageRating = 0
 }: ProductCardProps) => {
@@ -45,20 +44,27 @@ const ProductCard = ({
   const [reviewComment, setReviewComment] = useState('');
   const [showReviewDialog, setShowReviewDialog] = useState(false);
 
-  // Use averageRating from database if available, otherwise fallback to rating prop
-  const displayRating = averageRating > 0 ? averageRating : rating;
-  const displayNumReviews = numReviews || 0;
+  // Safe rating calculation
+  const displayRating = typeof averageRating === 'number' && averageRating > 0 
+    ? averageRating 
+    : typeof rating === 'number' && rating > 0 
+      ? rating 
+      : 0;
+  const displayNumReviews = typeof numReviews === 'number' ? numReviews : 0;
+  const safeRatingText = displayRating.toFixed ? displayRating.toFixed(1) : '0.0';
 
   // Submit review mutation
   const submitReviewMutation = useMutation({
     mutationFn: (reviewData: { rating: number; comment: string }) => {
-      console.log('📝 ProductCard: Submitting review:', reviewData, 'for product:', id);
+      if (!id) {
+        throw new Error('Product ID is required');
+      }
       return createProductReview(id, reviewData);
     },
     onSuccess: () => {
       toast({
-        title: "Review submitted",
-        description: "Thank you for your review!",
+        title: t('review.submitted') || "Review submitted",
+        description: t('review.thank_you') || "Thank you for your review!",
       });
       setReviewComment('');
       setReviewRating(5);
@@ -66,11 +72,14 @@ const ProductCard = ({
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['all-reviews'] });
     },
-    onError: (error: any) => {
-      console.error('❌ ProductCard: Review submission error:', error);
+    onError: (error: unknown) => {
+      let errorMessage = t('review.submission_error') || "Failed to submit review";
+      if (typeof error === 'object' && error !== null && 'message' in error) {
+        errorMessage = (error as { message: string }).message;
+      }
       toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to submit review",
+        title: t('common.error'),
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -81,19 +90,22 @@ const ProductCard = ({
     e.stopPropagation();
     
     try {
-      console.log('🛒 ProductCard: Adding to cart, product ID:', id);
-      await addToCart({ productId: parseInt(id), quantity: 1 });
+      const productId = parseInt(id);
+      if (isNaN(productId)) {
+        throw new Error('Invalid product ID');
+      }
       
-      // Force cart refetch after successful add
-      setTimeout(() => {
-        refetchCart();
-      }, 500);
+      await addToCart({ productId, quantity: 1 });
+      setTimeout(() => refetchCart(), 500);
       
-    } catch (err: any) {
-      console.error('❌ ProductCard: Add to cart failed:', err);
+    } catch (err: unknown) {
+      let errorMessage = t('cart.failed_to_add') || "Failed to add to cart";
+      if (typeof err === 'object' && err !== null && 'message' in err) {
+        errorMessage = (err as { message: string }).message;
+      }
       toast({
         title: t('common.error'),
-        description: err.response?.data?.message || t('cart.failed_to_add'),
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -102,8 +114,8 @@ const ProductCard = ({
   const handleSubmitReview = () => {
     if (!reviewComment.trim()) {
       toast({
-        title: "Error",
-        description: "Please write a comment for your review",
+        title: t('common.error'),
+        description: t('review.comment_required') || "Please write a comment for your review",
         variant: "destructive",
       });
       return;
@@ -111,14 +123,17 @@ const ProductCard = ({
 
     if (!user) {
       toast({
-        title: "Error",
-        description: "You must be logged in to submit a review",
+        title: t('auth.login_required'),
+        description: t('review.login_to_review') || "You must be logged in to submit a review",
         variant: "destructive",
       });
       return;
     }
 
-    submitReviewMutation.mutate({ rating: reviewRating, comment: reviewComment.trim() });
+    submitReviewMutation.mutate({ 
+      rating: reviewRating, 
+      comment: reviewComment.trim() 
+    });
   };
 
   const StarRating = ({ value, onChange, readonly = false }: { 
@@ -144,7 +159,7 @@ const ProductCard = ({
       <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 group hover:scale-105">
         <div className="relative overflow-hidden rounded-t-xl">
           <img 
-            src={image} 
+            src={image || '/placeholder.svg'} 
             alt={title}
             className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-300"
             onError={(e) => {
@@ -156,7 +171,7 @@ const ProductCard = ({
           </div>
         </div>
         <div className="p-4">
-          <h3 className="font-semibold text-gray-900 mb-2 text-sm">{title}</h3>
+          <h3 className="font-semibold text-gray-900 mb-2 text-sm line-clamp-2">{title}</h3>
           
           {/* Star Rating and Review Count */}
           <div className="flex items-center mb-2 space-x-2">
@@ -182,7 +197,7 @@ const ProductCard = ({
             )}
             {displayRating > 0 && (
               <span className="text-xs text-gray-600">
-                {displayRating.toFixed(1)}
+                {safeRatingText}
               </span>
             )}
           </div>
@@ -222,8 +237,8 @@ const ProductCard = ({
                     e.stopPropagation();
                     if (!user) {
                       toast({
-                        title: "Login required",
-                        description: "Please log in to add a review",
+                        title: t('auth.login_required'),
+                        description: t('review.login_to_review') || "Please log in to add a review",
                         variant: "destructive",
                       });
                       return;
@@ -236,19 +251,23 @@ const ProductCard = ({
               </DialogTrigger>
               <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
                 <DialogHeader>
-                  <DialogTitle>Add Review for {title}</DialogTitle>
+                  <DialogTitle>{t('review.add_review_for') || 'Add Review for'} {title}</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium mb-2">Rating</label>
+                    <label className="block text-sm font-medium mb-2">
+                      {t('review.rating') || 'Rating'}
+                    </label>
                     <StarRating value={reviewRating} onChange={setReviewRating} />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2">Comment</label>
+                    <label className="block text-sm font-medium mb-2">
+                      {t('review.comment') || 'Comment'}
+                    </label>
                     <Textarea
                       value={reviewComment}
                       onChange={(e) => setReviewComment(e.target.value)}
-                      placeholder="Share your experience with this product..."
+                      placeholder={t('review.share_experience') || "Share your experience with this product..."}
                       rows={3}
                     />
                   </div>
@@ -258,7 +277,9 @@ const ProductCard = ({
                       disabled={submitReviewMutation.isPending}
                       className="bg-purple-600 hover:bg-purple-700 text-white"
                     >
-                      {submitReviewMutation.isPending ? 'Submitting...' : 'Submit Review'}
+                      {submitReviewMutation.isPending 
+                        ? t('review.submitting') || 'Submitting...' 
+                        : t('review.submit') || 'Submit Review'}
                     </Button>
                     <Button 
                       variant="outline" 
@@ -268,7 +289,7 @@ const ProductCard = ({
                         setReviewRating(5);
                       }}
                     >
-                      Cancel
+                      {t('common.cancel') || 'Cancel'}
                     </Button>
                   </div>
                 </div>

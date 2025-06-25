@@ -50,24 +50,24 @@ model Product {
   id           Int       @id @default(autoincrement())
   name         String    @db.VarChar(255)
   description  String?   @db.Text
-  price        Float     @db.Decimal(10, 2)
+  price        Decimal     @db.Decimal(10, 2)
   stock        Int       @default(0)
   category     Category  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   coverImage   String    @default("https://aannet.org/global_graphics/default-store-350x350.jpg") @db.VarChar(500)
   categoryId   Int
   createdBy    User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
   createdById  Int?
-  averageRating Float    @default(0) @db.Decimal(3, 2)
+  averageRating Decimal    @default(0) @db.Decimal(3, 2)
   numReviews   Int       @default(0)
   isVisible    Boolean   @default(true)
   colors       String[]  @default([])
   sizes        String[]  @default([])
   sku          String?   @unique @db.VarChar(100)
-  weight       Float?    @db.Decimal(8, 2)
+  weight       Decimal?    @db.Decimal(8, 2)
   dimensions   String?   @db.VarChar(100)
   tags         String[]  @default([])
   isOnSale     Boolean   @default(false)
-  salePrice    Float?    @db.Decimal(10, 2)
+  salePrice    Decimal?    @db.Decimal(10, 2)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -159,9 +159,9 @@ model Order {
   paymentCode         String?    @db.VarChar(100)
   paymentMethod       String?    @db.VarChar(50)
   paymentResult       Json?
-  totalPrice          Float      @db.Decimal(10, 2)
-  shippingPrice       Float      @default(0) @db.Decimal(10, 2)
-  taxPrice            Float      @default(0) @db.Decimal(10, 2)
+  totalPrice          Decimal      @db.Decimal(10, 2)
+  shippingPrice       Decimal    @default(0) @db.Decimal(10, 2)
+  taxPrice            Decimal      @default(0) @db.Decimal(10, 2)
   status              OrderStatus @default(PENDING)
   isPaid              Boolean    @default(false)
   paidAt              DateTime?
@@ -200,7 +200,7 @@ model OrderItem {
   product   Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
   productId Int
   quantity  Int      @db.SmallInt
-  price     Float    @db.Decimal(10, 2)
+  price     Decimal   @db.Decimal(10, 2)
   color     String?  @db.VarChar(50)
   size      String?  @db.VarChar(20)
   createdAt DateTime @default(now())
