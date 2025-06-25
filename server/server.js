@@ -1,17 +1,13 @@
+
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import sellerRoutes from './routes/sellerRoutes.js';
 import reviewRoutes from './routes/reviewRoutes.js';
-import paymentRoutes from './routes/paymentRoutes.js';
-import notificationRoutes from './routes/notificationRoutes.js';
-import chatRoutes from './routes/chatRoutes.js';
-import profileRoutes from './routes/profileRoutes.js';
 import { errorHandler, notFound } from './middleware/errorMiddleware.js';
 
 dotenv.config();
@@ -34,17 +30,12 @@ app.use((req, res, next) => {
 });
 
 // Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
+app.use('/api/auth', userRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/sellers', sellerRoutes);
 app.use('/api/reviews', reviewRoutes);
-app.use('/api/payments', paymentRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/chat', chatRoutes);
-app.use('/api/profile', profileRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
