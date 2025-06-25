@@ -108,8 +108,8 @@ export const DashboardHeader: React.FC = () => {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem>
-                <Settings className="w-4 h-4 mr-2" />
-                {t('dashboard.settings')}
+                {/* <Settings className="w-4 h-4 mr-2" />
+                {t('dashboard.settings')} */}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout}>
