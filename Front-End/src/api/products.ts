@@ -1,4 +1,3 @@
-
 import api from './api';
 
 export interface Product {
@@ -10,6 +9,8 @@ export interface Product {
   coverImage: string;
   categoryId: number;
   createdById: number;
+  colors?: string[];
+  sizes?: string[];
   category?: {
     id: number;
     name: string;
@@ -24,6 +25,8 @@ export interface CreateProductData {
   stock: number;
   coverImage: string;
   categoryId: number;
+  colors?: string[];
+  sizes?: string[];
 }
 
 export const getProducts = () => api.get<Product[]>('/products');

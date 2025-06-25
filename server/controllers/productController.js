@@ -4,7 +4,7 @@ import prisma from '../prismaClient.js';
 import { notify } from '../utils/notify.js';
 
 export const createProduct = asyncHandler(async (req, res) => {
-  const { name, description, price, stock, categoryId, coverImage } = req.body;
+  const { name, description, price, stock, categoryId, coverImage, colors, sizes } = req.body;
   const productCoverImage = coverImage || 'https://aannet.org/global_graphics/default-store-350x350.jpg';
   
   console.log('Creating product for user:', req.user.id, 'Role:', req.user.role);
@@ -33,6 +33,8 @@ export const createProduct = asyncHandler(async (req, res) => {
       categoryId: parseInt(categoryId),
       coverImage: productCoverImage,
       createdById: req.user.id,
+      colors: colors || [],
+      sizes: sizes || [],
       isVisible: true,
     },
     include: {
@@ -46,9 +48,7 @@ export const createProduct = asyncHandler(async (req, res) => {
       }
     }
   });
-
   console.log('Product created successfully:', product.id);
-
   await notify({
     userId: req.user.id,
     message: `New product "${name}" has been created.`,
@@ -181,7 +181,6 @@ export const updateProduct = asyncHandler(async (req, res) => {
   console.log('User owns product?', product.createdById === req.user.id);
   console.log('User is admin?', req.user.role.toLowerCase() === 'admin');
 
-  // Check if user owns the product OR is an admin
   const userOwnsProduct = product.createdById === req.user.id;
   const userIsAdmin = req.user.role.toLowerCase() === 'admin';
   
@@ -209,6 +208,9 @@ export const updateProduct = asyncHandler(async (req, res) => {
       price: parseFloat(req.body.price),
       stock: parseInt(req.body.stock),
       coverImage: req.body.coverImage,
+      categoryId: req.body.categoryId,
+      colors: req.body.colors || [],
+      sizes: req.body.sizes || [],
       categoryId: parseInt(req.body.categoryId),
     },
     include: {

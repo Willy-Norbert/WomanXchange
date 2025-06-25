@@ -21,8 +21,8 @@ const SingleProduct = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [selectedImage, setSelectedImage] = useState(0);
-  const [selectedColor, setSelectedColor] = useState('black');
-  const [selectedSize, setSelectedSize] = useState('M');
+  const [selectedColor, setSelectedColor] = useState('');
+  const [selectedSize, setSelectedSize] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState('details');
 
@@ -40,6 +40,13 @@ const SingleProduct = () => {
         console.log('Fetching product with ID:', id);
         
         const response = await getProductById(id);
+        setProduct(response.data);
+        // Set default selections if available
+        if (response.data.colors && response.data.colors.length > 0) {
+          setSelectedColor(response.data.colors[0]);
+        }
+        if (response.data.sizes && response.data.sizes.length > 0) {
+          setSelectedSize(response.data.sizes[0]);
         console.log('Product fetch response:', response);
         
         if (response.data) {
@@ -85,12 +92,6 @@ const SingleProduct = () => {
   };
 
   const productImages = product?.coverImage ? [product.coverImage] : [];
-  const colors = [
-    { name: 'black', color: '#000000' },
-    { name: 'gray', color: '#6B7280' },
-    { name: 'navy', color: '#1E3A8A' }
-  ];
-  const sizes = ['S', 'M', 'L', 'XL'];
 
   const increaseQuantity = () => setQuantity(prev => prev + 1);
   const decreaseQuantity = () => setQuantity(prev => prev > 1 ? prev - 1 : 1);
@@ -191,6 +192,24 @@ const SingleProduct = () => {
             </div>
 
             {/* Color Selection */}
+            {product.colors && product.colors.length > 0 && (
+              <div>
+                <h3 className="font-medium mb-3">Color</h3>
+                <div className="flex gap-2">
+                  {product.colors.map((color) => (
+                    <button
+                      key={color}
+                      onClick={() => setSelectedColor(color)}
+                      className={`px-4 py-2 border rounded-md text-sm ${
+                        selectedColor === color
+                          ? 'border-purple bg-purple text-white'
+                          : 'border-gray-300 text-gray-700 hover:border-purple'
+                      }`}
+                    >
+                      {color}
+                    </button>
+                  ))}
+                </div>
             <div>
               <h3 className="font-medium mb-3">Color</h3>
               <div className="flex gap-3">
@@ -205,9 +224,27 @@ const SingleProduct = () => {
                   />
                 ))}
               </div>
-            </div>
+            )}
 
             {/* Size Selection */}
+            {product.sizes && product.sizes.length > 0 && (
+              <div>
+                <h3 className="font-medium mb-3">Size</h3>
+                <div className="flex gap-2">
+                  {product.sizes.map((size) => (
+                    <button
+                      key={size}
+                      onClick={() => setSelectedSize(size)}
+                      className={`px-4 py-2 border rounded-md ${
+                        selectedSize === size
+                          ? 'border-purple bg-purple text-white'
+                          : 'border-gray-300 text-gray-700 hover:border-purple'
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
             <div>
               <h3 className="font-medium mb-3">Size</h3>
               <div className="flex gap-2">
@@ -225,7 +262,7 @@ const SingleProduct = () => {
                   </button>
                 ))}
               </div>
-            </div>
+            )}
 
             {/* Stock Info */}
             <div className="text-sm text-gray-600">
