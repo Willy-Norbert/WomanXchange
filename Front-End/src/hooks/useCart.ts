@@ -15,12 +15,12 @@ export const useCart = () => {
   useEffect(() => {
     if (!user) {
       const storedCartId = localStorage.getItem('anonymous_cart_id');
-      if (storedCartId) {
+      if (storedCartId && !isNaN(parseInt(storedCartId))) {
         const parsedCartId = parseInt(storedCartId);
         setCartId(parsedCartId);
         console.log('🛒 useCart: Loaded cart ID from localStorage:', parsedCartId);
       } else {
-        console.log('🛒 useCart: No stored cart ID found for anonymous user');
+        console.log('🛒 useCart: No valid stored cart ID found for anonymous user');
         setCartId(null);
       }
     } else {
@@ -37,20 +37,27 @@ export const useCart = () => {
   const { data: cartResponse, isLoading, error, refetch } = useQuery({
     queryKey,
     queryFn: async () => {
-      console.log('🔍 useCart query: calling getCart with cartId:', cartId, 'user:', !!user);
-      const response = await getCart(cartId);
-      console.log('📦 useCart query: Cart response received:', response?.data);
-      return response;
+      try {
+        console.log('🔍 useCart query: calling getCart with cartId:', cartId, 'user:', !!user);
+        const response = await getCart(cartId);
+        console.log('📦 useCart query: Cart response received:', response?.data);
+        return response;
+      } catch (err) {
+        console.error('❌ useCart query error:', err);
+        // Don't throw the error, return null instead to prevent query failure
+        return null;
+      }
     },
     staleTime: 1000,
     gcTime: 10 * 60 * 1000,
     retry: 1,
     refetchOnMount: true,
     refetchOnWindowFocus: false,
+    enabled: true, // Always enable the query
   });
 
-  // Extract cart data from the response
-  const cart = cartResponse?.data?.data;
+  // Extract cart data from the response with better error handling
+  const cart = cartResponse?.data?.data || null;
 
   console.log('🛒 useCart hook state:', {
     user: !!user,
@@ -84,10 +91,12 @@ export const useCart = () => {
       // Invalidate all cart queries
       queryClient.invalidateQueries({ queryKey: ['cart'] });
       
-      // Force immediate refetch
+      // Force immediate refetch with error handling
       setTimeout(() => {
         console.log('🔄 useCart: Force refetching cart...');
-        refetch();
+        refetch().catch(err => {
+          console.error('❌ useCart: Refetch error:', err);
+        });
       }, 100);
       
       toast({
@@ -113,7 +122,9 @@ export const useCart = () => {
     onSuccess: () => {
       console.log('✅ useCart: Remove from cart success');
       queryClient.invalidateQueries({ queryKey: ['cart'] });
-      refetch();
+      refetch().catch(err => {
+        console.error('❌ useCart: Refetch after remove error:', err);
+      });
       toast({
         title: "Item removed",
         description: "Item has been removed from your cart",
@@ -129,7 +140,21 @@ export const useCart = () => {
     }
   });
 
-  const cartItemsCount = cart?.items?.reduce((total: number, item: any) => total + item.quantity, 0) || 0;
+  // Safe calculation of cart items count with better error handling
+  const cartItemsCount = (() => {
+    try {
+      if (!cart?.items || !Array.isArray(cart.items)) {
+        return 0;
+      }
+      return cart.items.reduce((total: number, item: any) => {
+        const quantity = parseInt(item?.quantity) || 0;
+        return total + quantity;
+      }, 0);
+    } catch (err) {
+      console.error('❌ useCart: Error calculating cart items count:', err);
+      return 0;
+    }
+  })();
 
   console.log('🔢 useCart: Cart items count calculated:', cartItemsCount, 'from items:', cart?.items);
 
