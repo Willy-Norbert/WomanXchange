@@ -25,7 +25,7 @@ const Profile = () => {
     company: '',
   });
 
-  const { data: profileData, isLoading } = useQuery({
+  const { data: profileData, isLoading, error } = useQuery({
     queryKey: ['user-profile'],
     queryFn: getUserProfile,
     enabled: !!user,
@@ -34,16 +34,28 @@ const Profile = () => {
   const updateProfileMutation = useMutation({
     mutationFn: updateProfile,
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['user-profile'] });
+      console.log('Profile update successful:', data);
+      
+      // Update the query cache immediately
+      queryClient.setQueryData(['user-profile'], data);
+      
       // Update the auth context with new user data
       updateUser({ ...user, ...data });
+      
+      // Set editing to false immediately
       setIsEditing(false);
+      
+      // Show success toast
       toast({
         title: "Profile updated",
         description: "Your profile has been updated successfully",
       });
+      
+      // Invalidate and refetch to ensure consistency
+      queryClient.invalidateQueries({ queryKey: ['user-profile'] });
     },
     onError: (error: any) => {
+      console.error('Profile update error:', error);
       toast({
         title: "Error",
         description: error.response?.data?.message || "Failed to update profile",
@@ -54,6 +66,7 @@ const Profile = () => {
 
   useEffect(() => {
     if (profileData) {
+      console.log('Setting form data from profile:', profileData);
       setFormData({
         name: profileData.name || '',
         email: profileData.email || '',
@@ -67,6 +80,7 @@ const Profile = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Submitting profile update:', formData);
     updateProfileMutation.mutate(formData);
   };
 
@@ -94,6 +108,22 @@ const Profile = () => {
     );
   }
 
+  if (error) {
+    console.error('Profile loading error:', error);
+    return (
+      <DashboardLayout currentPage="profile">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <p className="text-red-600 mb-4">Failed to load profile</p>
+            <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['user-profile'] })}>
+              Retry
+            </Button>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout currentPage="profile">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -113,7 +143,7 @@ const Profile = () => {
               </Button>
             ) : (
               <div className="space-x-2">
-                <Button onClick={handleCancel} variant="outline">
+                <Button onClick={handleCancel} variant="outline" disabled={updateProfileMutation.isPending}>
                   Cancel
                 </Button>
                 <Button 

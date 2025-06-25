@@ -9,6 +9,7 @@ import { getChatMessages, createChatMessage, ChatMessage, CreateMessageData } fr
 import { useToast } from '@/hooks/use-toast';
 import MessageBubble from './MessageBubble';
 import FileUpload, { FileData } from './FileUpload';
+import AudioRecorder, { AudioData } from './AudioRecorder';
 
 interface WhatsAppChatProps {
   currentUser: any;
@@ -21,19 +22,35 @@ const WhatsAppChat: React.FC<WhatsAppChatProps> = ({ currentUser }) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  console.log('WhatsAppChat - Current user:', currentUser?.id, currentUser?.role);
+
   // Real-time message fetching with frequent updates
-  const { data: messagesData, isLoading } = useQuery({
+  const { data: messagesData, isLoading, error } = useQuery({
     queryKey: ['whatsapp-chat-messages'],
-    queryFn: getChatMessages,
+    queryFn: async () => {
+      console.log('Fetching chat messages...');
+      try {
+        const result = await getChatMessages();
+        console.log('Chat messages fetched:', result);
+        return result;
+      } catch (error) {
+        console.error('Error fetching chat messages:', error);
+        throw error;
+      }
+    },
     refetchInterval: 1000, // Real-time updates every second
     staleTime: 500,
     gcTime: 5000,
   });
 
   const messages = Array.isArray(messagesData) ? messagesData : (messagesData?.data || []);
+  console.log('Processed messages:', messages.length);
 
   const createMessageMutation = useMutation({
-    mutationFn: createChatMessage,
+    mutationFn: async (messageData: CreateMessageData) => {
+      console.log('Creating chat message:', messageData);
+      return createChatMessage(messageData);
+    },
     onMutate: async (newMessageData) => {
       await queryClient.cancelQueries({ queryKey: ['whatsapp-chat-messages'] });
       const previousMessages = queryClient.getQueryData(['whatsapp-chat-messages']);
@@ -59,12 +76,14 @@ const WhatsAppChat: React.FC<WhatsAppChatProps> = ({ currentUser }) => {
 
       return { previousMessages };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Message created successfully:', data);
       setNewMessage('');
       setSelectedFiles([]);
       queryClient.invalidateQueries({ queryKey: ['whatsapp-chat-messages'] });
     },
     onError: (error: any, _, context) => {
+      console.error('Message creation error:', error);
       queryClient.setQueryData(['whatsapp-chat-messages'], context?.previousMessages);
       toast({
         title: "Error",
@@ -94,6 +113,7 @@ const WhatsAppChat: React.FC<WhatsAppChatProps> = ({ currentUser }) => {
   };
 
   const handleFileSelect = (files: FileData[]) => {
+    console.log('Files selected:', files);
     setSelectedFiles(files);
     
     // Auto-send files
@@ -105,6 +125,22 @@ const WhatsAppChat: React.FC<WhatsAppChatProps> = ({ currentUser }) => {
         fileType: file.type.toUpperCase() as any,
         fileSize: file.file.size,
       })),
+    };
+
+    createMessageMutation.mutate(messageData);
+  };
+
+  const handleAudioReady = (audioData: AudioData) => {
+    console.log('Audio ready:', audioData);
+    
+    const messageData: CreateMessageData = {
+      messageType: 'AUDIO',
+      attachments: [{
+        fileName: audioData.file.name,
+        fileUrl: audioData.url,
+        fileType: 'AUDIO',
+        fileSize: audioData.file.size,
+      }],
     };
 
     createMessageMutation.mutate(messageData);
@@ -124,6 +160,20 @@ const WhatsAppChat: React.FC<WhatsAppChatProps> = ({ currentUser }) => {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    console.error('Chat loading error:', error);
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">Failed to load chat</p>
+          <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['whatsapp-chat-messages'] })}>
+            Retry
+          </Button>
+        </div>
       </div>
     );
   }
@@ -174,12 +224,18 @@ const WhatsAppChat: React.FC<WhatsAppChatProps> = ({ currentUser }) => {
 
         {/* Input Area - WhatsApp Style */}
         <div className="bg-white border-t p-4">
-          <FileUpload 
-            onFileSelect={handleFileSelect} 
-            disabled={createMessageMutation.isPending}
-          />
+          <div className="flex items-center space-x-2 mb-2">
+            <FileUpload 
+              onFileSelect={handleFileSelect} 
+              disabled={createMessageMutation.isPending}
+            />
+            <AudioRecorder 
+              onAudioReady={handleAudioReady}
+              disabled={createMessageMutation.isPending}
+            />
+          </div>
           
-          <form onSubmit={handleSendMessage} className="flex items-end space-x-2 mt-2">
+          <form onSubmit={handleSendMessage} className="flex items-end space-x-2">
             <div className="flex-1">
               <Input
                 value={newMessage}

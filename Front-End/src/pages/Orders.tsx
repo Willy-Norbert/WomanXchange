@@ -1,3 +1,4 @@
+
 import React, { useContext, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -17,24 +18,45 @@ const Orders = () => {
   const queryClient = useQueryClient();
   const [isCreateOrderOpen, setIsCreateOrderOpen] = useState(false);
 
-  // ✅ Use correct query key and pass role/userId
+  console.log('Orders page - User:', user?.role, user?.id);
+
+  // Fixed query with proper error handling and debug messages
   const { data: ordersData, isLoading, error } = useQuery({
     queryKey: ['orders', user?.role, user?.id],
-    queryFn: () => getAllOrders(user?.role?.toLowerCase() || '', user?.id),
+    queryFn: async () => {
+      console.log('Fetching orders for user role:', user?.role, 'userID:', user?.id);
+      try {
+        const result = await getAllOrders(user?.role?.toLowerCase() || '', user?.id);
+        console.log('Orders API response:', result);
+        return result;
+      } catch (error) {
+        console.error('Orders fetch error:', error);
+        throw error;
+      }
+    },
     enabled: !!user && (user.role === 'admin' || user.role === 'seller'),
     staleTime: 30000,
+    retry: (failureCount, error) => {
+      console.log('Orders query retry attempt:', failureCount, error);
+      return failureCount < 2;
+    },
   });
 
   const confirmPaymentMutation = useMutation({
-    mutationFn: confirmOrderPayment,
-    onSuccess: () => {
+    mutationFn: async (orderId: number) => {
+      console.log('Confirming payment for order:', orderId);
+      return confirmOrderPayment(orderId);
+    },
+    onSuccess: (data, orderId) => {
+      console.log('Payment confirmed successfully for order:', orderId);
       queryClient.invalidateQueries({ queryKey: ['orders', user?.role, user?.id] });
       toast({
         title: 'Payment confirmed',
         description: 'Order payment has been confirmed and customer notified',
       });
     },
-    onError: (error: any) => {
+    onError: (error: any, orderId) => {
+      console.error('Payment confirmation error for order:', orderId, error);
       toast({
         title: 'Error',
         description: error.response?.data?.message || 'Failed to confirm payment',
@@ -44,15 +66,20 @@ const Orders = () => {
   });
 
   const deleteOrderMutation = useMutation({
-    mutationFn: deleteOrder,
-    onSuccess: () => {
+    mutationFn: async (orderId: number) => {
+      console.log('Deleting order:', orderId);
+      return deleteOrder(orderId);
+    },
+    onSuccess: (data, orderId) => {
+      console.log('Order deleted successfully:', orderId);
       queryClient.invalidateQueries({ queryKey: ['orders', user?.role, user?.id] });
       toast({
         title: 'Order deleted',
         description: 'Order has been deleted successfully',
       });
     },
-    onError: (error: any) => {
+    onError: (error: any, orderId) => {
+      console.error('Order deletion error for order:', orderId, error);
       toast({
         title: 'Error',
         description: error.response?.data?.message || 'Failed to delete order',
@@ -61,17 +88,28 @@ const Orders = () => {
     },
   });
 
-  const orders = ordersData?.data || [];
+  // Safe data extraction with debug logging
+  const orders = React.useMemo(() => {
+    const result = Array.isArray(ordersData?.data) ? ordersData.data : (Array.isArray(ordersData) ? ordersData : []);
+    console.log('Processed orders data:', result);
+    return result;
+  }, [ordersData]);
 
   const handleConfirmPayment = (orderId: number) => {
+    console.log('Handling payment confirmation for order:', orderId);
     confirmPaymentMutation.mutate(orderId);
   };
 
   const handleDeleteOrder = (orderId: number) => {
     if (window.confirm('Are you sure you want to delete this order?')) {
+      console.log('User confirmed order deletion:', orderId);
       deleteOrderMutation.mutate(orderId);
+    } else {
+      console.log('User cancelled order deletion:', orderId);
     }
   };
+
+  console.log('Orders page render - Loading:', isLoading, 'Error:', error, 'Orders count:', orders.length);
 
   if (isLoading) {
     return (
@@ -84,10 +122,19 @@ const Orders = () => {
   }
 
   if (error) {
+    console.error('Orders page error:', error);
     return (
       <DashboardLayout currentPage="orders">
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-lg text-red-600">Failed to load orders</div>
+          <div className="text-center">
+            <div className="text-lg text-red-600 mb-4">Failed to load orders</div>
+            <Button onClick={() => {
+              console.log('Retrying orders fetch...');
+              queryClient.invalidateQueries({ queryKey: ['orders', user?.role, user?.id] });
+            }}>
+              Retry
+            </Button>
+          </div>
         </div>
       </DashboardLayout>
     );
@@ -118,6 +165,9 @@ const Orders = () => {
               <div className="text-center py-8">
                 <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600">No orders found</p>
+                <p className="text-sm text-gray-500 mt-2">
+                  {user?.role === 'seller' ? 'Orders for your products will appear here' : 'All system orders will appear here'}
+                </p>
               </div>
             ) : (
               <Table>
@@ -147,7 +197,7 @@ const Orders = () => {
                         <div className="text-sm">{order.items?.length || 0} item(s)</div>
                       </TableCell>
                       <TableCell className="font-semibold">
-                        {order.totalPrice.toLocaleString()} Rwf
+                        {order.totalPrice?.toLocaleString() || 0} Rwf
                       </TableCell>
                       <TableCell>
                         <Badge variant={order.isPaid ? 'default' : 'secondary'}>

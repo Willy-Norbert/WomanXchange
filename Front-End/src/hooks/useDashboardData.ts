@@ -12,9 +12,16 @@ export const useDashboardData = (userRole?: string) => {
   
   const { data: ordersData, isLoading: ordersLoading, error: ordersError } = useQuery({
     queryKey: ['dashboard-orders', userRole],
-    queryFn: () => {
+    queryFn: async () => {
       console.log('Fetching orders for role:', userRole);
-      return getAllOrders();
+      try {
+        const result = await getAllOrders();
+        console.log('Dashboard orders fetched:', result);
+        return result;
+      } catch (error) {
+        console.error('Dashboard orders fetch error:', error);
+        throw error;
+      }
     },
     enabled: isAdmin || isSeller,
     retry: 2,
@@ -23,9 +30,16 @@ export const useDashboardData = (userRole?: string) => {
 
   const { data: usersData, isLoading: usersLoading, error: usersError } = useQuery({
     queryKey: ['dashboard-users'],
-    queryFn: () => {
+    queryFn: async () => {
       console.log('Fetching users data');
-      return api.get('/auth/users');
+      try {
+        const result = await api.get('/auth/users');
+        console.log('Dashboard users fetched:', result);
+        return result;
+      } catch (error) {
+        console.error('Dashboard users fetch error:', error);
+        throw error;
+      }
     },
     enabled: isAdmin,
     retry: 2,
@@ -34,9 +48,16 @@ export const useDashboardData = (userRole?: string) => {
 
   const { data: productsData, isLoading: productsLoading, error: productsError } = useQuery({
     queryKey: ['dashboard-products', userRole],
-    queryFn: () => {
+    queryFn: async () => {
       console.log('Fetching products data');
-      return api.get('/products');
+      try {
+        const result = await api.get('/products');
+        console.log('Dashboard products fetched:', result);
+        return result;
+      } catch (error) {
+        console.error('Dashboard products fetch error:', error);
+        throw error;
+      }
     },
     enabled: isAdmin || isSeller,
     retry: 2,
@@ -46,9 +67,16 @@ export const useDashboardData = (userRole?: string) => {
   // For sellers, fetch their specific data
   const { data: sellerStatsData, isLoading: sellerStatsLoading, error: sellerStatsError } = useQuery({
     queryKey: ['seller-stats'],
-    queryFn: () => {
+    queryFn: async () => {
       console.log('Fetching seller stats');
-      return api.get('/sellers/my-stats');
+      try {
+        const result = await api.get('/sellers/my-stats');
+        console.log('Seller stats fetched:', result);
+        return result;
+      } catch (error) {
+        console.error('Seller stats fetch error:', error);
+        throw error;
+      }
     },
     enabled: isSeller,
     retry: 2,
@@ -57,9 +85,16 @@ export const useDashboardData = (userRole?: string) => {
 
   const { data: sellerOrdersData, isLoading: sellerOrdersLoading, error: sellerOrdersError } = useQuery({
     queryKey: ['seller-orders'],
-    queryFn: () => {
+    queryFn: async () => {
       console.log('Fetching seller orders');
-      return api.get('/sellers/my-orders');
+      try {
+        const result = await api.get('/sellers/my-orders');
+        console.log('Seller orders fetched:', result);
+        return result;
+      } catch (error) {
+        console.error('Seller orders fetch error:', error);
+        throw error;
+      }
     },
     enabled: isSeller,
     retry: 2,
@@ -68,9 +103,16 @@ export const useDashboardData = (userRole?: string) => {
 
   const { data: sellerProductsData, isLoading: sellerProductsLoading, error: sellerProductsError } = useQuery({
     queryKey: ['seller-products'],
-    queryFn: () => {
+    queryFn: async () => {
       console.log('Fetching seller products');
-      return api.get('/sellers/my-products');
+      try {
+        const result = await api.get('/sellers/my-products');
+        console.log('Seller products fetched:', result);
+        return result;
+      } catch (error) {
+        console.error('Seller products fetch error:', error);
+        throw error;
+      }
     },
     enabled: isSeller,
     retry: 2,
@@ -79,9 +121,16 @@ export const useDashboardData = (userRole?: string) => {
 
   const { data: sellerCustomersData, isLoading: sellerCustomersLoading, error: sellerCustomersError } = useQuery({
     queryKey: ['seller-customers'],
-    queryFn: () => {
+    queryFn: async () => {
       console.log('Fetching seller customers');
-      return api.get('/sellers/my-customers');
+      try {
+        const result = await api.get('/sellers/my-customers');
+        console.log('Seller customers fetched:', result);
+        return result;
+      } catch (error) {
+        console.error('Seller customers fetch error:', error);
+        throw error;
+      }
     },
     enabled: isSeller,
     retry: 2,
@@ -89,41 +138,69 @@ export const useDashboardData = (userRole?: string) => {
   });
 
   if (isSeller) {
-    // Return seller-specific data with proper array handling
+    // Return seller-specific data with proper array handling and error checking
     const sellerStats = sellerStatsData?.data || { totalProducts: 0, totalOrders: 0, totalRevenue: 0, totalCustomers: 0 };
     const sellerOrders = Array.isArray(sellerOrdersData?.data) ? sellerOrdersData.data : [];
     const sellerProducts = Array.isArray(sellerProductsData?.data) ? sellerProductsData.data : [];
     const sellerCustomers = Array.isArray(sellerCustomersData?.data) ? sellerCustomersData.data : [];
 
-    console.log('Seller data processed:', { sellerStats, sellerOrders: sellerOrders.length, sellerProducts: sellerProducts.length, sellerCustomers: sellerCustomers.length });
+    console.log('Seller data processed:', { 
+      sellerStats, 
+      sellerOrders: sellerOrders.length, 
+      sellerProducts: sellerProducts.length, 
+      sellerCustomers: sellerCustomers.length,
+      errors: {
+        stats: sellerStatsError,
+        orders: sellerOrdersError,
+        products: sellerProductsError,
+        customers: sellerCustomersError
+      }
+    });
+
+    // Handle any seller data fetch errors
+    const hasSellerError = sellerStatsError || sellerOrdersError || sellerProductsError || sellerCustomersError;
+    const isSellerLoading = sellerStatsLoading || sellerOrdersLoading || sellerProductsLoading || sellerCustomersLoading;
+
+    if (hasSellerError) {
+      console.error('Seller data fetch errors:', {
+        stats: sellerStatsError,
+        orders: sellerOrdersError,
+        products: sellerProductsError,
+        customers: sellerCustomersError,
+      });
+    }
 
     return {
-      totalSales: Math.round(sellerStats.totalRevenue / 1000),
+      totalSales: Math.round((sellerStats.totalRevenue || 0) / 1000),
       dailySales: sellerOrders.filter((order: any) => {
-        const orderDate = new Date(order.createdAt);
-        const today = new Date();
-        return orderDate.toDateString() === today.toDateString();
+        try {
+          const orderDate = new Date(order.createdAt);
+          const today = new Date();
+          return orderDate.toDateString() === today.toDateString();
+        } catch {
+          return false;
+        }
       }).length,
       dailyUsers: sellerCustomers.length,
-      totalProducts: sellerStats.totalProducts,
+      totalProducts: sellerStats.totalProducts || 0,
       recentOrders: sellerOrders.slice(0, 10),
-      totalRevenue: sellerStats.totalRevenue,
-      paidRevenue: sellerOrders.filter((order: any) => order.isPaid).reduce((sum: number, order: any) => sum + order.totalPrice, 0),
-      totalOrders: sellerStats.totalOrders,
-      totalUsers: sellerStats.totalCustomers,
-      buyers: sellerStats.totalCustomers,
+      totalRevenue: sellerStats.totalRevenue || 0,
+      paidRevenue: sellerOrders.filter((order: any) => order.isPaid).reduce((sum: number, order: any) => sum + (order.totalPrice || 0), 0),
+      totalOrders: sellerStats.totalOrders || 0,
+      totalUsers: sellerStats.totalCustomers || 0,
+      buyers: sellerStats.totalCustomers || 0,
       sellers: 0,
       admins: 0,
       userRoleData: [
-        { name: 'My Customers', value: sellerStats.totalCustomers }
+        { name: 'My Customers', value: sellerStats.totalCustomers || 0 }
       ],
       monthlyOrdersData: [],
       paymentStatusData: [
         { name: 'Paid', value: sellerOrders.filter((order: any) => order.isPaid).length },
         { name: 'Pending', value: sellerOrders.filter((order: any) => !order.isPaid).length }
       ],
-      loading: sellerStatsLoading || sellerOrdersLoading || sellerProductsLoading || sellerCustomersLoading,
-      error: sellerStatsError || sellerOrdersError || sellerProductsError || sellerCustomersError ? 'Failed to load seller data' : null
+      loading: isSellerLoading,
+      error: hasSellerError ? 'Failed to load seller data' : null
     };
   }
 
@@ -132,9 +209,18 @@ export const useDashboardData = (userRole?: string) => {
   const users = Array.isArray(usersData?.data) ? usersData.data : [];
   const products = Array.isArray(productsData?.data) ? productsData.data : [];
 
-  console.log('Admin data processed:', { orders: orders.length, users: users.length, products: products.length });
+  console.log('Admin data processed:', { 
+    orders: orders.length, 
+    users: users.length, 
+    products: products.length,
+    errors: {
+      orders: ordersError,
+      users: usersError,
+      products: productsError
+    }
+  });
 
-  // Calculate statistics
+  // Calculate statistics with error handling
   const totalRevenue = orders.reduce((sum: number, order: any) => sum + (order.totalPrice || 0), 0);
   const paidOrders = orders.filter((order: any) => order.isPaid);
   const paidRevenue = paidOrders.reduce((sum: number, order: any) => sum + (order.totalPrice || 0), 0);

@@ -19,6 +19,7 @@ import Orders from './pages/Orders';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
+import Settings from './pages/Settings';
 import Dashboard from './pages/Dashboard';
 import AdminProducts from './pages/AdminProducts';
 import AdminCategories from './pages/AdminCategories';
@@ -74,11 +75,12 @@ const App = () => {
               
               {/* Protected Routes */}
               <Route path="/profile" element={<Profile />} />
+              <Route path="/settings" element={<Settings />} />
               <Route path="/orders" element={<Orders />} />
               <Route path="/chat" element={<CommunityChat />} />
               
               {/* Dashboard Routes */}
-                      <Route path="/community-chat" element={<CommunityChat />} />
+              <Route path="/community-chat" element={<CommunityChat />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/admin-products" element={<AdminProducts />} />
               <Route path="/admin-categories" element={<AdminCategories />} />

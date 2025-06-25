@@ -1,8 +1,7 @@
 
 import React from 'react';
 import { ChatMessage } from '@/api/chat';
-import { FileText, Download, Image as ImageIcon, Mic } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import AudioMessage from './AudioMessage';
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -11,131 +10,109 @@ interface MessageBubbleProps {
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isCurrentUser }) => {
   const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    return new Date(dateString).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
     });
   };
 
-  const downloadFile = (url: string, filename: string) => {
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const renderAttachment = (attachment: any) => {
-    switch (attachment.fileType) {
-      case 'IMAGE':
-        return (
-          <div className="mt-2">
-            <img
-              src={attachment.fileUrl}
-              alt={attachment.fileName}
-              className="max-w-xs rounded-lg cursor-pointer"
-              onClick={() => window.open(attachment.fileUrl, '_blank')}
-            />
-          </div>
-        );
-      
-      case 'PDF':
-        return (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-2 flex items-center space-x-3">
-            <FileText className="w-8 h-8 text-red-500" />
-            <div className="flex-1">
-              <div className="font-medium text-red-700">{attachment.fileName}</div>
-              <div className="text-sm text-red-500">
-                {attachment.fileSize ? `${(attachment.fileSize / 1024 / 1024).toFixed(1)} MB` : 'PDF'}
-              </div>
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => downloadFile(attachment.fileUrl, attachment.fileName)}
-            >
-              <Download className="w-4 h-4" />
-            </Button>
-          </div>
-        );
-      
-      case 'AUDIO':
-        return (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-2">
-            <div className="flex items-center space-x-3">
-              <Mic className="w-6 h-6 text-green-500" />
-              <div className="flex-1">
-                <audio controls className="w-full">
-                  <source src={attachment.fileUrl} />
-                  Your browser does not support the audio element.
-                </audio>
-              </div>
-            </div>
-          </div>
-        );
-      
-      default:
-        return (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2 flex items-center space-x-3">
-            <FileText className="w-8 h-8 text-blue-500" />
-            <div className="flex-1">
-              <div className="font-medium text-blue-700">{attachment.fileName}</div>
-              <div className="text-sm text-blue-500">Document</div>
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => downloadFile(attachment.fileUrl, attachment.fileName)}
-            >
-              <Download className="w-4 h-4" />
-            </Button>
-          </div>
-        );
+  const renderMessageContent = () => {
+    // Handle audio messages
+    if (message.messageType === 'AUDIO' && message.attachments && message.attachments.length > 0) {
+      const audioAttachment = message.attachments[0];
+      return (
+        <AudioMessage
+          audioUrl={audioAttachment.fileUrl}
+          duration={0} // Duration not stored in current schema
+          isCurrentUser={isCurrentUser}
+        />
+      );
     }
+
+    // Handle file/image messages
+    if (message.messageType === 'FILE' && message.attachments && message.attachments.length > 0) {
+      return (
+        <div className="space-y-2">
+          {message.message && (
+            <p className="break-words">{message.message}</p>
+          )}
+          {message.attachments.map((attachment, index) => (
+            <div key={index} className="space-y-1">
+              {attachment.fileType === 'IMAGE' ? (
+                <img
+                  src={attachment.fileUrl}
+                  alt={attachment.fileName}
+                  className="max-w-xs rounded-lg shadow-sm"
+                  style={{ maxHeight: '200px', objectFit: 'cover' }}
+                />
+              ) : (
+                <div className={`p-3 rounded-lg border ${
+                  isCurrentUser ? 'bg-purple-600 border-purple-500' : 'bg-gray-100 border-gray-200'
+                }`}>
+                  <div className="flex items-center space-x-2">
+                    <div className={`text-sm ${
+                      isCurrentUser ? 'text-purple-100' : 'text-gray-600'
+                    }`}>
+                      📎 {attachment.fileName}
+                    </div>
+                    <a
+                      href={attachment.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`text-xs underline ${
+                        isCurrentUser ? 'text-purple-200 hover:text-white' : 'text-purple-600 hover:text-purple-800'
+                      }`}
+                    >
+                      Download
+                    </a>
+                  </div>
+                  {attachment.fileSize && (
+                    <div className={`text-xs mt-1 ${
+                      isCurrentUser ? 'text-purple-200' : 'text-gray-500'
+                    }`}>
+                      {(attachment.fileSize / 1024).toFixed(1)} KB
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // Handle text messages
+    return <p className="break-words">{message.message}</p>;
   };
 
   return (
-    <div className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'} mb-4`}>
-      <div className={`max-w-xs lg:max-w-md ${isCurrentUser ? 'order-2' : 'order-1'}`}>
+    <div className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'} mb-2`}>
+      <div
+        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg shadow-sm ${
+          isCurrentUser
+            ? 'bg-purple-500 text-white'
+            : 'bg-white border border-gray-200 text-gray-800'
+        }`}
+      >
+        {/* User name for non-current users */}
         {!isCurrentUser && (
-          <div className="flex items-center mb-1">
-            <div className="w-6 h-6 bg-purple-400 rounded-full flex items-center justify-center text-white text-xs font-medium">
-              {message.user?.name?.charAt(0).toUpperCase()}
-            </div>
-            <span className="ml-2 text-xs font-medium text-gray-600">
-              {message.user?.name?.split(' ')[0]}
-            </span>
-            <span className={`ml-1 px-1.5 py-0.5 rounded-full text-xs ${
-              message.user?.role?.toLowerCase() === 'admin'
-                ? 'bg-red-100 text-red-800'
-                : 'bg-blue-100 text-blue-800'
-            }`}>
-              {message.user?.role?.toLowerCase() === 'admin' ? 'Admin' : 'Vendor'}
-            </span>
+          <div className="text-xs font-medium text-purple-600 mb-1">
+            {message.user?.name} ({message.user?.role})
           </div>
         )}
-        
-        <div className={`rounded-2xl px-4 py-2 ${
-          isCurrentUser 
-            ? 'bg-purple-500 text-white rounded-br-md' 
-            : 'bg-white border border-gray-200 text-gray-800 rounded-bl-md'
-        }`}>
-          {message.message && (
-            <p className="text-sm whitespace-pre-wrap break-words">
-              {message.message}
-            </p>
-          )}
-          
-          {message.attachments && message.attachments.map((attachment, index) => 
-            renderAttachment(attachment)
-          )}
-          
-          <div className={`text-xs mt-1 ${
+
+        {/* Message content */}
+        <div className="mb-1">
+          {renderMessageContent()}
+        </div>
+
+        {/* Timestamp */}
+        <div
+          className={`text-xs ${
             isCurrentUser ? 'text-purple-100' : 'text-gray-500'
-          }`}>
-            {formatTime(message.createdAt)}
-          </div>
+          } text-right`}
+        >
+          {formatTime(message.createdAt)}
         </div>
       </div>
     </div>
