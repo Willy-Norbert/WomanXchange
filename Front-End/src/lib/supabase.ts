@@ -6,16 +6,22 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-export const uploadFile = async (file: File, bucket: string = 'chat-files') => {
+export const uploadFile = async (file: File, bucket: string = 'avatars') => {
   const fileExt = file.name.split('.').pop();
   const fileName = `${Math.random()}.${fileExt}`;
   const filePath = `${fileName}`;
 
+  console.log('Attempting to upload file to bucket:', bucket);
+  
   const { data, error } = await supabase.storage
     .from(bucket)
-    .upload(filePath, file);
+    .upload(filePath, file, {
+      cacheControl: '3600',
+      upsert: false
+    });
 
   if (error) {
+    console.error('Upload error:', error);
     throw error;
   }
 
@@ -30,7 +36,7 @@ export const uploadFile = async (file: File, bucket: string = 'chat-files') => {
   };
 };
 
-export const deleteFile = async (path: string, bucket: string = 'chat-files') => {
+export const deleteFile = async (path: string, bucket: string = 'avatars') => {
   const { error } = await supabase.storage
     .from(bucket)
     .remove([path]);

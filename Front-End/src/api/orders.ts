@@ -93,7 +93,10 @@ export const createOrder = (data: CreateOrderData) =>
 
 export const getUserOrders = () => api.get<Order[]>('/orders');
 
-export const getAllOrders = () => api.get<Order[]>('/orders/all');
+export const getAllOrders = (userRole?: string, userId?: number) => {
+  console.log('getAllOrders called with role:', userRole, 'userId:', userId);
+  return api.get<Order[]>('/orders/all');
+};
 
 // Get individual order by ID
 export const getOrderById = (id: number) => api.get<Order>(`/orders/${id}`);

@@ -73,7 +73,8 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, disabled }) => {
       const uploadedFiles: FileData[] = [];
 
       for (const fileData of selectedFiles) {
-        const uploadResult = await uploadFile(fileData.file);
+        // Use 'avatars' bucket instead of 'chat-files'
+        const uploadResult = await uploadFile(fileData.file, 'avatars');
         uploadedFiles.push({
           ...fileData,
           url: uploadResult.url
@@ -86,7 +87,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, disabled }) => {
       console.error('Upload error:', error);
       toast({
         title: "Upload failed",
-        description: "Failed to upload files",
+        description: "Failed to upload files. Please try again.",
         variant: "destructive",
       });
     } finally {
