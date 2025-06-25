@@ -73,7 +73,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, disabled }) => {
       const uploadedFiles: FileData[] = [];
 
       for (const fileData of selectedFiles) {
-        // Use 'avatars' bucket instead of 'chat-files'
+        // Use 'avatars' bucket which exists in Supabase
         const uploadResult = await uploadFile(fileData.file, 'avatars');
         uploadedFiles.push({
           ...fileData,
