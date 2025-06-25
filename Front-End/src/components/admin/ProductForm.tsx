@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { CreateProductData } from '@/api/products';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { ImageUpload } from './ImageUpload';
+import { ColorSizeSelector } from './ColorSizeSelector';
 
 interface ProductFormProps {
   onSubmit: (data: CreateProductData) => void;
@@ -40,12 +42,18 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       stock: editingProduct?.stock || 0,
       coverImage: editingProduct?.coverImage || '',
       categoryId: editingProduct?.categoryId || 1,
+      colors: editingProduct?.colors || [],
+      sizes: editingProduct?.sizes || [],
     },
   });
 
   React.useEffect(() => {
     if (editingProduct) {
-      form.reset({ ...editingProduct });
+      form.reset({ 
+        ...editingProduct,
+        colors: editingProduct.colors || [],
+        sizes: editingProduct.sizes || []
+      });
     }
   }, [editingProduct, form]);
 
@@ -102,6 +110,22 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             onFileChange={onFileChange}
             onUrlChange={onUrlChange}
             previewImage={previewImage}
+            field={field}
+          />
+        )} />
+        <FormField name="colors" control={form.control} render={({ field }) => (
+          <ColorSizeSelector
+            type="colors"
+            selectedItems={field.value || []}
+            onItemsChange={(items) => field.onChange(items)}
+            field={field}
+          />
+        )} />
+        <FormField name="sizes" control={form.control} render={({ field }) => (
+          <ColorSizeSelector
+            type="sizes"
+            selectedItems={field.value || []}
+            onItemsChange={(items) => field.onChange(items)}
             field={field}
           />
         )} />

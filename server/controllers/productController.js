@@ -1,10 +1,10 @@
 
 import asyncHandler from 'express-async-handler';
 import prisma from '../prismaClient.js';
-import { notify } from '../utils/notify.js';  // Import notify
+import { notify } from '../utils/notify.js';
 
 export const createProduct = asyncHandler(async (req, res) => {
-  const { name, description, price, stock, categoryId, coverImage } = req.body;
+  const { name, description, price, stock, categoryId, coverImage, colors, sizes } = req.body;
   const productCoverImage = coverImage || 'https://aannet.org/global_graphics/default-store-350x350.jpg';
   
   const product = await prisma.product.create({
@@ -16,10 +16,11 @@ export const createProduct = asyncHandler(async (req, res) => {
       categoryId,
       coverImage: productCoverImage,
       createdById: req.user.id,
+      colors: colors || [],
+      sizes: sizes || [],
     },
   });
 
-  // Notify admins about the new product
   await notify({
     userId: req.user.id,
     message: `New product "${name}" has been created.`,
@@ -72,7 +73,6 @@ export const updateProduct = asyncHandler(async (req, res) => {
   console.log('User owns product?', product.createdById === req.user.id);
   console.log('User is admin?', req.user.role.toLowerCase() === 'admin');
 
-  // Check if user owns the product OR is an admin
   const userOwnsProduct = product.createdById === req.user.id;
   const userIsAdmin = req.user.role.toLowerCase() === 'admin';
   
@@ -93,10 +93,11 @@ export const updateProduct = asyncHandler(async (req, res) => {
       stock: req.body.stock,
       coverImage: req.body.coverImage,
       categoryId: req.body.categoryId,
+      colors: req.body.colors || [],
+      sizes: req.body.sizes || [],
     },
   });
 
-  // Notify admins about product update
   await notify({
     userId: req.user.id,
     message: `Product "${updated.name}" has been updated.`,
