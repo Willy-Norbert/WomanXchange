@@ -1,50 +1,76 @@
-
-import React, { useContext } from 'react';
+import React, { useContext, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { CheckCircle, Clock, Package, DollarSign, Eye } from 'lucide-react';
-import { getAllOrders, confirmOrderPayment } from '@/api/orders';
+import { CheckCircle, Package, Plus, Trash2 } from 'lucide-react';
+import { getAllOrders, confirmOrderPayment, deleteOrder } from '@/api/orders';
 import { AuthContext } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { OrderCreation } from '@/components/OrderCreation';
 
 const Orders = () => {
   const { user } = useContext(AuthContext);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [isCreateOrderOpen, setIsCreateOrderOpen] = useState(false);
 
+  // ✅ Use correct query key and pass role/userId
   const { data: ordersData, isLoading, error } = useQuery({
-    queryKey: ['admin-orders'],
-    queryFn: getAllOrders,
+    queryKey: ['orders', user?.role, user?.id],
+    queryFn: () => getAllOrders(user?.role?.toLowerCase() || '', user?.id),
     enabled: !!user && (user.role === 'admin' || user.role === 'seller'),
-    staleTime: 30000, // 30 seconds stale time
+    staleTime: 30000,
   });
 
   const confirmPaymentMutation = useMutation({
     mutationFn: confirmOrderPayment,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['orders', user?.role, user?.id] });
       toast({
-        title: "Payment confirmed",
-        description: "Order payment has been confirmed and customer notified",
+        title: 'Payment confirmed',
+        description: 'Order payment has been confirmed and customer notified',
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to confirm payment",
-        variant: "destructive",
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to confirm payment',
+        variant: 'destructive',
       });
-    }
+    },
+  });
+
+  const deleteOrderMutation = useMutation({
+    mutationFn: deleteOrder,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders', user?.role, user?.id] });
+      toast({
+        title: 'Order deleted',
+        description: 'Order has been deleted successfully',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to delete order',
+        variant: 'destructive',
+      });
+    },
   });
 
   const orders = ordersData?.data || [];
 
   const handleConfirmPayment = (orderId: number) => {
     confirmPaymentMutation.mutate(orderId);
+  };
+
+  const handleDeleteOrder = (orderId: number) => {
+    if (window.confirm('Are you sure you want to delete this order?')) {
+      deleteOrderMutation.mutate(orderId);
+    }
   };
 
   if (isLoading) {
@@ -70,11 +96,17 @@ const Orders = () => {
   return (
     <DashboardLayout currentPage="orders">
       <div className="space-y-6">
-        <div className="flex items-center space-x-3">
-          <Package className="w-8 h-8 text-purple-600" />
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-            Order Management
-          </h1>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <Package className="w-8 h-8 text-purple-600" />
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              Order Management
+            </h1>
+          </div>
+          <Button onClick={() => setIsCreateOrderOpen(true)} className="bg-purple-600 hover:bg-purple-700">
+            <Plus className="w-4 h-4 mr-2" />
+            Create Order
+          </Button>
         </div>
 
         <Card>
@@ -112,9 +144,7 @@ const Orders = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="text-sm">
-                          {order.items?.length || 0} item(s)
-                        </div>
+                        <div className="text-sm">{order.items?.length || 0} item(s)</div>
                       </TableCell>
                       <TableCell className="font-semibold">
                         {order.totalPrice.toLocaleString()} Rwf
@@ -134,9 +164,7 @@ const Orders = () => {
                           {order.isDelivered ? 'Delivered' : 'Pending'}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        {new Date(order.createdAt).toLocaleDateString()}
-                      </TableCell>
+                      <TableCell>{new Date(order.createdAt).toLocaleDateString()}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end space-x-2">
                           {!order.isPaid && (
@@ -174,6 +202,17 @@ const Orders = () => {
                               )}
                             </Button>
                           )}
+                          {user?.role === 'admin' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDeleteOrder(order.id)}
+                              disabled={deleteOrderMutation.isPending}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -183,6 +222,13 @@ const Orders = () => {
             )}
           </CardContent>
         </Card>
+
+        <OrderCreation
+          isOpen={isCreateOrderOpen}
+          onClose={() => setIsCreateOrderOpen(false)}
+          userRole={user?.role?.toLowerCase() || ''}
+          userId={user?.id}
+        />
       </div>
     </DashboardLayout>
   );

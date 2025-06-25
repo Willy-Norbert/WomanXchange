@@ -49,7 +49,7 @@ const Vendors = () => {
     }
 
     // Only ADMINs can access vendors page
-    if (user.role !== 'ADMIN') {
+    if (user.role.toLowerCase() !== 'admin') {
       navigate('/dashboard');
       return;
     }
@@ -63,7 +63,7 @@ const Vendors = () => {
       console.log('Vendors API response:', response.data);
       return response;
     },
-    enabled: !!user && user.role === 'ADMIN',
+    enabled: !!user && user.role.toLowerCase() === 'admin',
     refetchInterval: 5000, // Refetch every 5 seconds for live updates
   });
 
@@ -127,7 +127,7 @@ const Vendors = () => {
     );
   }
 
-  if (!user || user.role !== 'ADMIN') {
+  if (!user || user.role.toLowerCase() !== 'admin') {
     return null;
   }
 

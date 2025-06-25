@@ -28,10 +28,17 @@ const SingleProduct = () => {
 
   useEffect(() => {
     const fetchProduct = async () => {
-      if (!id) return;
+      if (!id) {
+        setError('Product ID is required');
+        setLoading(false);
+        return;
+      }
       
       try {
         setLoading(true);
+        setError('');
+        console.log('Fetching product with ID:', id);
+        
         const response = await getProductById(id);
         setProduct(response.data);
         // Set default selections if available
@@ -40,22 +47,48 @@ const SingleProduct = () => {
         }
         if (response.data.sizes && response.data.sizes.length > 0) {
           setSelectedSize(response.data.sizes[0]);
+        console.log('Product fetch response:', response);
+        
+        if (response.data) {
+          setProduct(response.data);
+          console.log('Product loaded successfully:', response.data);
+        } else {
+          throw new Error('No product data received');
         }
       } catch (err: any) {
-        setError('Failed to load product');
         console.error('Error fetching product:', err);
+        const errorMessage = err.response?.data?.message || err.message || 'Failed to load product';
+        setError(errorMessage);
+        
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
       } finally {
         setLoading(false);
       }
     };
 
     fetchProduct();
-  }, [id]);
+  }, [id, toast]);
 
   const handleAddToCart = async () => {
     if (!product) return;
     
-    addToCart({ productId: product.id, quantity });
+    try {
+      await addToCart({ productId: product.id, quantity });
+      toast({
+        title: "Success",
+        description: `${product.name} added to cart`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || "Failed to add to cart",
+        variant: "destructive",
+      });
+    }
   };
 
   const productImages = product?.coverImage ? [product.coverImage] : [];
@@ -68,7 +101,10 @@ const SingleProduct = () => {
       <div className="min-h-screen bg-white">
         <Header />
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading product...</p>
+          </div>
         </div>
         <Footer />
       </div>
@@ -80,7 +116,12 @@ const SingleProduct = () => {
       <div className="min-h-screen bg-white">
         <Header />
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-lg text-red-600">{error || 'Product not found'}</div>
+          <div className="text-center">
+            <div className="text-lg text-red-600 mb-4">{error || 'Product not found'}</div>
+            <Button onClick={() => window.location.reload()} className="bg-purple-500 hover:bg-purple-600">
+              Try Again
+            </Button>
+          </div>
         </div>
         <Footer />
       </div>
@@ -94,7 +135,7 @@ const SingleProduct = () => {
       <div className="container mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <div className="text-sm text-gray-500 mb-6">
-          Home / Shop / {product.category?.name} / {product.name}
+          Home / Shop / {product.category?.name || 'Category'} / {product.name}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-12">
@@ -105,6 +146,9 @@ const SingleProduct = () => {
                 src={productImages[selectedImage] || '/placeholder.svg'} 
                 alt={product.name}
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.src = '/placeholder.svg';
+                }}
               />
             </div>
             {productImages.length > 1 && (
@@ -114,13 +158,16 @@ const SingleProduct = () => {
                     key={index}
                     onClick={() => setSelectedImage(index)}
                     className={`w-20 h-20 rounded-lg overflow-hidden border-2 ${
-                      selectedImage === index ? 'border-purple' : 'border-gray-200'
+                      selectedImage === index ? 'border-purple-500' : 'border-gray-200'
                     }`}
                   >
                     <img 
                       src={image} 
                       alt={`Product ${index + 1}`}
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = '/placeholder.svg';
+                      }}
                     />
                   </button>
                 ))}
@@ -140,7 +187,7 @@ const SingleProduct = () => {
                 </div>
                 <span className="text-sm text-gray-500">(4.5)</span>
               </div>
-              <p className="text-3xl font-bold text-purple mb-6">{product.price.toLocaleString()} Rwf</p>
+              <p className="text-3xl font-bold text-purple-600 mb-6">{product.price.toLocaleString()} Rwf</p>
               <p className="text-gray-600 mb-6">{product.description}</p>
             </div>
 
@@ -163,6 +210,19 @@ const SingleProduct = () => {
                     </button>
                   ))}
                 </div>
+            <div>
+              <h3 className="font-medium mb-3">Color</h3>
+              <div className="flex gap-3">
+                {colors.map((color) => (
+                  <button
+                    key={color.name}
+                    onClick={() => setSelectedColor(color.name)}
+                    className={`w-8 h-8 rounded-full border-2 ${
+                      selectedColor === color.name ? 'border-purple-500' : 'border-gray-300'
+                    }`}
+                    style={{ backgroundColor: color.color }}
+                  />
+                ))}
               </div>
             )}
 
@@ -185,6 +245,22 @@ const SingleProduct = () => {
                     </button>
                   ))}
                 </div>
+            <div>
+              <h3 className="font-medium mb-3">Size</h3>
+              <div className="flex gap-2">
+                {sizes.map((size) => (
+                  <button
+                    key={size}
+                    onClick={() => setSelectedSize(size)}
+                    className={`px-4 py-2 border rounded-md ${
+                      selectedSize === size
+                        ? 'border-purple-500 bg-purple-500 text-white'
+                        : 'border-gray-300 text-gray-700 hover:border-purple-500'
+                    }`}
+                  >
+                    {size}
+                  </button>
+                ))}
               </div>
             )}
 
@@ -216,7 +292,7 @@ const SingleProduct = () => {
                   </button>
                 </div>
                 <Button 
-                  className="flex-1 bg-purple hover:bg-purple-600 text-white"
+                  className="flex-1 bg-purple-500 hover:bg-purple-600 text-white"
                   onClick={handleAddToCart}
                   disabled={product.stock === 0 || isAddingToCart}
                 >
@@ -238,7 +314,7 @@ const SingleProduct = () => {
               onClick={() => setActiveTab('details')}
               className={`py-4 px-2 border-b-2 font-medium ${
                 activeTab === 'details'
-                  ? 'border-purple text-purple'
+                  ? 'border-purple-500 text-purple-500'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
@@ -248,7 +324,7 @@ const SingleProduct = () => {
               onClick={() => setActiveTab('reviews')}
               className={`py-4 px-2 border-b-2 font-medium ${
                 activeTab === 'reviews'
-                  ? 'border-purple text-purple'
+                  ? 'border-purple-500 text-purple-500'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
@@ -258,7 +334,7 @@ const SingleProduct = () => {
               onClick={() => setActiveTab('faq')}
               className={`py-4 px-2 border-b-2 font-medium ${
                 activeTab === 'faq'
-                  ? 'border-purple text-purple'
+                  ? 'border-purple-500 text-purple-500'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >

@@ -1,4 +1,3 @@
-
 import asyncHandler from 'express-async-handler';
 import prisma from '../prismaClient.js';
 import generateToken from '../utils/generateToken.js';
@@ -163,7 +162,85 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
   res.json(updatedUser);
 });
 
-// Get all users
+// Get single user (Admin only)
+export const getUser = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  
+  console.log('Getting user:', userId);
+  
+  const user = await prisma.user.findUnique({
+    where: { id: parseInt(userId) },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      phone: true,
+      address: true,
+      bio: true,
+      company: true,
+      isActive: true,
+      sellerStatus: true,
+      businessName: true,
+      createdAt: true
+    }
+  });
+
+  if (!user) {
+    res.status(404);
+    throw new Error('User not found');
+  }
+
+  console.log('User found successfully');
+  res.json(user);
+});
+
+// Create user (Admin only)
+export const createUser = asyncHandler(async (req, res) => {
+  const { name, email, password, role, phone, address, bio, company } = req.body;
+  
+  console.log('Creating user:', email);
+
+  const userExists = await prisma.user.findUnique({ where: { email } });
+  if (userExists) {
+    res.status(400);
+    throw new Error('User already exists');
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  const user = await prisma.user.create({
+    data: {
+      name,
+      email,
+      password: hashedPassword,
+      role: role.toUpperCase(),
+      ...(phone && { phone }),
+      ...(address && { address }),
+      ...(bio && { bio }),
+      ...(company && { company })
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      phone: true,
+      address: true,
+      bio: true,
+      company: true,
+      isActive: true,
+      sellerStatus: true,
+      businessName: true,
+      createdAt: true
+    }
+  });
+
+  console.log('User created successfully');
+  res.status(201).json(user);
+});
+
+// Get all users (Admin only)
 export const getAllUsers = asyncHandler(async (req, res) => {
   const users = await prisma.user.findMany({
     select: {
@@ -171,6 +248,10 @@ export const getAllUsers = asyncHandler(async (req, res) => {
       name: true,
       email: true,
       role: true,
+      phone: true,
+      isActive: true,
+      sellerStatus: true,
+      businessName: true,
       createdAt: true
     },
     orderBy: {
@@ -179,6 +260,87 @@ export const getAllUsers = asyncHandler(async (req, res) => {
   });
 
   res.status(200).json(users);
+});
+
+// Delete user (Admin only)
+export const deleteUser = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  
+  console.log('Deleting user:', userId);
+  
+  const user = await prisma.user.findUnique({
+    where: { id: parseInt(userId) }
+  });
+
+  if (!user) {
+    res.status(404);
+    throw new Error('User not found');
+  }
+
+  // Cannot delete admin users
+  if (user.role === 'ADMIN') {
+    res.status(403);
+    throw new Error('Cannot delete admin users');
+  }
+
+  await prisma.user.delete({
+    where: { id: parseInt(userId) }
+  });
+
+  console.log('User deleted successfully');
+  res.json({ message: 'User deleted successfully' });
+});
+
+// Update user (Admin only)
+export const updateUser = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  const { name, email, role, isActive } = req.body;
+  
+  console.log('Updating user:', userId, req.body);
+
+  const user = await prisma.user.findUnique({
+    where: { id: parseInt(userId) }
+  });
+
+  if (!user) {
+    res.status(404);
+    throw new Error('User not found');
+  }
+
+  // Check if email is already taken by another user
+  if (email && email !== user.email) {
+    const emailExists = await prisma.user.findUnique({
+      where: { email }
+    });
+    if (emailExists) {
+      res.status(400);
+      throw new Error('Email already exists');
+    }
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id: parseInt(userId) },
+    data: {
+      ...(name && { name }),
+      ...(email && { email }),
+      ...(role && { role: role.toUpperCase() }),
+      ...(typeof isActive === 'boolean' && { isActive })
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      phone: true,
+      isActive: true,
+      sellerStatus: true,
+      businessName: true,
+      createdAt: true
+    }
+  });
+
+  console.log('User updated successfully');
+  res.json(updatedUser);
 });
 
 // Logout User

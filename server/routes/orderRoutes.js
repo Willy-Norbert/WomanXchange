@@ -5,52 +5,43 @@ import {
   removeFromCart,
   getCart,
   placeOrder,
+  createOrder,
   getUserOrders,
   getAllOrders,
   updateOrderStatus,
-  confirmOrderPayment
+  updateOrder,
+  deleteOrder,
+  confirmOrderPayment,
+  getOrderById
 } from '../controllers/orderController.js';
 import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
 
 const orderRouter = express.Router();
 
-// Optional authentication middleware for cart routes
-const optionalAuth = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (token) {
-    // If token exists, try to authenticate but don't fail if it doesn't work
-    protect(req, res, (err) => {
-      if (err) {
-        console.log('Optional auth failed, continuing without user');
-        req.user = null;
-      }
-      next();
-    });
-  } else {
-    // No token, continue without authentication
-    req.user = null;
-    next();
-  }
-};
-
-// Cart routes - no authentication required, but optionally use auth if available
+// Cart routes (public access for guest users)
 orderRouter.route('/cart')
-  .get(optionalAuth, getCart)
-  .post(optionalAuth, addToCart)
-  .delete(optionalAuth, removeFromCart);
+  .get(getCart)
+  .post(addToCart)
+  .delete(removeFromCart);
 
-// Order routes - authentication required for placing orders
+// Order routes (require authentication)
 orderRouter.route('/')
   .post(protect, placeOrder)
   .get(protect, getUserOrders);
 
-orderRouter.route('/all')
-  .get(protect, authorizeRoles('admin','seller'), getAllOrders);
+// Create order by admin/seller
+orderRouter.post('/create', protect, authorizeRoles('admin', 'seller'), createOrder);
 
-orderRouter.route('/:id/status')
-  .put(protect, authorizeRoles('admin','seller'), updateOrderStatus);
+// Admin routes
+orderRouter.get('/all', protect, authorizeRoles('admin', 'seller'), getAllOrders);
 
-orderRouter.route('/:id/confirm-payment')
-  .put(protect, authorizeRoles('admin','seller'), confirmOrderPayment);
+// Individual order operations
+orderRouter.route('/:id')
+  .get(protect, authorizeRoles('admin', 'seller'), getOrderById)
+  .put(protect, authorizeRoles('admin', 'seller'), updateOrder)
+  .delete(protect, authorizeRoles('admin'), deleteOrder);
+
+orderRouter.put('/:id/status', protect, authorizeRoles('admin', 'seller'), updateOrderStatus);
+orderRouter.put('/:id/confirm-payment', protect, authorizeRoles('admin'), confirmOrderPayment);
 
 export default orderRouter;

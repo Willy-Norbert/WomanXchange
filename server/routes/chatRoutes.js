@@ -1,13 +1,20 @@
 
 import express from 'express';
-import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
 import { getChatMessages, createChatMessage, deleteChatMessage } from '../controllers/chatController.js';
+import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// Community chat routes - only for admins and sellers
-router.get('/messages', protect, authorizeRoles('admin', 'seller'), getChatMessages);
-router.post('/messages', protect, authorizeRoles('admin', 'seller'), createChatMessage);
-router.delete('/messages/:id', protect, authorizeRoles('admin', 'seller'), deleteChatMessage);
+// All chat routes require authentication and admin/seller role
+router.use(protect);
+router.use(authorizeRoles('admin', 'seller'));
+
+// Chat message routes
+router.route('/messages')
+  .get(getChatMessages)
+  .post(createChatMessage);
+
+router.route('/messages/:id')
+  .delete(deleteChatMessage);
 
 export default router;

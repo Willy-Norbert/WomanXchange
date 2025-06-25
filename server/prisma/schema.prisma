@@ -18,6 +18,10 @@ model User {
   address   String?
   bio       String?
   company   String?
+  businessName String?
+  gender    String?
+  isActive  Boolean   @default(true)
+  sellerStatus SellerStatus @default(INACTIVE)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
@@ -35,6 +39,12 @@ enum Role {
   SELLER
 }
 
+enum SellerStatus {
+  INACTIVE
+  ACTIVE
+  SUSPENDED
+}
+
 model Product {
   id           Int       @id @default(autoincrement())
   name         String
@@ -48,6 +58,7 @@ model Product {
   createdById  Int?
   averageRating Float    @default(0)
   numReviews   Int       @default(0)
+  isVisible    Boolean   @default(true)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -150,8 +161,38 @@ model Notification {
 
 model ChatMessage {
   id        Int      @id @default(autoincrement())
-  message   String
+  message   String?
   userId    Int
   user      User     @relation(fields: [userId], references: [id])
+  messageType MessageType @default(TEXT)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  attachments ChatAttachment[]
+}
+
+model ChatAttachment {
+  id          Int         @id @default(autoincrement())
+  chatMessage ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId   Int
+  fileName    String
+  fileUrl     String
+  fileType    FileType
+  fileSize    Int?
+  createdAt   DateTime    @default(now())
+}
+
+enum MessageType {
+  TEXT
+  FILE
+  IMAGE
+  AUDIO
+}
+
+enum FileType {
+  IMAGE
+  PDF
+  AUDIO
+  VIDEO
+  DOCUMENT
 }

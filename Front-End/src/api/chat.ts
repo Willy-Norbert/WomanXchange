@@ -1,16 +1,38 @@
 
 import api from './api';
 
+export interface ChatAttachment {
+  id: number;
+  fileName: string;
+  fileUrl: string;
+  fileType: 'IMAGE' | 'PDF' | 'AUDIO' | 'VIDEO' | 'DOCUMENT';
+  fileSize?: number;
+}
+
 export interface ChatMessage {
   id: number;
-  message: string;
+  message?: string;
   userId: number;
+  messageType: 'TEXT' | 'FILE' | 'IMAGE' | 'AUDIO';
   createdAt: string;
+  updatedAt: string;
   user: {
     id: number;
     name: string;
     role: string;
   };
+  attachments?: ChatAttachment[];
+}
+
+export interface CreateMessageData {
+  message?: string;
+  messageType?: 'TEXT' | 'FILE' | 'IMAGE' | 'AUDIO';
+  attachments?: {
+    fileName: string;
+    fileUrl: string;
+    fileType: 'IMAGE' | 'PDF' | 'AUDIO' | 'VIDEO' | 'DOCUMENT';
+    fileSize?: number;
+  }[];
 }
 
 export const getChatMessages = async () => {
@@ -18,8 +40,8 @@ export const getChatMessages = async () => {
   return response.data;
 };
 
-export const createChatMessage = async (message: string) => {
-  const response = await api.post('/chat/messages', { message });
+export const createChatMessage = async (data: CreateMessageData) => {
+  const response = await api.post('/chat/messages', data);
   return response.data;
 };
 

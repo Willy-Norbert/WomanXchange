@@ -316,7 +316,7 @@ const translations = {
     'nav.home': 'Ahabanza',
     'nav.products': 'Ibicuruzwa',
     'nav.categories': 'Amatsinda',
-    'nav.about': 'Ibibacu',
+    'nav.about': 'Ibyerekeye',
     'nav.contact': 'Twandikire',
     'nav.dashboard': 'Ubuyobozi',
     

@@ -17,24 +17,26 @@ export const useCart = () => {
       const storedCartId = localStorage.getItem('anonymous_cart_id');
       if (storedCartId) {
         setCartId(parseInt(storedCartId));
+        console.log('Loaded cart ID from localStorage:', storedCartId);
       }
     } else {
       // Clear anonymous cart when user logs in
       localStorage.removeItem('anonymous_cart_id');
       setCartId(null);
+      console.log('User logged in, cleared anonymous cart');
     }
   }, [user]);
 
   // Create a stable query key that changes when user auth state changes
   const queryKey = user ? ['cart', 'authenticated', user.id] : ['cart', 'anonymous', cartId];
 
-  const { data: cartResponse, isLoading, error } = useQuery({
+  const { data: cartResponse, isLoading, error, refetch } = useQuery({
     queryKey,
     queryFn: () => {
       console.log('useCart query: calling getCart with cartId:', cartId, 'user:', !!user);
       return getCart(cartId);
     },
-    staleTime: 5000,
+    staleTime: 1000, // Reduced stale time for more frequent updates
     gcTime: 10 * 60 * 1000,
     retry: 1,
     refetchOnMount: true,
@@ -68,10 +70,12 @@ export const useCart = () => {
         const newCartId = data.data.cartId;
         localStorage.setItem('anonymous_cart_id', newCartId.toString());
         setCartId(newCartId);
+        console.log('Stored new cart ID:', newCartId);
       }
       
-      // Invalidate and refetch cart queries
+      // Invalidate and refetch cart queries immediately
       queryClient.invalidateQueries({ queryKey: ['cart'] });
+      refetch(); // Force immediate refetch
       
       toast({
         title: "Added to cart",
@@ -90,16 +94,20 @@ export const useCart = () => {
 
   const removeFromCartMutation = useMutation({
     mutationFn: (productId: number) => {
+      console.log('Removing from cart:', { productId, cartId });
       return removeFromCart(productId, cartId);
     },
     onSuccess: () => {
+      console.log('Remove from cart success');
       queryClient.invalidateQueries({ queryKey: ['cart'] });
+      refetch(); // Force immediate refetch
       toast({
         title: "Item removed",
         description: "Item has been removed from your cart",
       });
     },
     onError: (error: any) => {
+      console.error('Remove from cart error:', error);
       toast({
         title: "Error",
         description: error.response?.data?.message || "Failed to remove item",
@@ -126,5 +134,6 @@ export const useCart = () => {
     removeFromCart: removeFromCartMutation.mutate,
     isAddingToCart: addToCartMutation.isPending,
     isRemovingFromCart: removeFromCartMutation.isPending,
+    refetchCart: refetch,
   };
 };

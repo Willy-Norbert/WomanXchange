@@ -1,290 +1,201 @@
-import React, { useContext, useEffect, useState } from 'react';
+
+import React, { useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
+import SellerCustomers from './SellerCustomers';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Search, Plus, Edit } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
+import { Search, Users } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import api from '@/api/api';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useToast } from '@/hooks/use-toast';
-
-interface CreateCustomerData {
-  name: string;
-  email: string;
-  password: string;
-  role: 'buyer';
-}
 
 const Customers = () => {
-  const { t } = useLanguage();
-  const { user, loading } = useContext(AuthContext);
+  const { user } = useContext(AuthContext);
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-
-  const form = useForm<CreateCustomerData>({
-    defaultValues: {
-      name: '',
-      email: '',
-      password: '',
-      role: 'buyer',
-    },
-  });
+  const { t } = useLanguage();
 
   useEffect(() => {
-    if (loading) return;
-
     if (!user) {
       navigate('/login');
       return;
     }
-
-    // Allow ADMIN, buyer, and seller to access the customers page
-    if (!['ADMIN', 'buyer', 'seller'].includes(user.role)) {
-      navigate('/dashboard');
-      return;
+    if (user.role === 'buyer') {
+      navigate('/');
     }
-  }, [user, loading, navigate]);
+  }, [user, navigate]);
 
-  const { data: usersData, isLoading, error, refetch } = useQuery({
-    queryKey: ['customers'],
+  // If user is a seller, show seller-specific customers
+  if (user?.role === 'SELLER') {
+    return <SellerCustomers />;
+  }
+
+  // Admin view - show all users (only if user is admin)
+  const { data: usersData, isLoading, error } = useQuery({
+    queryKey: ['all-users'],
     queryFn: async () => {
       const response = await api.get('/auth/users');
-      return response;
+      return response.data;
     },
-    enabled: !!user && ['ADMIN', 'buyer', 'seller'].includes(user.role),
-    refetchInterval: 5000,
+    enabled: !!user && user.role === 'ADMIN',
   });
 
-  const createCustomerMutation = useMutation({
-    mutationFn: async (data: CreateCustomerData) => {
-      const response = await api.post('/auth/register', data);
-      return response;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customers'] });
-      setIsCreateModalOpen(false);
-      form.reset();
-      toast({
-        title: 'Success',
-        description: 'Customer (buyer) created successfully.',
-      });
-    },
-    onError: (error: any) => {
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to create customer';
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive',
-      });
-    },
-  });
+  if (!user || user.role === 'buyer') {
+    return null;
+  }
 
-  const allUsers = usersData?.data || [];
-  const customers = allUsers.filter((u: any) => u.role?.toLowerCase() === 'buyer');
+  // If user is not admin, redirect to dashboard
+  if (user.role !== 'ADMIN') {
+    navigate('/dashboard');
+    return null;
+  }
 
-  const onSubmit = (data: CreateCustomerData) => {
-    createCustomerMutation.mutate(data);
-  };
-
-  const resetForm = () => {
-    form.reset();
-    setIsCreateModalOpen(false);
-  };
-
-  if (loading || isLoading) {
+  if (isLoading) {
     return (
       <DashboardLayout currentPage="customers">
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-lg text-gray-600">{t('common.loading')}</div>
+          <div className="text-lg text-gray-600">Loading users...</div>
         </div>
       </DashboardLayout>
     );
-  }
-
-  if (!user || !['ADMIN', 'buyer', 'seller'].includes(user.role)) {
-    return null;
   }
 
   if (error) {
     return (
       <DashboardLayout currentPage="customers">
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-lg text-red-600">
-            {t('error.failed_load_products')}
-            <Button onClick={() => refetch()} className="ml-2">{t('common.retry')}</Button>
-          </div>
+          <div className="text-lg text-red-600">Failed to load users</div>
         </div>
       </DashboardLayout>
     );
   }
 
+  const users = usersData || [];
+  const buyers = users.filter((user: any) => user.role.toLowerCase() === 'buyer');
+  const sellers = users.filter((user: any) => user.role.toLowerCase() === 'seller');
+
   return (
     <DashboardLayout currentPage="customers">
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">{t('customers.title')}</h1>
-          {user.role === 'ADMIN' && (
-            <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => resetForm()}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  {t('customers.add_customer')}
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Add New Customer (buyer)</DialogTitle>
-                </DialogHeader>
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="name"
-                      rules={{ required: 'Name is required' }}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Full Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter full name" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="email"
-                      rules={{
-                        required: 'Email is required',
-                        pattern: {
-                          value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                          message: 'Invalid email address',
-                        },
-                      }}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email Address</FormLabel>
-                          <FormControl>
-                            <Input type="email" placeholder="Enter email address" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="password"
-                      rules={{
-                        required: 'Password is required',
-                        minLength: { value: 6, message: 'Password must be at least 6 characters' },
-                      }}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Password</FormLabel>
-                          <FormControl>
-                            <Input type="password" placeholder="Enter password" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <div className="flex gap-2 pt-4">
-                      <Button type="submit" disabled={createCustomerMutation.isPending} className="flex-1">
-                        {createCustomerMutation.isPending ? 'Creating...' : 'Create Customer'}
-                      </Button>
-                      <Button type="button" variant="outline" onClick={resetForm} className="flex-1">
-                        Cancel
-                      </Button>
-                    </div>
-                  </form>
-                </Form>
-              </DialogContent>
-            </Dialog>
-          )}
-        </div>
+        <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
 
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <Input placeholder={t('customers.search_customers')} className="pl-10 bg-gray-50 border-gray-200" />
+          <Input placeholder="Search users..." className="pl-10 bg-gray-50 border-gray-200" />
         </div>
 
-        <Tabs defaultValue="all" className="w-full">
-          <TabsList className="bg-gray-100">
-            <TabsTrigger value="all">{t('customers.all_customers')} ({customers.length})</TabsTrigger>
-            <TabsTrigger value="active">{t('customers.active')}</TabsTrigger>
-            <TabsTrigger value="inactive">{t('customers.inactive')}</TabsTrigger>
-          </TabsList>
-          <TabsContent value="all" className="mt-6">
-            <div className="bg-white rounded-lg shadow-sm border">
-              <div className="p-6 border-b">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-semibold">{t('customers.total_customers')} ({customers.length})</h2>
-                  <div className="flex space-x-4">
-                    <Button variant="outline" size="sm">{t('customers.import')}</Button>
-                    <Button variant="outline" size="sm">{t('customers.export')}</Button>
-                  </div>
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-2">
+                <Users className="w-8 h-8 text-blue-500" />
+                <div>
+                  <p className="text-2xl font-bold">{buyers.length}</p>
+                  <p className="text-gray-600">Total Buyers</p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-2">
+                <Users className="w-8 h-8 text-green-500" />
+                <div>
+                  <p className="text-2xl font-bold">{sellers.length}</p>
+                  <p className="text-gray-600">Total Sellers</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-2">
+                <Users className="w-8 h-8 text-purple-500" />
+                <div>
+                  <p className="text-2xl font-bold">{users.length}</p>
+                  <p className="text-gray-600">Total Users</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Users Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>All Users</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50">
+                <thead className="bg-gray-900 text-white">
                   <tr>
-                    <th className="px-6 py-3"><input type="checkbox" className="rounded" /></th>
-                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t('customers.customer').toUpperCase()}</th>
-                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t('customers.email').toUpperCase()}</th>
-                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t('customers.joined').toUpperCase()}</th>
-                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t('customers.status').toUpperCase()}</th>
-                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">{t('customers.actions').toUpperCase()}</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">User</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">Email</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">Role</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">Joined</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {customers.length > 0 ? (
-                    customers.map((customer: any) => (
-                      <tr key={customer.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4"><input type="checkbox" className="rounded" /></td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-purple-400 rounded-full flex items-center justify-center text-white font-medium">
-                              {customer.name.charAt(0).toUpperCase()}
-                            </div>
-                            <span className="font-medium">{customer.name}</span>
+                  {users.map((user: any) => (
+                    <tr key={user.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                            <span className="text-purple-600 font-medium">
+                              {user.name.charAt(0).toUpperCase()}
+                            </span>
                           </div>
-                        </td>
-                        <td className="px-6 py-4 text-gray-900">{customer.email}</td>
-                        <td className="px-6 py-4 text-gray-900">
-                          {new Date(customer.createdAt).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
-                            {t('customers.active')}
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{user.name}</p>
+                            {user.businessName && (
+                              <p className="text-sm text-gray-500">{user.businessName}</p>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900">{user.email}</td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          user.role.toLowerCase() === 'admin' 
+                            ? 'bg-red-100 text-red-800'
+                            : user.role.toLowerCase() === 'seller'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                          {user.role}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {user.role.toLowerCase() === 'seller' ? (
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            user.isActive && user.sellerStatus === 'ACTIVE'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {user.isActive && user.sellerStatus === 'ACTIVE' ? 'Active' : 'Inactive'}
                           </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <Button variant="ghost" size="sm">
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                        {t('customers.no_customers')}
+                        ) : (
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Active
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900">
+                        {new Date(user.createdAt).toLocaleDateString()}
                       </td>
                     </tr>
-                  )}
+                  ))}
                 </tbody>
               </table>
             </div>
-          </TabsContent>
-        </Tabs>
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   );

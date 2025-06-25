@@ -1,140 +1,373 @@
 
-import React from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { StatsCard } from '@/components/dashboard/StatsCard';
-import { BarChart3, Clock, Users, Package } from 'lucide-react';
+import { BarChart3, Clock, Users, Package, Plus, Eye } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { AuthContext } from '@/contexts/AuthContext';
+import { useNavigate, Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import api from '@/api/api';
+
+interface SellerStats {
+  totalProducts: number;
+  totalOrders: number;
+  totalRevenue: number;
+  totalCustomers: number;
+}
+
+interface SellerOrder {
+  id: number;
+  totalPrice: number;
+  isPaid: boolean;
+  createdAt: string;
+  user: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  items: Array<{
+    id: number;
+    quantity: number;
+    price: number;
+    product: {
+      id: number;
+      name: string;
+      coverImage: string;
+    };
+  }>;
+}
+
+interface SellerProduct {
+  id: number;
+  name: string;
+  price: number;
+  stock: number;
+  coverImage: string;
+  category: {
+    name: string;
+  };
+  _count: {
+    orderItems: number;
+    reviews: number;
+  };
+}
 
 const VendorDashboard = () => {
   const { t } = useLanguage();
+  const { user, loading } = useContext(AuthContext);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (loading) return;
+
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    if (user.role !== 'SELLER') {
+      navigate('/dashboard');
+      return;
+    }
+  }, [user, loading, navigate]);
+
+  // Fetch seller-specific stats
+  const { data: statsData, isLoading: statsLoading } = useQuery({
+    queryKey: ['seller-stats'],
+    queryFn: async () => {
+      const response = await api.get('/sellers/my-stats');
+      return response.data;
+    },
+    enabled: !!user && user.role === 'SELLER',
+  });
+
+  // Fetch seller-specific orders
+  const { data: ordersData, isLoading: ordersLoading } = useQuery({
+    queryKey: ['seller-orders'],
+    queryFn: async () => {
+      const response = await api.get('/sellers/my-orders');
+      return response.data;
+    },
+    enabled: !!user && user.role === 'SELLER',
+  });
+
+  // Fetch seller-specific products
+  const { data: productsData, isLoading: productsLoading } = useQuery({
+    queryKey: ['seller-products'],
+    queryFn: async () => {
+      const response = await api.get('/sellers/my-products');
+      return response.data;
+    },
+    enabled: !!user && user.role === 'SELLER',
+  });
+
+  // Fetch seller-specific customers
+  const { data: customersData, isLoading: customersLoading } = useQuery({
+    queryKey: ['seller-customers'],
+    queryFn: async () => {
+      const response = await api.get('/sellers/my-customers');
+      return response.data;
+    },
+    enabled: !!user && user.role === 'SELLER',
+  });
+
+  if (loading || !user || user.role !== 'SELLER') {
+    return null;
+  }
+
+  const stats: SellerStats = statsData || { totalProducts: 0, totalOrders: 0, totalRevenue: 0, totalCustomers: 0 };
+  const recentOrders: SellerOrder[] = (ordersData || []).slice(0, 5);
+  const products: SellerProduct[] = (productsData || []).slice(0, 5);
+  const customers = (customersData || []).slice(0, 5);
 
   return (
     <DashboardLayout currentPage="dashboard">
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-gray-900">{t('admin.sidebar.dashboard')}</h1>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h1 className="text-2xl font-bold text-gray-900">Seller Dashboard</h1>
+          <div className="flex gap-2">
+            <Link to="/admin-products">
+              <Button className="bg-blue-600 hover:bg-blue-700">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Product
+              </Button>
+            </Link>
+            <Link to="/customers">
+              <Button variant="outline">
+                <Eye className="w-4 h-4 mr-2" />
+                View All Customers
+              </Button>
+            </Link>
+          </div>
+        </div>
         
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatsCard
-            title={t('orders.total_orders')}
-            value="157"
+            title="Total Orders"
+            value={statsLoading ? "..." : stats.totalOrders.toString()}
             icon={BarChart3}
             color="text-red-500"
           />
           <StatsCard
-            title={t('dashboard.daily_sales')}
-            value="20"
+            title="Total Revenue"
+            value={statsLoading ? "..." : `${stats.totalRevenue.toLocaleString()} Rwf`}
             icon={Clock}
-            color="text-red-500"
+            color="text-green-500"
           />
           <StatsCard
-            title={t('dashboard.daily_users')}
-            value="425"
+            title="Total Customers"
+            value={statsLoading ? "..." : stats.totalCustomers.toString()}
             icon={Users}
-            color="text-red-500"
+            color="text-blue-500"
           />
           <StatsCard
-            title={t('admin.products')}
-            value="400+"
+            title="Total Products"
+            value={statsLoading ? "..." : stats.totalProducts.toString()}
             icon={Package}
-            color="text-red-500"
+            color="text-purple-500"
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Summary Sales Chart */}
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg font-medium">{t('dashboard.summary_sales')}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-64 bg-gradient-to-r from-purple-100 to-purple-50 rounded-lg flex items-center justify-center">
-                  <p className="text-gray-500">{t('dashboard.chart_placeholder')}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Upcoming Payments */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* My Products */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg font-medium">{t('dashboard.upcoming_payments')}</CardTitle>
+              <CardTitle className="text-lg font-medium flex justify-between items-center">
+                My Products
+                <Link to="/admin-products">
+                  <Button variant="ghost" size="sm">View All</Button>
+                </Link>
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-32 bg-purple-50 rounded-lg flex items-center justify-center">
-                <p className="text-gray-500">{t('dashboard.payment_data')}</p>
+              {productsLoading ? (
+                <div className="flex items-center justify-center h-32">
+                  <div className="text-gray-500">Loading products...</div>
+                </div>
+              ) : products.length > 0 ? (
+                <div className="space-y-3">
+                  {products.map((product) => (
+                    <div key={product.id} className="flex items-center space-x-3 p-2 border rounded-lg">
+                      <img 
+                        src={product.coverImage} 
+                        alt={product.name}
+                        className="w-10 h-10 rounded object-cover"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>
+                        <p className="text-sm text-gray-500">{product.category.name}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium">{product.price.toLocaleString()} Rwf</p>
+                        <p className="text-xs text-gray-500">Stock: {product.stock}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  No products found. <Link to="/admin-products" className="text-blue-600 underline">Create your first product</Link>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Revenue Overview */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-medium">Revenue Overview</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Total Revenue</span>
+                  <span className="font-semibold">{stats.totalRevenue.toLocaleString()} Rwf</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Avg. Order Value</span>
+                  <span className="font-semibold">
+                    {stats.totalOrders > 0 ? (stats.totalRevenue / stats.totalOrders).toFixed(0) : '0'} Rwf
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Total Orders</span>
+                  <span className="font-semibold">{stats.totalOrders}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Total Customers</span>
+                  <span className="font-semibold">{stats.totalCustomers}</span>
+                </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Recent Orders Table */}
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg font-medium">{t('dashboard.recent_orders')}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-900 text-white">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.id')}</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.customer_name')}</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.product_name')}</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium">{t('orders.date')}</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.price')}</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium">{t('dashboard.picture')}</th>
+        {/* Recent Orders Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-medium flex justify-between items-center">
+              Recent Orders
+              <Link to="/orders">
+                <Button variant="ghost" size="sm">View All</Button>
+              </Link>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {ordersLoading ? (
+              <div className="flex items-center justify-center h-32">
+                <div className="text-gray-500">Loading orders...</div>
+              </div>
+            ) : recentOrders.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-900 text-white">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-sm font-medium">Order ID</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">Customer</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">Products</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">Date</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">Total</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {recentOrders.map((order) => (
+                      <tr key={order.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm">#{order.id}</td>
+                        <td className="px-4 py-3 text-sm">{order.user.name}</td>
+                        <td className="px-4 py-3 text-sm">
+                          <div className="flex items-center space-x-2">
+                            {order.items.slice(0, 2).map((item) => (
+                              <img
+                                key={item.id}
+                                src={item.product.coverImage}
+                                alt={item.product.name}
+                                className="w-8 h-8 rounded object-cover"
+                              />
+                            ))}
+                            {order.items.length > 2 && (
+                              <span className="text-xs text-gray-500">+{order.items.length - 2}</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {new Date(order.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-semibold">
+                          {order.totalPrice.toLocaleString()} Rwf
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            order.isPaid 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {order.isPaid ? 'Paid' : 'Pending'}
+                          </span>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {[1, 2, 3, 4].map((id) => (
-                        <tr key={id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-sm">{id}</td>
-                          <td className="px-4 py-3 text-sm">Gentil Mugisha</td>
-                          <td className="px-4 py-3 text-sm">{t('dashboard.sample_product')}</td>
-                          <td className="px-4 py-3 text-sm">20/1/25</td>
-                          <td className="px-4 py-3 text-sm">4000Frw</td>
-                          <td className="px-4 py-3">
-                            <div className="w-8 h-8 bg-gray-300 rounded"></div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Expense Status */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-medium">{t('dashboard.expense_status')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-32 bg-green-50 rounded-lg flex items-center justify-center">
-                <div className="w-24 h-24 bg-green-400 rounded-full"></div>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                No orders found
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-        {/* User Profile Update */}
-        <div className="mt-auto pt-8">
-          <div className="flex items-center space-x-3 px-4 py-3 bg-purple-100 rounded-lg max-w-xs">
-            <div className="w-12 h-12 bg-purple-300 rounded-full flex items-center justify-center">
-              <span className="text-purple-800 font-semibold">A</span>
-            </div>
-            <div>
-              <p className="text-purple-900 font-medium">Alice</p>
-              <p className="text-purple-700 text-sm">{t('dashboard.vendor_role')}</p>
-            </div>
-          </div>
-        </div>
+        {/* Recent Customers */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-medium flex justify-between items-center">
+              Recent Customers
+              <Link to="/customers">
+                <Button variant="ghost" size="sm">View All</Button>
+              </Link>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {customersLoading ? (
+              <div className="flex items-center justify-center h-32">
+                <div className="text-gray-500">Loading customers...</div>
+              </div>
+            ) : customers.length > 0 ? (
+              <div className="space-y-3">
+                {customers.map((customer: any) => (
+                  <div key={customer.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                        <span className="text-purple-600 font-medium">
+                          {customer.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{customer.name}</p>
+                        <p className="text-sm text-gray-500">{customer.email}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium">{customer._count.orders} orders</p>
+                      <p className="text-xs text-gray-500">
+                        Joined {new Date(customer.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                No customers found
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   );

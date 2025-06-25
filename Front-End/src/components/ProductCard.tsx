@@ -19,15 +19,23 @@ interface ProductCardProps {
 const ProductCard = ({ id, image, title, price, originalPrice, rating = 5 }: ProductCardProps) => {
   const { toast } = useToast();
   const { t } = useLanguage();
-  const { addToCart, isAddingToCart } = useCart();
+  const { addToCart, isAddingToCart, refetchCart } = useCart();
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
     try {
-      addToCart({ productId: parseInt(id), quantity: 1 });
+      console.log('ProductCard: Adding to cart, product ID:', id);
+      await addToCart({ productId: parseInt(id), quantity: 1 });
+      
+      // Force cart refetch after successful add
+      setTimeout(() => {
+        refetchCart();
+      }, 500);
+      
     } catch (err: any) {
+      console.error('ProductCard: Add to cart failed:', err);
       toast({
         title: t('common.error'),
         description: err.response?.data?.message || t('cart.failed_to_add'),
@@ -37,16 +45,19 @@ const ProductCard = ({ id, image, title, price, originalPrice, rating = 5 }: Pro
   };
 
   return (
-    <Link to={`/product/${id}`} className="block">
+    <Link to={`/products/${id}`} className="block">
       <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 group hover:scale-105">
         <div className="relative overflow-hidden rounded-t-xl">
           <img 
             src={image} 
             alt={title}
             className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-300"
+            onError={(e) => {
+              e.currentTarget.src = '/placeholder.svg';
+            }}
           />
           <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <ShoppingCart className="w-4 h-4 text-purple" />
+            <ShoppingCart className="w-4 h-4 text-purple-500" />
           </div>
         </div>
         <div className="p-4">
@@ -61,14 +72,14 @@ const ProductCard = ({ id, image, title, price, originalPrice, rating = 5 }: Pro
           </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <span className="font-bold text-purple">{price}</span>
+              <span className="font-bold text-purple-500">{price}</span>
               {originalPrice && (
                 <span className="text-sm text-gray-500 line-through">{originalPrice}</span>
               )}
             </div>
             <Button 
               size="sm" 
-              className="bg-purple hover:bg-purple-600 text-white"
+              className="bg-purple-500 hover:bg-purple-600 text-white"
               onClick={handleAddToCart}
               disabled={isAddingToCart}
             >

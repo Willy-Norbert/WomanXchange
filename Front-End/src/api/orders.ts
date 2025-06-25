@@ -27,8 +27,16 @@ export interface Order {
   totalPrice: number;
   isPaid: boolean;
   isDelivered: boolean;
+  isConfirmedByAdmin?: boolean;
   paidAt?: Date;
   deliveredAt?: Date;
+  confirmedAt?: Date;
+  createdAt: string;
+  user?: {
+    id: number;
+    name: string;
+    email: string;
+  };
   items: {
     id: number;
     productId: number;
@@ -45,6 +53,18 @@ export interface Order {
 export interface PlaceOrderData {
   shippingAddress: string;
   paymentMethod: string;
+}
+
+export interface CreateOrderData {
+  userId: number;
+  shippingAddress: string;
+  paymentMethod: string;
+  items: {
+    productId: number;
+    quantity: number;
+    price: number;
+  }[];
+  totalPrice: number;
 }
 
 export const getCart = (cartId?: number | null) => {
@@ -67,12 +87,29 @@ export const removeFromCart = (productId: number, cartId?: number | null) => {
 export const placeOrder = (data: PlaceOrderData) =>
   api.post<Order>('/orders', data);
 
+// Create order by admin/seller
+export const createOrder = (data: CreateOrderData) =>
+  api.post<Order>('/orders/create', data);
+
 export const getUserOrders = () => api.get<Order[]>('/orders');
 
-export const getAllOrders = () => api.get<Order[]>('/orders/all');
+export const getAllOrders = (userRole?: string, userId?: number) => {
+  console.log('getAllOrders called with role:', userRole, 'userId:', userId);
+  return api.get<Order[]>('/orders/all');
+};
+
+// Get individual order by ID
+export const getOrderById = (id: number) => api.get<Order>(`/orders/${id}`);
 
 export const updateOrderStatus = (id: number, isPaid?: boolean, isDelivered?: boolean) =>
   api.put(`/orders/${id}/status`, { isPaid, isDelivered });
 
 export const confirmOrderPayment = (id: number) =>
   api.put(`/orders/${id}/confirm-payment`);
+
+// Delete order (Admin only)
+export const deleteOrder = (id: number) => api.delete(`/orders/${id}`);
+
+// Update order (Admin only)
+export const updateOrder = (id: number, data: Partial<CreateOrderData>) =>
+  api.put(`/orders/${id}`, data);
