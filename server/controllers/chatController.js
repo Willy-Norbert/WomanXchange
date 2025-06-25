@@ -15,6 +15,7 @@ export const getChatMessages = asyncHandler(async (req, res) => {
           role: true,
         },
       },
+      attachments: true,
     },
     orderBy: {
       createdAt: 'asc',
@@ -28,12 +29,13 @@ export const getChatMessages = asyncHandler(async (req, res) => {
 // @route   POST /api/chat/messages
 // @access  Private (Admin/Seller only)
 export const createChatMessage = asyncHandler(async (req, res) => {
-  const { message } = req.body;
+  const { message, messageType = 'TEXT', attachments = [] } = req.body;
   const userId = req.user.id;
 
-  if (!message || !message.trim()) {
+  // Validate message or attachments exist
+  if (!message?.trim() && attachments.length === 0) {
     res.status(400);
-    throw new Error('Message is required');
+    throw new Error('Message or attachments are required');
   }
 
   // Ensure user has proper role
@@ -43,10 +45,20 @@ export const createChatMessage = asyncHandler(async (req, res) => {
     throw new Error('Only admins and sellers can post messages');
   }
 
+  // Create the chat message with attachments
   const chatMessage = await prisma.chatMessage.create({
     data: {
-      message: message.trim(),
+      message: message?.trim() || null,
+      messageType,
       userId,
+      attachments: {
+        create: attachments.map(attachment => ({
+          fileName: attachment.fileName,
+          fileUrl: attachment.fileUrl,
+          fileType: attachment.fileType,
+          fileSize: attachment.fileSize,
+        })),
+      },
     },
     include: {
       user: {
@@ -56,6 +68,7 @@ export const createChatMessage = asyncHandler(async (req, res) => {
           role: true,
         },
       },
+      attachments: true,
     },
   });
 
@@ -71,7 +84,8 @@ export const deleteChatMessage = asyncHandler(async (req, res) => {
   const userRole = req.user.role.toLowerCase();
 
   const message = await prisma.chatMessage.findUnique({
-    where: { id: messageId }
+    where: { id: messageId },
+    include: { attachments: true }
   });
 
   if (!message) {
@@ -85,6 +99,7 @@ export const deleteChatMessage = asyncHandler(async (req, res) => {
     throw new Error('Not authorized to delete this message');
   }
 
+  // Delete message (attachments will be deleted via cascade)
   await prisma.chatMessage.delete({
     where: { id: messageId }
   });
