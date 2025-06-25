@@ -59,7 +59,7 @@ export const getOrderById = asyncHandler(async (req, res) => {
 export const addToCart = asyncHandler(async (req, res) => {
   const { productId, quantity } = req.body;
   
-  console.log('addToCart called with:', { productId, quantity, hasUser: !!req.user });
+  console.log('🛒 addToCart called with:', { productId, quantity, hasUser: !!req.user });
   
   const product = await prisma.product.findUnique({ where: { id: productId } });
   if (!product) {
@@ -73,15 +73,17 @@ export const addToCart = asyncHandler(async (req, res) => {
   if (req.user) {
     // Logged in user - find or create user cart
     const userId = req.user.id;
-    console.log('Handling authenticated user cart for userId:', userId);
+    console.log('👤 Handling authenticated user cart for userId:', userId);
     cart = await prisma.cart.findUnique({ where: { userId } });
     if (!cart) {
       cart = await prisma.cart.create({ data: { userId } });
+      console.log('📦 Created new user cart:', cart.id);
     }
   } else {
     // Unauthenticated user - create anonymous cart
-    console.log('Creating anonymous cart for unauthenticated user');
+    console.log('👻 Creating anonymous cart for unauthenticated user');
     cart = await prisma.cart.create({ data: {} });
+    console.log('📦 Created anonymous cart with ID:', cart.id);
   }
 
   const existingItem = await prisma.cartItem.findFirst({
@@ -93,12 +95,12 @@ export const addToCart = asyncHandler(async (req, res) => {
       where: { id: existingItem.id },
       data: { quantity: existingItem.quantity + quantity }
     });
-    console.log('Updated existing cart item quantity');
+    console.log('✅ Updated existing cart item quantity');
   } else {
     await prisma.cartItem.create({
       data: { cartId: cart.id, productId, quantity }
     });
-    console.log('Created new cart item');
+    console.log('✅ Created new cart item');
   }
 
   const updatedCart = await prisma.cart.findUnique({
@@ -121,7 +123,7 @@ export const addToCart = asyncHandler(async (req, res) => {
     }
   });
 
-  console.log('Returning updated cart with full product details');
+  console.log('📦 Returning updated cart with cartId:', cart.id, 'items count:', updatedCart?.items?.length);
   res.json({ data: updatedCart, cartId: cart.id });
 });
 
@@ -178,12 +180,13 @@ export const removeFromCart = asyncHandler(async (req, res) => {
 // Get User Cart (no authentication required)
 export const getCart = asyncHandler(async (req, res) => {
   const { cartId } = req.query;
-  console.log('getCart called with hasUser:', !!req.user, 'cartId:', cartId);
+  console.log('🔍 getCart called with hasUser:', !!req.user, 'cartId:', cartId);
   
   let cart;
   if (req.user) {
     // Authenticated user
     const userId = req.user.id;
+    console.log('👤 Getting authenticated user cart for userId:', userId);
     cart = await prisma.cart.findUnique({
       where: { userId },
       include: { 
@@ -206,8 +209,10 @@ export const getCart = asyncHandler(async (req, res) => {
   } else {
     // Unauthenticated user
     if (cartId) {
+      const parsedCartId = parseInt(cartId);
+      console.log('👻 Getting anonymous cart with ID:', parsedCartId);
       cart = await prisma.cart.findUnique({
-        where: { id: parseInt(cartId) },
+        where: { id: parsedCartId },
         include: { 
           items: { 
             include: { 
@@ -225,10 +230,12 @@ export const getCart = asyncHandler(async (req, res) => {
           } 
         }
       });
+    } else {
+      console.log('👻 No cartId provided for anonymous user');
     }
   }
 
-  console.log('Returning cart data');
+  console.log('📦 Returning cart data with items:', cart?.items?.length || 0, 'cartId:', cart?.id);
   res.json({ data: cart || { items: [] }, cartId: cart?.id });
 });
 

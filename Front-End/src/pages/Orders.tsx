@@ -1,4 +1,3 @@
-
 import React, { useContext, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -6,21 +5,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { CheckCircle, Package, Plus, Trash2 } from 'lucide-react';
+import { CheckCircle, Package, Plus, Trash2, Edit } from 'lucide-react';
 import { getAllOrders, confirmOrderPayment, deleteOrder } from '@/api/orders';
 import { AuthContext } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { OrderCreation } from '@/components/OrderCreation';
+import { OrderUpdateDialog } from '@/components/OrderUpdateDialog';
 
 const Orders = () => {
   const { user } = useContext(AuthContext);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCreateOrderOpen, setIsCreateOrderOpen] = useState(false);
+  const [isUpdateOrderOpen, setIsUpdateOrderOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
-  console.log('Orders page - User:', user?.role, user?.id);
+  console.log('📋 Orders page - User:', user?.role, user?.id);
 
-  // Fixed query with proper error handling and debug messages
   const { data: ordersResponse, isLoading, error } = useQuery({
     queryKey: ['all-orders', user?.role, user?.id],
     queryFn: async () => {
@@ -28,8 +29,6 @@ const Orders = () => {
       try {
         const response = await getAllOrders(user?.role?.toLowerCase() || '', user?.id);
         console.log('✅ Orders API response received:', response);
-        console.log('📊 Orders data structure:', response?.data ? 'has data property' : 'no data property');
-        console.log('📋 Orders array:', Array.isArray(response?.data) ? `Array with ${response.data.length} items` : Array.isArray(response) ? `Direct array with ${response.length} items` : 'Not an array');
         return response;
       } catch (error) {
         console.error('❌ Orders fetch error:', error);
@@ -90,11 +89,9 @@ const Orders = () => {
     },
   });
 
-  // Safe data extraction with debug logging
   const orders = React.useMemo(() => {
     console.log('🔍 Processing orders data:', ordersResponse);
     
-    // Handle different possible response structures
     let result = [];
     
     if (Array.isArray(ordersResponse?.data)) {
@@ -103,9 +100,6 @@ const Orders = () => {
     } else if (Array.isArray(ordersResponse)) {
       result = ordersResponse;
       console.log('📊 Using ordersResponse (direct array):', result.length, 'items');
-    } else if (ordersResponse?.data && typeof ordersResponse.data === 'object') {
-      result = [];
-      console.log('📊 ordersResponse.data is object, not array:', ordersResponse.data);
     } else {
       result = [];
       console.log('📊 No valid orders data found');
@@ -127,6 +121,12 @@ const Orders = () => {
     } else {
       console.log('❌ User cancelled order deletion:', orderId);
     }
+  };
+
+  const handleUpdateOrder = (order: any) => {
+    console.log('✏️ Opening update dialog for order:', order.id);
+    setSelectedOrder(order);
+    setIsUpdateOrderOpen(true);
   };
 
   console.log('🖥️ Orders page render - Loading:', isLoading, 'Error:', error, 'Orders count:', orders.length);
@@ -237,6 +237,14 @@ const Orders = () => {
                       <TableCell>{new Date(order.createdAt).toLocaleDateString()}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end space-x-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleUpdateOrder(order)}
+                            className="text-blue-600 hover:text-blue-700"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
                           {!order.isPaid && (
                             <Button
                               size="sm"
@@ -299,6 +307,18 @@ const Orders = () => {
           userRole={user?.role?.toLowerCase() || ''}
           userId={user?.id}
         />
+
+        {selectedOrder && (
+          <OrderUpdateDialog
+            isOpen={isUpdateOrderOpen}
+            onClose={() => {
+              setIsUpdateOrderOpen(false);
+              setSelectedOrder(null);
+            }}
+            order={selectedOrder}
+            userRole={user?.role?.toLowerCase() || ''}
+          />
+        )}
       </div>
     </DashboardLayout>
   );

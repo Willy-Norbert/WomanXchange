@@ -1,3 +1,4 @@
+
 import api from './api';
 
 export interface Product {
@@ -11,6 +12,8 @@ export interface Product {
   createdById: number;
   colors?: string[];
   sizes?: string[];
+  averageRating?: number;
+  numReviews?: number;
   category?: {
     id: number;
     name: string;
