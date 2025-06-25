@@ -24,22 +24,37 @@ export const protect = asyncHandler(async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       console.log('Auth middleware: Token decoded successfully, user ID:', decoded.id);
 
-      const user = await prisma.user.findUnique({
-        where: { id: decoded.id },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-          sellerStatus: true,
-          isActive: true,
-        },
-      });
+      // Add retry logic for database connection
+      let user = null;
+      let retries = 3;
+      
+      while (retries > 0 && !user) {
+        try {
+          user = await prisma.user.findUnique({
+            where: { id: decoded.id },
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+              sellerStatus: true,
+              isActive: true,
+            },
+          });
+          break;
+        } catch (dbError) {
+          console.log(`Database connection attempt ${4 - retries} failed:`, dbError.message);
+          retries--;
+          if (retries > 0) {
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+          }
+        }
+      }
 
       if (!user) {
-        console.log('Auth middleware: User not found in database');
+        console.log('Auth middleware: User not found in database after retries');
         res.status(401);
-        throw new Error('User not found');
+        throw new Error('User not found or database connection failed');
       }
 
       console.log('Auth middleware: User found:', user.email, 'Role:', user.role);
