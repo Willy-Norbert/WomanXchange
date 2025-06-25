@@ -35,7 +35,7 @@ export const useCart = () => {
   const queryKey = user ? ['cart', 'authenticated', user.id] : ['cart', 'anonymous', cartId];
 
   const { data: cartResponse, isLoading, error, refetch } = useQuery({
-    QueryKey,
+    queryKey,
     queryFn: async () => {
       console.log('🔍 useCart query: calling getCart with cartId:', cartId, 'user:', !!user);
       const response = await getCart(cartId);
@@ -112,7 +112,7 @@ export const useCart = () => {
     },
     onSuccess: () => {
       console.log('✅ useCart: Remove from cart success');
-      queryClient.invalidateQueries({ QueryKey: ['cart'] });
+      queryClient.invalidateQueries({ queryKey: ['cart'] });
       refetch();
       toast({
         title: "Item removed",
