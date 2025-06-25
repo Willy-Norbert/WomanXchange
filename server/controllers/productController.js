@@ -66,6 +66,7 @@ export const createProduct = asyncHandler(async (req, res) => {
     
     await notify({
       userId: req.user.id,
+      title: 'Product Created',
       message: `New product "${name}" has been created.`,
       recipientRole: 'ADMIN',
       relatedOrderId: null,
@@ -306,6 +307,7 @@ export const updateProduct = asyncHandler(async (req, res) => {
 
     await notify({
       userId: req.user.id,
+      title: 'Product Updated',
       message: `Product "${updated.name}" has been updated.`,
       recipientRole: 'ADMIN',
       relatedOrderId: null,
@@ -370,6 +372,7 @@ export const deleteProduct = asyncHandler(async (req, res) => {
 
     await notify({
       userId: req.user.id,
+      title: 'Product Deleted',
       message: `Product "${product.name}" has been deleted.`,
       recipientRole: 'ADMIN',
       relatedOrderId: null,

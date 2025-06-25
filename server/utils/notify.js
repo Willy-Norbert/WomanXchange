@@ -1,11 +1,19 @@
-import prisma from '../prismaClient.js';  // Make sure this path is correct relative to notify.js
-export const notify = async ({ userId, message, recipientRole, relatedOrderId }) => {
-  await prisma.notification.create({
-    data: {
-      userId,
-      message,
-      recipientRole,
-      relatedOrderId,
-    },
-  });
+
+import prisma from '../prismaClient.js';
+
+export const notify = async ({ userId, title, message, recipientRole, relatedOrderId }) => {
+  try {
+    await prisma.notification.create({
+      data: {
+        userId,
+        title: title || 'Notification',
+        message,
+        recipientRole,
+        relatedOrderId,
+      },
+    });
+  } catch (error) {
+    console.error('Error creating notification:', error);
+    throw error;
+  }
 };
