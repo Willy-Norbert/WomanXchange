@@ -18,15 +18,16 @@ export const useCart = () => {
       if (storedCartId) {
         const parsedCartId = parseInt(storedCartId);
         setCartId(parsedCartId);
-        console.log('🛒 Loaded cart ID from localStorage:', parsedCartId);
+        console.log('🛒 useCart: Loaded cart ID from localStorage:', parsedCartId);
       } else {
-        console.log('🛒 No stored cart ID found for anonymous user');
+        console.log('🛒 useCart: No stored cart ID found for anonymous user');
+        setCartId(null);
       }
     } else {
       // Clear anonymous cart when user logs in
       localStorage.removeItem('anonymous_cart_id');
       setCartId(null);
-      console.log('👤 User logged in, cleared anonymous cart');
+      console.log('👤 useCart: User logged in, cleared anonymous cart');
     }
   }, [user]);
 
@@ -34,11 +35,11 @@ export const useCart = () => {
   const queryKey = user ? ['cart', 'authenticated', user.id] : ['cart', 'anonymous', cartId];
 
   const { data: cartResponse, isLoading, error, refetch } = useQuery({
-    queryKey,
+    QueryKey,
     queryFn: async () => {
       console.log('🔍 useCart query: calling getCart with cartId:', cartId, 'user:', !!user);
       const response = await getCart(cartId);
-      console.log('📦 Cart response received:', response?.data);
+      console.log('📦 useCart query: Cart response received:', response?.data);
       return response;
     },
     staleTime: 1000,
@@ -64,27 +65,28 @@ export const useCart = () => {
 
   const addToCartMutation = useMutation({
     mutationFn: async ({ productId, quantity }: { productId: number; quantity: number }) => {
-      console.log('➕ Adding to cart:', { productId, quantity, currentCartId: cartId });
+      console.log('➕ useCart: Adding to cart:', { productId, quantity, currentCartId: cartId });
       const response = await addToCart(productId, quantity);
-      console.log('✅ Add to cart API response:', response?.data);
+      console.log('✅ useCart: Add to cart API response:', response?.data);
       return response;
     },
     onSuccess: (data) => {
-      console.log('🎉 Add to cart success:', data?.data);
+      console.log('🎉 useCart: Add to cart success, response data:', data?.data);
       
       // Store cartId for unauthenticated users and update state immediately
       if (!user && data?.data?.cartId) {
         const newCartId = data.data.cartId;
         localStorage.setItem('anonymous_cart_id', newCartId.toString());
         setCartId(newCartId);
-        console.log('💾 Stored new cart ID:', newCartId);
+        console.log('💾 useCart: Stored new cart ID:', newCartId);
       }
       
-      // Invalidate and refetch cart queries immediately
+      // Invalidate all cart queries
       queryClient.invalidateQueries({ queryKey: ['cart'] });
       
-      // Force immediate refetch with updated cartId
+      // Force immediate refetch
       setTimeout(() => {
+        console.log('🔄 useCart: Force refetching cart...');
         refetch();
       }, 100);
       
@@ -94,7 +96,7 @@ export const useCart = () => {
       });
     },
     onError: (error: any) => {
-      console.error('❌ Add to cart error:', error);
+      console.error('❌ useCart: Add to cart error:', error);
       toast({
         title: "Error",
         description: error.response?.data?.message || "Failed to add item to cart",
@@ -105,12 +107,12 @@ export const useCart = () => {
 
   const removeFromCartMutation = useMutation({
     mutationFn: (productId: number) => {
-      console.log('➖ Removing from cart:', { productId, cartId });
+      console.log('➖ useCart: Removing from cart:', { productId, cartId });
       return removeFromCart(productId, cartId);
     },
     onSuccess: () => {
-      console.log('✅ Remove from cart success');
-      queryClient.invalidateQueries({ queryKey: ['cart'] });
+      console.log('✅ useCart: Remove from cart success');
+      queryClient.invalidateQueries({ QueryKey: ['cart'] });
       refetch();
       toast({
         title: "Item removed",
@@ -118,7 +120,7 @@ export const useCart = () => {
       });
     },
     onError: (error: any) => {
-      console.error('❌ Remove from cart error:', error);
+      console.error('❌ useCart: Remove from cart error:', error);
       toast({
         title: "Error",
         description: error.response?.data?.message || "Failed to remove item",
@@ -129,7 +131,7 @@ export const useCart = () => {
 
   const cartItemsCount = cart?.items?.reduce((total: number, item: any) => total + item.quantity, 0) || 0;
 
-  console.log('🔢 Cart items count calculated:', cartItemsCount, 'from items:', cart?.items);
+  console.log('🔢 useCart: Cart items count calculated:', cartItemsCount, 'from items:', cart?.items);
 
   return {
     cart: cart,

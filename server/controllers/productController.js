@@ -113,6 +113,8 @@ export const getProducts = asyncHandler(async (req, res) => {
 
 export const getProductById = asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
+  console.log('🔍 getProductById called with ID:', id, 'User:', req.user?.id, 'Role:', req.user?.role);
+  
   const product = await prisma.product.findUnique({
     where: { id },
     include: { 
@@ -129,24 +131,52 @@ export const getProductById = asyncHandler(async (req, res) => {
     },
   });
 
+  console.log('📦 Product found:', !!product);
+  if (product) {
+    console.log('📋 Product details:', {
+      id: product.id,
+      name: product.name,
+      isVisible: product.isVisible,
+      createdById: product.createdById,
+      sellerStatus: product.createdBy?.sellerStatus,
+      sellerActive: product.createdBy?.isActive
+    });
+  }
+
   if (!product) {
+    console.log('❌ Product not found in database');
     res.status(404);
     throw new Error('Product not found');
   }
 
   // If user is the seller who owns this product, allow access regardless of visibility
   if (req.user && req.user.role.toLowerCase() === 'seller' && product.createdById === req.user.id) {
+    console.log('✅ Seller accessing own product');
     return res.json(product);
   }
 
-  // For other users, check if product should be visible
-  if (!product.isVisible || 
-      product.createdBy?.sellerStatus !== 'ACTIVE' || 
-      !product.createdBy?.isActive) {
+  // If user is admin, allow access to any product
+  if (req.user && req.user.role.toLowerCase() === 'admin') {
+    console.log('✅ Admin accessing product');
+    return res.json(product);
+  }
+
+  // For public access (including unauthenticated users), be more lenient
+  // Only check if product is visible and seller is active (if seller exists)
+  if (!product.isVisible) {
+    console.log('❌ Product not visible to public');
     res.status(404);
     throw new Error('Product not available');
   }
 
+  // If product has a seller, check if seller is active
+  if (product.createdBy && (!product.createdBy.isActive || product.createdBy.sellerStatus !== 'ACTIVE')) {
+    console.log('❌ Product seller not active');
+    res.status(404);
+    throw new Error('Product not available');
+  }
+
+  console.log('✅ Product available for public access');
   res.json(product);
 });
 

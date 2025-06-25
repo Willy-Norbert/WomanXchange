@@ -68,14 +68,18 @@ export interface CreateOrderData {
 }
 
 export const getCart = (cartId?: number | null) => {
-  console.log('Getting cart with cartId:', cartId);
-  const params = cartId ? { cartId: cartId.toString() } : {};
+  console.log('🔍 API getCart: Getting cart with cartId:', cartId);
+  const params: Record<string, string> = {};
+  if (cartId) {
+    params.cartId = cartId.toString();
+  }
+  console.log('📤 API getCart: Request params:', params);
   return api.get<Cart>('/orders/cart', { params });
 };
 
 export const addToCart = (productId: number, quantity: number) => {
   const data = { productId, quantity };
-  console.log('API addToCart called with:', data);
+  console.log('📤 API addToCart: Request data:', data);
   return api.post('/orders/cart', data);
 };
 
