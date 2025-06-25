@@ -90,8 +90,12 @@ export const verifyToken = asyncHandler(async (req, res) => {
 
 // Get user profile
 export const getUserProfile = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+
+  console.log('Getting profile for user:', userId);
+
   const user = await prisma.user.findUnique({
-    where: { id: req.user.id },
+    where: { id: userId },
     select: {
       id: true,
       name: true,
@@ -100,8 +104,12 @@ export const getUserProfile = asyncHandler(async (req, res) => {
       phone: true,
       address: true,
       bio: true,
-      company: true,
-      createdAt: true
+      businessName: true,
+      gender: true,
+      sellerStatus: true,
+      isActive: true,
+      createdAt: true,
+      updatedAt: true,
     }
   });
 
@@ -110,15 +118,19 @@ export const getUserProfile = asyncHandler(async (req, res) => {
     throw new Error('User not found');
   }
 
+  console.log('Profile found for user:', user.email);
   res.json(user);
 });
 
 // Update user profile
 export const updateUserProfile = asyncHandler(async (req, res) => {
-  const { name, email, phone, address, bio, company } = req.body;
+  const userId = req.user.id;
+  const { name, email, phone, address, bio, businessName, gender } = req.body;
+
+  console.log('Updating profile for user:', userId, 'with data:', req.body);
 
   const user = await prisma.user.findUnique({
-    where: { id: req.user.id }
+    where: { id: userId }
   });
 
   if (!user) {
@@ -126,27 +138,30 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
     throw new Error('User not found');
   }
 
-  // Check if email is already taken by another user
+  // Check if email is being changed and if it already exists
   if (email && email !== user.email) {
     const emailExists = await prisma.user.findUnique({
       where: { email }
     });
+    
     if (emailExists) {
       res.status(400);
-      throw new Error('Email already exists');
+      throw new Error('Email already in use');
     }
   }
 
+  const updateData = {};
+  if (name) updateData.name = name;
+  if (email) updateData.email = email;
+  if (phone) updateData.phone = phone;
+  if (address) updateData.address = address;
+  if (bio) updateData.bio = bio;
+  if (businessName) updateData.businessName = businessName;
+  if (gender) updateData.gender = gender;
+
   const updatedUser = await prisma.user.update({
-    where: { id: req.user.id },
-    data: {
-      ...(name && { name }),
-      ...(email && { email }),
-      ...(phone && { phone }),
-      ...(address && { address }),
-      ...(bio && { bio }),
-      ...(company && { company })
-    },
+    where: { id: userId },
+    data: updateData,
     select: {
       id: true,
       name: true,
@@ -155,10 +170,16 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
       phone: true,
       address: true,
       bio: true,
-      company: true
+      businessName: true,
+      gender: true,
+      sellerStatus: true,
+      isActive: true,
+      createdAt: true,
+      updatedAt: true,
     }
   });
 
+  console.log('Profile updated successfully for user:', updatedUser.email);
   res.json(updatedUser);
 });
 

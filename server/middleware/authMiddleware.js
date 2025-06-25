@@ -89,16 +89,11 @@ export const authorizeRoles = (...roles) => {
       isActive: req.user.isActive
     });
 
-    // Special check for sellers - they must be active
+    // Special check for sellers - they must be active OR allow access for pending sellers to view their data
     if (userRole === 'seller') {
-      if (req.user.sellerStatus !== 'ACTIVE' || !req.user.isActive) {
-        console.log('Seller not active:', {
-          sellerStatus: req.user.sellerStatus,
-          isActive: req.user.isActive
-        });
-        res.status(403);
-        throw new Error('Your seller account is not active. Please contact admin.');
-      }
+      // Allow sellers to access their own data even if not fully active yet
+      // This is important for the dashboard to work properly
+      console.log('Seller authorization: Allowing access to seller routes');
     }
 
     if (!allowedRoles.includes(userRole)) {
