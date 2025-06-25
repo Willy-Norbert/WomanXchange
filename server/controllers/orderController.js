@@ -369,12 +369,13 @@ export const getUserOrders = asyncHandler(async (req, res) => {
 
 // Admin: Get All Orders
 export const getAllOrders = asyncHandler(async (req, res) => {
-  console.log('Getting all orders for admin/seller, user role:', req.user?.role);
+  console.log('🔍 getAllOrders called - user role:', req.user?.role, 'user ID:', req.user?.id);
   
   let whereClause = {};
   
   // If seller, only get orders for their products
   if (req.user.role.toLowerCase() === 'seller') {
+    console.log('🏪 Seller filtering orders for their products');
     whereClause = {
       items: {
         some: {
@@ -384,33 +385,44 @@ export const getAllOrders = asyncHandler(async (req, res) => {
         }
       }
     };
+  } else {
+    console.log('👑 Admin getting all orders');
   }
   
-  const orders = await prisma.order.findMany({
-    where: whereClause,
-    include: {
-      user: { select: { id: true, name: true, email: true } },
-      items: { 
-        include: { 
-          product: {
-            include: {
-              createdBy: {
-                select: {
-                  id: true,
-                  name: true,
-                  businessName: true
+  try {
+    console.log('📊 Prisma query whereClause:', JSON.stringify(whereClause, null, 2));
+    
+    const orders = await prisma.order.findMany({
+      where: whereClause,
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        items: { 
+          include: { 
+            product: {
+              include: {
+                createdBy: {
+                  select: {
+                    id: true,
+                    name: true,
+                    businessName: true
+                  }
                 }
               }
             }
-          }
-        } 
-      }
-    },
-    orderBy: { createdAt: 'desc' }
-  });
-  
-  console.log('All orders found:', orders.length);
-  res.json(orders);
+          } 
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    
+    console.log('✅ Orders found:', orders.length);
+    console.log('📋 Order IDs:', orders.map(o => o.id));
+    
+    res.json(orders);
+  } catch (error) {
+    console.error('❌ Error in getAllOrders:', error);
+    throw error;
+  }
 });
 
 // Update Order (Admin/Seller)
@@ -623,10 +635,16 @@ export const confirmOrderPayment = asyncHandler(async (req, res) => {
 
   console.log('Payment confirmed successfully');
 
+  // Clear user's cart after payment confirmation
+  const userCart = await prisma.cart.findUnique({ where: { userId: order.userId } });
+  if (userCart) {
+    await prisma.cartItem.deleteMany({ where: { cartId: userCart.id } });
+  }
+
   // Notify user of payment confirmation
   await notify({
     userId: req.user.id,
-    message: `Payment confirmed for order #${orderId}.`,
+    message: `Your payment for Order #${orderId} has been confirmed by admin.`,
     recipientRole: 'BUYER',
     relatedOrderId: orderId,
   });

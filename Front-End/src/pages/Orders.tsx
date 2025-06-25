@@ -21,42 +21,44 @@ const Orders = () => {
   console.log('Orders page - User:', user?.role, user?.id);
 
   // Fixed query with proper error handling and debug messages
-  const { data: ordersData, isLoading, error } = useQuery({
-    queryKey: ['orders', user?.role, user?.id],
+  const { data: ordersResponse, isLoading, error } = useQuery({
+    queryKey: ['all-orders', user?.role, user?.id],
     queryFn: async () => {
-      console.log('Fetching orders for user role:', user?.role, 'userID:', user?.id);
+      console.log('🔄 Fetching orders for user role:', user?.role, 'userID:', user?.id);
       try {
-        const result = await getAllOrders(user?.role?.toLowerCase() || '', user?.id);
-        console.log('Orders API response:', result);
-        return result;
+        const response = await getAllOrders(user?.role?.toLowerCase() || '', user?.id);
+        console.log('✅ Orders API response received:', response);
+        console.log('📊 Orders data structure:', response?.data ? 'has data property' : 'no data property');
+        console.log('📋 Orders array:', Array.isArray(response?.data) ? `Array with ${response.data.length} items` : Array.isArray(response) ? `Direct array with ${response.length} items` : 'Not an array');
+        return response;
       } catch (error) {
-        console.error('Orders fetch error:', error);
+        console.error('❌ Orders fetch error:', error);
         throw error;
       }
     },
-    enabled: !!user && (user.role === 'admin' || user.role === 'seller'),
+    enabled: !!user && (user.role?.toLowerCase() === 'admin' || user.role?.toLowerCase() === 'seller'),
     staleTime: 30000,
     retry: (failureCount, error) => {
-      console.log('Orders query retry attempt:', failureCount, error);
+      console.log('🔄 Orders query retry attempt:', failureCount, error);
       return failureCount < 2;
     },
   });
 
   const confirmPaymentMutation = useMutation({
     mutationFn: async (orderId: number) => {
-      console.log('Confirming payment for order:', orderId);
+      console.log('💳 Confirming payment for order:', orderId);
       return confirmOrderPayment(orderId);
     },
     onSuccess: (data, orderId) => {
-      console.log('Payment confirmed successfully for order:', orderId);
-      queryClient.invalidateQueries({ queryKey: ['orders', user?.role, user?.id] });
+      console.log('✅ Payment confirmed successfully for order:', orderId);
+      queryClient.invalidateQueries({ queryKey: ['all-orders', user?.role, user?.id] });
       toast({
         title: 'Payment confirmed',
         description: 'Order payment has been confirmed and customer notified',
       });
     },
     onError: (error: any, orderId) => {
-      console.error('Payment confirmation error for order:', orderId, error);
+      console.error('❌ Payment confirmation error for order:', orderId, error);
       toast({
         title: 'Error',
         description: error.response?.data?.message || 'Failed to confirm payment',
@@ -67,19 +69,19 @@ const Orders = () => {
 
   const deleteOrderMutation = useMutation({
     mutationFn: async (orderId: number) => {
-      console.log('Deleting order:', orderId);
+      console.log('🗑️ Deleting order:', orderId);
       return deleteOrder(orderId);
     },
     onSuccess: (data, orderId) => {
-      console.log('Order deleted successfully:', orderId);
-      queryClient.invalidateQueries({ queryKey: ['orders', user?.role, user?.id] });
+      console.log('✅ Order deleted successfully:', orderId);
+      queryClient.invalidateQueries({ queryKey: ['all-orders', user?.role, user?.id] });
       toast({
         title: 'Order deleted',
         description: 'Order has been deleted successfully',
       });
     },
     onError: (error: any, orderId) => {
-      console.error('Order deletion error for order:', orderId, error);
+      console.error('❌ Order deletion error for order:', orderId, error);
       toast({
         title: 'Error',
         description: error.response?.data?.message || 'Failed to delete order',
@@ -90,26 +92,44 @@ const Orders = () => {
 
   // Safe data extraction with debug logging
   const orders = React.useMemo(() => {
-    const result = Array.isArray(ordersData?.data) ? ordersData.data : (Array.isArray(ordersData) ? ordersData : []);
-    console.log('Processed orders data:', result);
+    console.log('🔍 Processing orders data:', ordersResponse);
+    
+    // Handle different possible response structures
+    let result = [];
+    
+    if (Array.isArray(ordersResponse?.data)) {
+      result = ordersResponse.data;
+      console.log('📊 Using ordersResponse.data (array):', result.length, 'items');
+    } else if (Array.isArray(ordersResponse)) {
+      result = ordersResponse;
+      console.log('📊 Using ordersResponse (direct array):', result.length, 'items');
+    } else if (ordersResponse?.data && typeof ordersResponse.data === 'object') {
+      result = [];
+      console.log('📊 ordersResponse.data is object, not array:', ordersResponse.data);
+    } else {
+      result = [];
+      console.log('📊 No valid orders data found');
+    }
+    
+    console.log('📋 Final processed orders:', result);
     return result;
-  }, [ordersData]);
+  }, [ordersResponse]);
 
   const handleConfirmPayment = (orderId: number) => {
-    console.log('Handling payment confirmation for order:', orderId);
+    console.log('🎯 Handling payment confirmation for order:', orderId);
     confirmPaymentMutation.mutate(orderId);
   };
 
   const handleDeleteOrder = (orderId: number) => {
     if (window.confirm('Are you sure you want to delete this order?')) {
-      console.log('User confirmed order deletion:', orderId);
+      console.log('✅ User confirmed order deletion:', orderId);
       deleteOrderMutation.mutate(orderId);
     } else {
-      console.log('User cancelled order deletion:', orderId);
+      console.log('❌ User cancelled order deletion:', orderId);
     }
   };
 
-  console.log('Orders page render - Loading:', isLoading, 'Error:', error, 'Orders count:', orders.length);
+  console.log('🖥️ Orders page render - Loading:', isLoading, 'Error:', error, 'Orders count:', orders.length);
 
   if (isLoading) {
     return (
@@ -122,15 +142,15 @@ const Orders = () => {
   }
 
   if (error) {
-    console.error('Orders page error:', error);
+    console.error('❌ Orders page error:', error);
     return (
       <DashboardLayout currentPage="orders">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <div className="text-lg text-red-600 mb-4">Failed to load orders</div>
             <Button onClick={() => {
-              console.log('Retrying orders fetch...');
-              queryClient.invalidateQueries({ queryKey: ['orders', user?.role, user?.id] });
+              console.log('🔄 Retrying orders fetch...');
+              queryClient.invalidateQueries({ queryKey: ['all-orders', user?.role, user?.id] });
             }}>
               Retry
             </Button>
@@ -166,7 +186,7 @@ const Orders = () => {
                 <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600">No orders found</p>
                 <p className="text-sm text-gray-500 mt-2">
-                  {user?.role === 'seller' ? 'Orders for your products will appear here' : 'All system orders will appear here'}
+                  {user?.role?.toLowerCase() === 'seller' ? 'Orders for your products will appear here' : 'All system orders will appear here'}
                 </p>
               </div>
             ) : (
@@ -252,7 +272,7 @@ const Orders = () => {
                               )}
                             </Button>
                           )}
-                          {user?.role === 'admin' && (
+                          {user?.role?.toLowerCase() === 'admin' && (
                             <Button
                               size="sm"
                               variant="outline"

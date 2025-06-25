@@ -93,9 +93,22 @@ export const createOrder = (data: CreateOrderData) =>
 
 export const getUserOrders = () => api.get<Order[]>('/orders');
 
-export const getAllOrders = (userRole?: string, userId?: number) => {
-  console.log('getAllOrders called with role:', userRole, 'userId:', userId);
-  return api.get<Order[]>('/orders/all');
+export const getAllOrders = async (userRole?: string, userId?: number) => {
+  console.log('🔍 getAllOrders called with role:', userRole, 'userId:', userId);
+  
+  try {
+    const response = await api.get<Order[]>('/orders/all');
+    console.log('✅ getAllOrders API response:', response);
+    console.log('📊 Response structure:', {
+      hasData: !!response.data,
+      isArray: Array.isArray(response.data),
+      length: Array.isArray(response.data) ? response.data.length : 'not array'
+    });
+    return response;
+  } catch (error) {
+    console.error('❌ getAllOrders API error:', error);
+    throw error;
+  }
 };
 
 // Get individual order by ID
