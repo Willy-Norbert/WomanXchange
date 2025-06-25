@@ -1,6 +1,14 @@
+
 import asyncHandler from 'express-async-handler';
 import prisma from '../prismaClient.js';
 import { notify } from '../utils/notify.js';
+
+// Helper function to generate unique order number
+const generateOrderNumber = () => {
+  const timestamp = Date.now();
+  const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+  return `ORD-${timestamp}-${random}`;
+};
 
 // Get Order by ID (Admin/Seller)
 export const getOrderById = asyncHandler(async (req, res) => {
@@ -266,10 +274,13 @@ export const placeOrder = asyncHandler(async (req, res) => {
     (acc, item) => acc + item.price * item.quantity, 0
   );
 
+  const orderNumber = generateOrderNumber();
+
   const order = await prisma.order.create({
     data: {
       userId,
-      shippingAddress,
+      orderNumber,
+      shippingAddress: typeof shippingAddress === 'string' ? { address: shippingAddress } : shippingAddress,
       paymentMethod,
       totalPrice,
       isPaid: false,
@@ -326,15 +337,22 @@ export const createOrder = asyncHandler(async (req, res) => {
     }
   }
 
+  const orderNumber = generateOrderNumber();
+
   const order = await prisma.order.create({
     data: {
       userId,
-      shippingAddress,
+      orderNumber,
+      shippingAddress: typeof shippingAddress === 'string' ? { address: shippingAddress } : shippingAddress,
       paymentMethod,
       totalPrice,
       isPaid: false,
       items: {
-        create: items
+        create: items.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          price: parseFloat(item.price.toString())
+        }))
       }
     },
     include: {
@@ -468,7 +486,7 @@ export const updateOrder = asyncHandler(async (req, res) => {
   // Update order details
   const updateData = {};
   if (userId) updateData.userId = userId;
-  if (shippingAddress) updateData.shippingAddress = shippingAddress;
+  if (shippingAddress) updateData.shippingAddress = typeof shippingAddress === 'string' ? { address: shippingAddress } : shippingAddress;
   if (paymentMethod) updateData.paymentMethod = paymentMethod;
   if (totalPrice) updateData.totalPrice = totalPrice;
 
@@ -481,18 +499,7 @@ export const updateOrder = asyncHandler(async (req, res) => {
       items: { include: { product: true } }
     }
   });
-  // Clear user's cart after payment confirmation
-  const userCart = await prisma.cart.findUnique({ where: { userId: order.userId } });
-  if (userCart) {
-    await prisma.cartItem.deleteMany({ where: { cartId: userCart.id } });
-  }
 
-  await notify({
-    userId: order.userId,
-    message: `Your payment for Order #${order.id} has been confirmed by admin.`,
-    recipientRole: 'BUYER',
-    relatedOrderId: order.id,
-  });
   // Update items if provided
   if (items && items.length > 0) {
     // Delete existing items
