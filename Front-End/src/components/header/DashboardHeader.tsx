@@ -56,9 +56,7 @@ export const DashboardHeader: React.FC = () => {
         </div>
         
         <div className="flex items-center space-x-4">
-          <Button variant="ghost" size="icon">
-            <Moon className="w-5 h-5" />
-          </Button>
+        
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

@@ -80,8 +80,8 @@ const App = () => {
               {/* Dashboard Routes */}
                       <Route path="/community-chat" element={<CommunityChat />} />
               <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/admin/products" element={<AdminProducts />} />
-              <Route path="/admin/categories" element={<AdminCategories />} />
+              <Route path="/admin-products" element={<AdminProducts />} />
+              <Route path="/admin-categories" element={<AdminCategories />} />
               <Route path="/customers" element={<Customers />} />
               <Route path="/user-management" element={<UserManagement />} />
               <Route path="/seller-management" element={<SellerManagement />} />

@@ -25,10 +25,10 @@ const CommunityChat = () => {
   return (
     <DashboardLayout currentPage="community-chat">
       <div className="h-full flex flex-col space-y-6">
-        <div className="flex items-center space-x-3">
-          <MessageSquare className="w-8 h-8 text-purple-600" />
+        <div className="flex items-center space-x-3 overflow-hidden">
+          
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold bg-gradient-to-r -purple-600 bg-clip-text ">
               Community Chat
             </h1>
             <p className="text-gray-600">
