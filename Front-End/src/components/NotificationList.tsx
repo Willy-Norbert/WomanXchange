@@ -21,6 +21,10 @@ const NotificationList = () => {
     mutationFn: markNotificationRead,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      toast({
+        title: "Notification viewed",
+        description: "The notification has been marked as seen and removed",
+      });
     },
     onError: (error: any) => {
       toast({
@@ -36,7 +40,7 @@ const NotificationList = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       toast({
-        title: "Notification deleted",
+        title: "Notification removed",
         description: "The notification has been removed",
       });
     },
@@ -50,13 +54,13 @@ const NotificationList = () => {
   });
 
   const handleNotificationClick = (notification: any) => {
-    if (!notification.isRead) {
-      markReadMutation.mutate(notification.id);
-    }
-    // Auto-delete notification after marking as read
-    setTimeout(() => {
-      deleteMutation.mutate(notification.id);
-    }, 1000);
+    // Immediately mark as read and remove the notification
+    markReadMutation.mutate(notification.id);
+  };
+
+  const handleDeleteClick = (notificationId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    deleteMutation.mutate(notificationId);
   };
 
   if (isLoading) {
@@ -100,10 +104,7 @@ const NotificationList = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteMutation.mutate(notification.id);
-                  }}
+                  onClick={(e) => handleDeleteClick(notification.id, e)}
                   disabled={deleteMutation.isPending}
                   className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 h-auto"
                   title="Delete notification"

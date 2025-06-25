@@ -6,8 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { AuthContext } from '../../contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { getNotifications } from '@/api/notifications';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getNotifications, markNotificationRead } from '@/api/notifications';
 import LanguageSwitcher from '../LanguageSwitcher';
 import {
   DropdownMenu,
@@ -20,6 +20,7 @@ import {
 export const DashboardHeader: React.FC = () => {
   const { user, logout } = useContext(AuthContext);
   const { t } = useLanguage();
+  const queryClient = useQueryClient();
 
   const { data: notificationsData } = useQuery({
     queryKey: ['notifications'],
@@ -27,11 +28,22 @@ export const DashboardHeader: React.FC = () => {
     enabled: !!user,
   });
 
+  const markReadMutation = useMutation({
+    mutationFn: markNotificationRead,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    }
+  });
+
   const notifications = notificationsData?.data || [];
   const unreadCount = notifications.filter((n: any) => !n.isRead).length;
 
   const handleLogout = () => {
     logout();
+  };
+
+  const handleNotificationClick = (notification: any) => {
+    markReadMutation.mutate(notification.id);
   };
 
   if (!user) return null;
@@ -56,8 +68,6 @@ export const DashboardHeader: React.FC = () => {
         </div>
         
         <div className="flex items-center space-x-4">
-        
-          
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="relative">
@@ -72,7 +82,11 @@ export const DashboardHeader: React.FC = () => {
             <DropdownMenuContent align="end" className="w-80 bg-white border border-gray-200 shadow-lg z-50">
               {notifications.length > 0 ? (
                 notifications.slice(0, 5).map((notification: any) => (
-                  <DropdownMenuItem key={notification.id} className="p-3">
+                  <DropdownMenuItem 
+                    key={notification.id} 
+                    className="p-3 cursor-pointer"
+                    onClick={() => handleNotificationClick(notification)}
+                  >
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm">{notification.message}</p>
                       <p className="text-xs text-gray-500">
