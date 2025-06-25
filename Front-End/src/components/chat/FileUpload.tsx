@@ -73,8 +73,8 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, disabled }) => {
       const uploadedFiles: FileData[] = [];
 
       for (const fileData of selectedFiles) {
-        // Use 'avatars' bucket which exists in Supabase
-        const uploadResult = await uploadFile(fileData.file, 'avatars');
+        // Use 'ecommerce' bucket which exists in Supabase
+        const uploadResult = await uploadFile(fileData.file, 'ecommerce');
         uploadedFiles.push({
           ...fileData,
           url: uploadResult.url
