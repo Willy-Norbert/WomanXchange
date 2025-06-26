@@ -20,14 +20,71 @@ const orderRouter = express.Router();
 
 // Cart routes (public access for guest users)
 orderRouter.route('/cart')
-  .get(getCart)
-  .post(addToCart)
-  .delete(removeFromCart);
+  .get((req, res, next) => {
+    // Try to authenticate, but don't require it
+    if (req.headers.authorization) {
+      protect(req, res, (err) => {
+        if (err) {
+          // If auth fails, continue as guest
+          req.user = null;
+        }
+        next();
+      });
+    } else {
+      req.user = null;
+      next();
+    }
+  }, getCart)
+  .post((req, res, next) => {
+    // Try to authenticate, but don't require it
+    if (req.headers.authorization) {
+      protect(req, res, (err) => {
+        if (err) {
+          // If auth fails, continue as guest
+          req.user = null;
+        }
+        next();
+      });
+    } else {
+      req.user = null;
+      next();
+    }
+  }, addToCart)
+  .delete((req, res, next) => {
+    // Try to authenticate, but don't require it
+    if (req.headers.authorization) {
+      protect(req, res, (err) => {
+        if (err) {
+          // If auth fails, continue as guest
+          req.user = null;
+        }
+        next();
+      });
+    } else {
+      req.user = null;
+      next();
+    }
+  }, removeFromCart);
 
-// Order routes (require authentication)
-orderRouter.route('/')
-  .post(protect, placeOrder)
-  .get(protect, getUserOrders);
+// Order placement (supports both authenticated and guest users)
+orderRouter.post('/', (req, res, next) => {
+  // Try to authenticate, but don't require it
+  if (req.headers.authorization) {
+    protect(req, res, (err) => {
+      if (err) {
+        // If auth fails, continue as guest
+        req.user = null;
+      }
+      next();
+    });
+  } else {
+    req.user = null;
+    next();
+  }
+}, placeOrder);
+
+// User orders (require authentication)
+orderRouter.get('/', protect, getUserOrders);
 
 // Create order by admin/seller
 orderRouter.post('/create', protect, authorizeRoles('admin', 'seller'), createOrder);
