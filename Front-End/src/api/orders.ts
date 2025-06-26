@@ -1,4 +1,3 @@
-
 import api from './api';
 
 export interface CartItem {
@@ -59,6 +58,11 @@ export interface PlaceOrderData {
   paymentMethod: string;
   customerEmail?: string;
   customerName?: string;
+  guestInfo?: {
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
   cartId?: number;
 }
 

@@ -10,8 +10,10 @@ export const useCart = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [cartId, setCartId] = useState<number | null>(null);
-
   // Get cartId from localStorage for unauthenticated users OR initialize cart
+  console.log('🛒 useCart hook - user state:', { hasUser: !!user, userId: user?.id, userRole: user?.role });
+
+  // Get cartId from localStorage for unauthenticated users
   useEffect(() => {
     if (!user) {
       const storedCartId = localStorage.getItem('anonymous_cart_id');
@@ -38,7 +40,7 @@ export const useCart = () => {
     queryKey,
     queryFn: async () => {
       try {
-        console.log('🔍 useCart query: calling getCart with cartId:', cartId, 'user:', !!user);
+        console.log('🔍 useCart query: calling getCart with user:', !!user, 'cartId:', cartId);
         const response = await getCart(cartId);
         console.log('📦 useCart query: Cart response received:', response?.data);
         
@@ -70,6 +72,7 @@ export const useCart = () => {
 
   console.log('🛒 useCart hook state:', {
     user: !!user,
+    userId: user?.id,
     cartId,
     isLoading,
     cart: cart,
@@ -83,6 +86,8 @@ export const useCart = () => {
       console.log('➕ useCart: Adding to cart:', { productId, quantity, currentCartId: cartId, hasUser: !!user });
       
       const response = await addToCart(productId, quantity, cartId);
+      console.log('➕ useCart: Adding to cart:', { productId, quantity, hasUser: !!user, userId: user?.id });
+      const response = await addToCart(productId, quantity);
       console.log('✅ useCart: Add to cart API response:', response?.data);
       return response;
     },
@@ -96,9 +101,12 @@ export const useCart = () => {
         setCartId(newCartId);
         console.log('💾 useCart: Stored new cart ID:', newCartId);
       }
-      
       // Invalidate and refetch cart
       queryClient.invalidateQueries({ queryKey: ['cart'] });
+      // Invalidate and refetch cart queries immediately
+      queryClient.invalidateQueries({ queryKey: ['cart'] });
+      
+      // Force immediate refetch with proper error handling
       setTimeout(() => {
         refetch().catch(err => console.error('❌ useCart: Refetch error:', err));
       }, 100);
@@ -120,11 +128,12 @@ export const useCart = () => {
 
   const removeFromCartMutation = useMutation({
     mutationFn: (productId: number) => {
-      console.log('➖ useCart: Removing from cart:', { productId, cartId });
+      console.log('➖ useCart: Removing from cart:', { productId, cartId, hasUser: !!user });
       return removeFromCart(productId, cartId);
     },
     onSuccess: () => {
       console.log('✅ useCart: Remove from cart success');
+      // Invalidate and refetch immediately
       queryClient.invalidateQueries({ queryKey: ['cart'] });
       refetch().catch(err => console.error('❌ useCart: Refetch after remove error:', err));
       toast({
@@ -143,23 +152,24 @@ export const useCart = () => {
   });
 
   // Calculate cart items count safely
+  // Improved cart items count calculation with better error handling
   const cartItemsCount = (() => {
     try {
       if (!cart?.items || !Array.isArray(cart.items)) {
         return 0;
       }
-      return cart.items.reduce((total: number, item: any) => {
+      const count = cart.items.reduce((total: number, item: any) => {
         const quantity = parseInt(item?.quantity) || 0;
         return total + quantity;
       }, 0);
+      console.log('🔢 useCart: Cart items count calculated:', count, 'from items:', cart?.items);
+      return count;
     } catch (err) {
       console.error('❌ useCart: Error calculating cart items count:', err);
       return 0;
     }
   })();
-
   console.log('🔢 useCart: Cart items count calculated:', cartItemsCount, 'from items:', cart?.items?.length);
-
   return {
     cart: cart,
     cartItemsCount,

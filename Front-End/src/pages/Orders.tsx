@@ -214,8 +214,17 @@ const Orders = () => {
                       </TableCell>
                       <TableCell>
                         <div>
-                          <div className="font-medium">{order.user?.name || 'Guest'}</div>
-                          <div className="text-sm text-gray-500">{order.user?.email}</div>
+                          <div className="font-medium">
+                            {order.displayCustomer?.name || order.user?.name || 'Guest User'}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {order.displayCustomer?.email || order.user?.email || order.guestEmail || 'No email'}
+                          </div>
+                          {(!order.user && (order.guestInfo || order.guestEmail)) && (
+                            <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded mt-1 inline-block">
+                              Guest Order
+                            </div>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>

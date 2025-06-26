@@ -20,15 +20,19 @@ const Checkout = () => {
   const { toast } = useToast();
   const { cart, isLoading } = useCart();
   const [paymentMethod, setPaymentMethod] = useState('MTN');
+  const [sameAsBilling, setSameAsBilling] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [paymentCode, setPaymentCode] = useState('');
   const [generatingCode, setGeneratingCode] = useState(false);
   const [currentOrderId, setCurrentOrderId] = useState<number | null>(null);
-  
   // Form data for both authenticated and anonymous users
   const [formData, setFormData] = useState({
     firstName: auth?.user?.name?.split(' ')[0] || '',
     lastName: auth?.user?.name?.split(' ')[1] || '',
+  // Form data with better defaults for guest users
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
     email: auth?.user?.email || '',
     location: '',
     streetLine: '',
@@ -44,7 +48,6 @@ const Checkout = () => {
       return;
     }
 
-    // Validate required fields
     if (!formData.firstName || !formData.lastName || !formData.email || !formData.location || !formData.streetLine) {
       toast({
         title: "Error",
@@ -54,7 +57,11 @@ const Checkout = () => {
       return;
     }
 
+
     // Email validation
+
+  // Validate email format
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       toast({
@@ -72,7 +79,6 @@ const Checkout = () => {
 
       // Get cart ID for anonymous users
       const cartId = localStorage.getItem('anonymous_cart_id');
-
       // Create the order
       const orderData = {
         shippingAddress,
@@ -85,6 +91,18 @@ const Checkout = () => {
       console.log('🛒 Placing order with data:', orderData);
 
       const orderResponse = await placeOrder(orderData);
+      // Create order - works for both authenticated and guest users
+      const orderResponse = await placeOrder({
+        shippingAddress,
+        paymentMethod,
+        // Include guest user info if not authenticated
+        guestInfo: !auth?.user ? {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email
+        } : undefined
+      });
+      
       const orderId = orderResponse.data.id;
       setCurrentOrderId(orderId);
 
@@ -130,6 +148,11 @@ const Checkout = () => {
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
+
+  const handleSameAsBillingChange = (checked: boolean | "indeterminate") => {
+    setSameAsBilling(checked === true);
+  };
+
 
   if (isLoading) {
     return (
@@ -200,6 +223,43 @@ const Checkout = () => {
                       required
                     />
                   </div>
+     {/* Guest User Notice */}
+              {!auth?.user && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-blue-800 text-sm">
+                    You're checking out as a guest. Want to save your information? 
+                    <Link to="/register" className="ml-1 underline font-medium">
+                      Create an account
+                    </Link> or 
+                    <Link to="/login" className="ml-1 underline font-medium">
+                      sign in
+                    </Link>.
+                  </p>
+                </div>
+              )}
+
+              {/* Billing Address */}
+              <div>
+                <div className="flex items-center mb-4">
+                  <span className="w-6 h-6 bg-black text-white rounded-full flex items-center justify-center text-sm mr-3">1</span>
+                  <h2 className="text-xl font-semibold">
+                    {auth?.user ? 'Billing Address' : 'Contact & Billing Information'}
+                  </h2>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <Input 
+                    placeholder="First Name *" 
+                    value={formData.firstName}
+                    onChange={(e) => handleInputChange('firstName', e.target.value)}
+                    required
+                  />
+                  <Input 
+                    placeholder="Last Name *" 
+                    value={formData.lastName}
+                    onChange={(e) => handleInputChange('lastName', e.target.value)}
+                    required
+                  />
                 </div>
                 
                 <div className="mb-4">
@@ -214,6 +274,28 @@ const Checkout = () => {
                   />
                   <p className="text-sm text-gray-500 mt-1">Order confirmation will be sent to this email</p>
                 </div>
+                    placeholder="Email *" 
+                    type="email" 
+                    value={formData.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    disabled={!!auth?.user}
+                    required
+                  />
+                  <Input 
+                    placeholder="Location *" 
+                    value={formData.location}
+                    onChange={(e) => handleInputChange('location', e.target.value)}
+                    required
+                  />
+                </div>
+                
+                <Input 
+                  placeholder="Street Line *" 
+                  className="mb-4" 
+                  value={formData.streetLine}
+                  onChange={(e) => handleInputChange('streetLine', e.target.value)}
+                  required
+                />
               </div>
 
               {/* Shipping Address */}
@@ -273,6 +355,10 @@ const Checkout = () => {
                         <span className="text-sm text-gray-500">Pay when you receive your order</span>
                       </div>
                     </Label>
+                <RadioGroup value={paymentMethod} onValueChange={handlePaymentMethodChange} className="mb-4">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="MTN" id="mtn" />
+                    <Label htmlFor="mtn">MTN MOMO</Label>
                   </div>
                 </RadioGroup>
 

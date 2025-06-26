@@ -125,13 +125,26 @@ const Cart = () => {
               </div>
             </div>
 
-            {/* Checkout Button - NO LOGIN REQUIRED */}
+
+            {/* Checkout Button - Now works for both logged in and guest users */}
             <Link to="/checkout">
               <Button className="w-full bg-purple-500 hover:bg-purple-600 text-white py-4 rounded-full">
                 {t('cart.go_to_checkout') || 'Go to Checkout'}
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
             </Link>
+            
+            {/* Optional login suggestion for guest users */}
+            {!auth?.user && (
+              <div className="text-center mt-4">
+                <p className="text-sm text-gray-600">
+                  Have an account? 
+                  <Link to="/login" className="ml-1 text-purple-600 hover:text-purple-700 underline">
+                    Sign in
+                  </Link> to save your order history
+                </p>
+              </div>
+            )}
           </>
         )}
       </div>
