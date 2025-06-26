@@ -15,7 +15,7 @@ const CartBadge = () => {
       <Button variant="ghost" size="icon" className="relative">
         <ShoppingCart className="w-5 h-5" />
         {!isLoading && cartItemsCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium min-w-[20px]">
             {cartItemsCount > 99 ? '99+' : cartItemsCount}
           </span>
         )}

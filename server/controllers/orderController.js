@@ -1,4 +1,3 @@
-
 import asyncHandler from 'express-async-handler';
 import prisma from '../prismaClient.js';
 import { notify } from '../utils/notify.js';
@@ -247,17 +246,41 @@ export const getCart = asyncHandler(async (req, res) => {
   res.json({ data: cart || { items: [] }, cartId: cart?.id });
 });
 
-// Place an Order (from Cart) - requires authentication
+// Place an Order (from Cart) - now supports both authenticated and guest users
 export const placeOrder = asyncHandler(async (req, res) => {
-  const userId = req.user.id;
-  const { shippingAddress, paymentMethod } = req.body;
-
-  console.log('Placing order for user:', userId);
-
-  const cart = await prisma.cart.findUnique({
-    where: { userId },
-    include: { items: { include: { product: true } } }
-  });
+  const { shippingAddress, paymentMethod, guestInfo } = req.body;
+  
+  let userId = null;
+  let cart = null;
+  
+  // Handle authenticated users
+  if (req.user) {
+    userId = req.user.id;
+    console.log('Placing order for authenticated user:', userId);
+    
+    cart = await prisma.cart.findUnique({
+      where: { userId },
+      include: { items: { include: { product: true } } }
+    });
+  } else {
+    // Handle guest users
+    console.log('Placing order for guest user with info:', guestInfo);
+    
+    if (!guestInfo || !guestInfo.email || !guestInfo.firstName || !guestInfo.lastName) {
+      res.status(400);
+      throw new Error('Guest information is required for guest checkout');
+    }
+    
+    // For guest users, we need to find the most recent cart without a userId
+    // or get cart from session/cookie if available
+    const { cartId } = req.body;
+    if (cartId) {
+      cart = await prisma.cart.findUnique({
+        where: { id: cartId },
+        include: { items: { include: { product: true } } }
+      });
+    }
+  }
 
   if (!cart || cart.items.length === 0) {
     res.status(400);
@@ -276,31 +299,44 @@ export const placeOrder = asyncHandler(async (req, res) => {
 
   const orderNumber = generateOrderNumber();
 
+  // Create order data
+  const orderData = {
+    orderNumber,
+    shippingAddress: typeof shippingAddress === 'string' ? { address: shippingAddress } : shippingAddress,
+    paymentMethod,
+    totalPrice,
+    isPaid: false,
+    items: {
+      create: orderItemsData
+    }
+  };
+
+  // Add user ID for authenticated users or guest info for guest users
+  if (userId) {
+    orderData.userId = userId;
+  } else {
+    // Store guest information in the order
+    orderData.guestInfo = guestInfo;
+    orderData.guestEmail = guestInfo.email;
+  }
+
   const order = await prisma.order.create({
-    data: {
-      userId,
-      orderNumber,
-      shippingAddress: typeof shippingAddress === 'string' ? { address: shippingAddress } : shippingAddress,
-      paymentMethod,
-      totalPrice,
-      isPaid: false,
-      items: {
-        create: orderItemsData
-      }
-    },
+    data: orderData,
     include: {
       items: { include: { product: true } },
-      user: { select: { id: true, name: true, email: true } }
+      user: userId ? { select: { id: true, name: true, email: true } } : undefined
     }
   });
 
+  // Clear the cart after order creation
   await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
 
-  console.log('Order created successfully:', order.id);
+  console.log('Order created successfully:', order.id, 'for', userId ? `user ${userId}` : `guest ${guestInfo.email}`);
 
+  // Notify admin about new order
   await notify({
-    userId,
-    message: `New order placed by user ${req.user.name}.`,
+    userId: userId || null,
+    message: `New order placed by ${userId ? req.user.name : `guest ${guestInfo.firstName} ${guestInfo.lastName}`}.`,
     recipientRole: 'ADMIN',
     relatedOrderId: order.id,
   });
@@ -392,7 +428,7 @@ export const getUserOrders = asyncHandler(async (req, res) => {
   res.json(orders);
 });
 
-// Admin: Get All Orders
+// Admin: Get All Orders - Enhanced to include guest orders
 export const getAllOrders = asyncHandler(async (req, res) => {
   console.log('🔍 getAllOrders called - user role:', req.user?.role, 'user ID:', req.user?.id);
   
@@ -411,7 +447,7 @@ export const getAllOrders = asyncHandler(async (req, res) => {
       }
     };
   } else {
-    console.log('👑 Admin getting all orders');
+    console.log('👑 Admin getting all orders (including guest orders)');
   }
   
   try {
@@ -440,10 +476,28 @@ export const getAllOrders = asyncHandler(async (req, res) => {
       orderBy: { createdAt: 'desc' }
     });
     
-    console.log('✅ Orders found:', orders.length);
-    console.log('📋 Order IDs:', orders.map(o => o.id));
+    // Enhance orders with guest information for display
+    const enhancedOrders = orders.map(order => ({
+      ...order,
+      displayCustomer: order.user ? {
+        id: order.user.id,
+        name: order.user.name,
+        email: order.user.email
+      } : order.guestInfo ? {
+        id: null,
+        name: `${order.guestInfo.firstName} ${order.guestInfo.lastName}`,
+        email: order.guestInfo.email || order.guestEmail
+      } : {
+        id: null,
+        name: 'Guest User',
+        email: order.guestEmail || 'No email provided'
+      }
+    }));
     
-    res.json(orders);
+    console.log('✅ Orders found:', enhancedOrders.length);
+    console.log('📋 Order IDs:', enhancedOrders.map(o => o.id));
+    
+    res.json(enhancedOrders);
   } catch (error) {
     console.error('❌ Error in getAllOrders:', error);
     throw error;

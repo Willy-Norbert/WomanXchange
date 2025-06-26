@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useContext } from 'react';
 import { ArrowLeft, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -19,18 +20,18 @@ const Checkout = () => {
   const auth = useContext(AuthContext);
   const { toast } = useToast();
   const { cart, isLoading } = useCart();
-  const [paymentMethod, setPaymentMethod] = useState('CARD');
+  const [paymentMethod, setPaymentMethod] = useState('MTN');
   const [sameAsBilling, setSameAsBilling] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [paymentCode, setPaymentCode] = useState('');
   const [generatingCode, setGeneratingCode] = useState(false);
   const [currentOrderId, setCurrentOrderId] = useState<number | null>(null);
   
-  // Form data
+  // Form data with better defaults for guest users
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
-    email: '',
+    email: auth?.user?.email || '',
     location: '',
     streetLine: '',
     shippingAddress: ''
@@ -73,10 +74,21 @@ const Checkout = () => {
       return;
     }
 
-    if (!formData.firstName || !formData.lastName || !formData.location || !formData.streetLine) {
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.location || !formData.streetLine) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid email address",
         variant: "destructive",
       });
       return;
@@ -88,10 +100,16 @@ const Checkout = () => {
         ? `${formData.streetLine}, ${formData.location}`
         : formData.shippingAddress || `${formData.streetLine}, ${formData.location}`;
 
-      // First, create the order
+      // Create order - works for both authenticated and guest users
       const orderResponse = await placeOrder({
         shippingAddress,
-        paymentMethod
+        paymentMethod,
+        // Include guest user info if not authenticated
+        guestInfo: !auth?.user ? {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email
+        } : undefined
       });
       
       const orderId = orderResponse.data.id;
@@ -138,22 +156,6 @@ const Checkout = () => {
     setSameAsBilling(checked === true);
   };
 
-  if (!auth?.user) {
-    return (
-      <div className="min-h-screen bg-white">
-        <Header />
-        <div className="container mx-auto px-4 py-8 text-center">
-          <h1 className="text-2xl font-bold mb-4">Please Login</h1>
-          <p className="mb-4">You need to be logged in to checkout.</p>
-          <Link to="/login">
-            <Button>Login</Button>
-          </Link>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white">
@@ -195,45 +197,68 @@ const Checkout = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Left Side - Forms */}
             <div className="space-y-8">
+              {/* Guest User Notice */}
+              {!auth?.user && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-blue-800 text-sm">
+                    You're checking out as a guest. Want to save your information? 
+                    <Link to="/register" className="ml-1 underline font-medium">
+                      Create an account
+                    </Link> or 
+                    <Link to="/login" className="ml-1 underline font-medium">
+                      sign in
+                    </Link>.
+                  </p>
+                </div>
+              )}
+
               {/* Billing Address */}
               <div>
                 <div className="flex items-center mb-4">
                   <span className="w-6 h-6 bg-black text-white rounded-full flex items-center justify-center text-sm mr-3">1</span>
-                  <h2 className="text-xl font-semibold">Billing Address</h2>
+                  <h2 className="text-xl font-semibold">
+                    {auth?.user ? 'Billing Address' : 'Contact & Billing Information'}
+                  </h2>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <Input 
-                    placeholder="First Name" 
+                    placeholder="First Name *" 
                     value={formData.firstName}
                     onChange={(e) => handleInputChange('firstName', e.target.value)}
+                    required
                   />
                   <Input 
-                    placeholder="Last Name" 
+                    placeholder="Last Name *" 
                     value={formData.lastName}
                     onChange={(e) => handleInputChange('lastName', e.target.value)}
+                    required
                   />
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <Input 
-                    placeholder="Email" 
+                    placeholder="Email *" 
                     type="email" 
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
+                    disabled={!!auth?.user}
+                    required
                   />
                   <Input 
-                    placeholder="Location" 
+                    placeholder="Location *" 
                     value={formData.location}
                     onChange={(e) => handleInputChange('location', e.target.value)}
+                    required
                   />
                 </div>
                 
                 <Input 
-                  placeholder="Street Line" 
+                  placeholder="Street Line *" 
                   className="mb-4" 
                   value={formData.streetLine}
                   onChange={(e) => handleInputChange('streetLine', e.target.value)}
+                  required
                 />
               </div>
 
@@ -271,9 +296,7 @@ const Checkout = () => {
                 
                 <RadioGroup value={paymentMethod} onValueChange={handlePaymentMethodChange} className="mb-4">
                   <div className="flex items-center space-x-2">
-                    {/* <RadioGroupItem value="CARD" id="card" />
-                    <Label htmlFor="card">CARD</Label> */}
-                    <RadioGroupItem value="MTN" id="mtn" className="ml-8" />
+                    <RadioGroupItem value="MTN" id="mtn" />
                     <Label htmlFor="mtn">MTN MOMO</Label>
                   </div>
                 </RadioGroup>

@@ -1,4 +1,3 @@
-
 import api from './api';
 
 export interface CartItem {
@@ -53,6 +52,12 @@ export interface Order {
 export interface PlaceOrderData {
   shippingAddress: string;
   paymentMethod: string;
+  guestInfo?: {
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+  cartId?: number;
 }
 
 export interface CreateOrderData {

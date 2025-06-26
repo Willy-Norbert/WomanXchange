@@ -88,10 +88,10 @@ export const useCart = () => {
         console.log('💾 useCart: Stored new cart ID:', newCartId);
       }
       
-      // Invalidate all cart queries
+      // Invalidate and refetch cart queries immediately
       queryClient.invalidateQueries({ queryKey: ['cart'] });
       
-      // Force immediate refetch with error handling
+      // Force immediate refetch with proper error handling
       setTimeout(() => {
         console.log('🔄 useCart: Force refetching cart...');
         refetch().catch(err => {
@@ -121,6 +121,7 @@ export const useCart = () => {
     },
     onSuccess: () => {
       console.log('✅ useCart: Remove from cart success');
+      // Invalidate and refetch immediately
       queryClient.invalidateQueries({ queryKey: ['cart'] });
       refetch().catch(err => {
         console.error('❌ useCart: Refetch after remove error:', err);
@@ -140,23 +141,23 @@ export const useCart = () => {
     }
   });
 
-  // Safe calculation of cart items count with better error handling
+  // Improved cart items count calculation with better error handling
   const cartItemsCount = (() => {
     try {
       if (!cart?.items || !Array.isArray(cart.items)) {
         return 0;
       }
-      return cart.items.reduce((total: number, item: any) => {
+      const count = cart.items.reduce((total: number, item: any) => {
         const quantity = parseInt(item?.quantity) || 0;
         return total + quantity;
       }, 0);
+      console.log('🔢 useCart: Cart items count calculated:', count, 'from items:', cart?.items);
+      return count;
     } catch (err) {
       console.error('❌ useCart: Error calculating cart items count:', err);
       return 0;
     }
   })();
-
-  console.log('🔢 useCart: Cart items count calculated:', cartItemsCount, 'from items:', cart?.items);
 
   return {
     cart: cart,
