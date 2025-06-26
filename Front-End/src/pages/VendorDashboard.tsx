@@ -135,10 +135,10 @@ const VendorDashboard = () => {
                 Add Product
               </Button>
             </Link>
-            <Link to="/customers">
+            <Link to="/orders">
               <Button variant="outline">
-                <Eye className="w-4 h-4 mr-2" />
-                View All Customers
+                <Package className="w-4 h-4 mr-2" />
+                Create Order
               </Button>
             </Link>
           </div>
@@ -191,14 +191,16 @@ const VendorDashboard = () => {
               ) : products.length > 0 ? (
                 <div className="space-y-3">
                   {products.map((product) => (
-                    <div key={product.id} className="flex items-center space-x-3 p-2 border rounded-lg">
+                    <div key={product.id} className="flex items-center space-x-3 p-2 border rounded-lg hover:bg-gray-50">
                       <img 
                         src={product.coverImage} 
                         alt={product.name}
                         className="w-10 h-10 rounded object-cover"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>
+                        <Link to={`/products/${product.id}`} className="text-sm font-medium text-blue-600 hover:text-blue-800 truncate block">
+                          {product.name}
+                        </Link>
                         <p className="text-sm text-gray-500">{product.category.name}</p>
                       </div>
                       <div className="text-right">

@@ -5,12 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { CheckCircle, Package, Plus, Trash2, Edit } from 'lucide-react';
+import { CheckCircle, Package, Plus, Trash2, Edit, Eye } from 'lucide-react';
 import { getAllOrders, confirmOrderPayment, deleteOrder } from '@/api/orders';
 import { AuthContext } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { OrderCreation } from '@/components/OrderCreation';
 import { OrderUpdateDialog } from '@/components/OrderUpdateDialog';
+import { Link } from 'react-router-dom';
 
 const Orders = () => {
   const { user } = useContext(AuthContext);
@@ -206,7 +207,11 @@ const Orders = () => {
                 <TableBody>
                   {orders.map((order: any) => (
                     <TableRow key={order.id}>
-                      <TableCell className="font-medium">#{order.id}</TableCell>
+                      <TableCell className="font-medium">
+                        <Link to={`/orders/${order.id}`} className="text-blue-600 hover:text-blue-800">
+                          #{order.id}
+                        </Link>
+                      </TableCell>
                       <TableCell>
                         <div>
                           <div className="font-medium">{order.user?.name || 'Guest'}</div>
@@ -237,6 +242,15 @@ const Orders = () => {
                       <TableCell>{new Date(order.createdAt).toLocaleDateString()}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end space-x-2">
+                          <Link to={`/orders/${order.id}`}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-blue-600 hover:text-blue-700"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                          </Link>
                           <Button
                             size="sm"
                             variant="outline"

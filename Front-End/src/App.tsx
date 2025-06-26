@@ -19,6 +19,7 @@ import SingleProduct from './pages/SingleProduct';
 import Categories from './pages/Categories';
 import AdminCategories from './pages/AdminCategories';
 import Orders from './pages/Orders';
+import OrderPreview from './pages/OrderPreview';
 import UserManagement from './pages/UserManagement';
 import Customers from './pages/Customers';
 import SellerManagement from './pages/SellerManagement';
@@ -68,6 +69,7 @@ function App() {
               <Route path="/admin/categories" element={<AdminCategories />} />
               <Route path="/categories" element={<Categories />} />
               <Route path="/orders" element={<Orders />} />
+              <Route path="/orders/:id" element={<OrderPreview />} />
               <Route path="/user-management" element={<UserManagement />} />
               <Route path="/customers" element={<Customers />} />
               <Route path="/seller-management" element={<SellerManagement />} />

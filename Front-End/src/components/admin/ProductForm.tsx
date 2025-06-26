@@ -9,7 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { CreateProductData } from '@/api/products';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { ImageUpload } from './ImageUpload';
-import { ColorSizeSelector } from './ColorSizeSelector';
+import { CustomVariantsInput } from './CustomVariantsInput';
 
 interface ProductFormProps {
   onSubmit: (data: CreateProductData) => void;
@@ -58,7 +58,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   }, [editingProduct, form]);
 
   const handleSubmit = (data: CreateProductData) => {
-    // Ensure price and stock are numbers
     const formattedData = {
       ...data,
       price: Number(data.price),
@@ -173,31 +172,35 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Product Variants</h3>
             
             <FormField name="colors" control={form.control} render={({ field }) => (
-              <ColorSizeSelector
-                type="colors"
-                selectedItems={field.value || []}
-                onItemsChange={(items) => field.onChange(items)}
-                field={field}
+              <CustomVariantsInput
+                label="Colors"
+                value={field.value || []}
+                onChange={field.onChange}
+                placeholder="Enter color (e.g., Red, Blue, Black)"
               />
             )} />
 
             <FormField name="sizes" control={form.control} render={({ field }) => (
-              <ColorSizeSelector
-                type="sizes"
-                selectedItems={field.value || []}
-                onItemsChange={(items) => field.onChange(items)}
-                field={field}
+              <CustomVariantsInput
+                label="Sizes"
+                value={field.value || []}
+                onChange={field.onChange}
+                placeholder="Enter size (e.g., S, M, L, XL, 42, 44)"
               />
             )} />
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-2 pt-6 border-t">
-            <Button type="submit" disabled={isLoading} className="flex-1">
-              {isLoading ? 'Processing...' : (editingProduct ? t('products.update') : t('products.create'))}
+          {/* Form Actions */}
+          <div className="flex justify-end space-x-3 pt-6 border-t">
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancel
             </Button>
-            <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
-              {t('common.cancel')}
+            <Button 
+              type="submit" 
+              disabled={isLoading}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {isLoading ? 'Saving...' : editingProduct ? 'Update Product' : 'Create Product'}
             </Button>
           </div>
         </form>
