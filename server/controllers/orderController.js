@@ -4,7 +4,7 @@ import { notify } from '../utils/notify.js';
 import nodemailer from 'nodemailer';
 
 // Email configuration with your credentials
-const transporter = nodemailer.createTransporter({
+const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: 'byiringirourban20@gmail.com',
