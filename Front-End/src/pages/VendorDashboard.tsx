@@ -1,59 +1,15 @@
 
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { StatsCard } from '@/components/dashboard/StatsCard';
-import { BarChart3, Clock, Users, Package, Plus, Eye } from 'lucide-react';
+import { BarChart3, Clock, Users, Package, Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { AuthContext } from '@/contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import api from '@/api/api';
-
-interface SellerStats {
-  totalProducts: number;
-  totalOrders: number;
-  totalRevenue: number;
-  totalCustomers: number;
-}
-
-interface SellerOrder {
-  id: number;
-  totalPrice: number;
-  isPaid: boolean;
-  createdAt: string;
-  user: {
-    id: number;
-    name: string;
-    email: string;
-  };
-  items: Array<{
-    id: number;
-    quantity: number;
-    price: number;
-    product: {
-      id: number;
-      name: string;
-      coverImage: string;
-    };
-  }>;
-}
-
-interface SellerProduct {
-  id: number;
-  name: string;
-  price: number;
-  stock: number;
-  coverImage: string;
-  category: {
-    name: string;
-  };
-  _count: {
-    orderItems: number;
-    reviews: number;
-  };
-}
+import { getSellerProducts } from '@/api/products';
 
 const VendorDashboard = () => {
   const { t } = useLanguage();
@@ -74,43 +30,36 @@ const VendorDashboard = () => {
     }
   }, [user, loading, navigate]);
 
-  // Fetch seller-specific stats
-  const { data: statsData, isLoading: statsLoading } = useQuery({
+  // Fetch ONLY seller-specific data using the seller-specific API endpoint
+  const { data: sellerStats, isLoading: statsLoading } = useQuery({
     queryKey: ['seller-stats'],
     queryFn: async () => {
-      const response = await api.get('/sellers/my-stats');
-      return response.data;
+      const response = await fetch('/api/sellers/my-stats', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      return response.json();
     },
     enabled: !!user && user.role === 'SELLER',
   });
 
-  // Fetch seller-specific orders
-  const { data: ordersData, isLoading: ordersLoading } = useQuery({
+  const { data: sellerOrders, isLoading: ordersLoading } = useQuery({
     queryKey: ['seller-orders'],
     queryFn: async () => {
-      const response = await api.get('/sellers/my-orders');
-      return response.data;
+      const response = await fetch('/api/sellers/my-orders', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      return response.json();
     },
     enabled: !!user && user.role === 'SELLER',
   });
 
-  // Fetch seller-specific products
-  const { data: productsData, isLoading: productsLoading } = useQuery({
+  const { data: sellerProducts, isLoading: productsLoading } = useQuery({
     queryKey: ['seller-products'],
-    queryFn: async () => {
-      const response = await api.get('/sellers/my-products');
-      return response.data;
-    },
-    enabled: !!user && user.role === 'SELLER',
-  });
-
-  // Fetch seller-specific customers
-  const { data: customersData, isLoading: customersLoading } = useQuery({
-    queryKey: ['seller-customers'],
-    queryFn: async () => {
-      const response = await api.get('/sellers/my-customers');
-      return response.data;
-    },
+    queryFn: () => getSellerProducts(),
     enabled: !!user && user.role === 'SELLER',
   });
 
@@ -118,10 +67,19 @@ const VendorDashboard = () => {
     return null;
   }
 
-  const stats: SellerStats = statsData || { totalProducts: 0, totalOrders: 0, totalRevenue: 0, totalCustomers: 0 };
-  const recentOrders: SellerOrder[] = (ordersData || []).slice(0, 5);
-  const products: SellerProduct[] = (productsData || []).slice(0, 5);
-  const customers = (customersData || []).slice(0, 5);
+  if (statsLoading || ordersLoading || productsLoading) {
+    return (
+      <DashboardLayout currentPage="dashboard">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  const stats = sellerStats || { totalProducts: 0, totalOrders: 0, totalRevenue: 0, paidRevenue: 0, totalCustomers: 0 };
+  const orders = Array.isArray(sellerOrders) ? sellerOrders : [];
+  const products = Array.isArray(sellerProducts?.data) ? sellerProducts.data : [];
 
   return (
     <DashboardLayout currentPage="dashboard">
@@ -135,97 +93,58 @@ const VendorDashboard = () => {
                 Add Product
               </Button>
             </Link>
-            <Link to="/customers">
+            <Link to="/orders">
               <Button variant="outline">
-                <Eye className="w-4 h-4 mr-2" />
-                View All Customers
+                <Package className="w-4 h-4 mr-2" />
+                Manage Orders
               </Button>
             </Link>
           </div>
         </div>
         
-        {/* Stats Cards */}
+        {/* Stats Cards - ONLY SELLER DATA */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatsCard
-            title="Total Orders"
-            value={statsLoading ? "..." : stats.totalOrders.toString()}
+            title="My Orders"
+            value={stats.totalOrders.toString()}
             icon={BarChart3}
             color="text-red-500"
           />
           <StatsCard
-            title="Total Revenue"
-            value={statsLoading ? "..." : `${stats.totalRevenue.toLocaleString()} Rwf`}
+            title="My Revenue"
+            value={`${stats.totalRevenue.toLocaleString()} Rwf`}
             icon={Clock}
             color="text-green-500"
           />
           <StatsCard
-            title="Total Customers"
-            value={statsLoading ? "..." : stats.totalCustomers.toString()}
+            title="My Customers"
+            value={stats.totalCustomers.toString()}
             icon={Users}
             color="text-blue-500"
           />
           <StatsCard
-            title="Total Products"
-            value={statsLoading ? "..." : stats.totalProducts.toString()}
+            title="My Products"
+            value={products.length.toString()}
             icon={Package}
             color="text-purple-500"
           />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* My Products */}
+          {/* Revenue Overview - ONLY SELLER DATA */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg font-medium flex justify-between items-center">
-                My Products
-                <Link to="/admin-products">
-                  <Button variant="ghost" size="sm">View All</Button>
-                </Link>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {productsLoading ? (
-                <div className="flex items-center justify-center h-32">
-                  <div className="text-gray-500">Loading products...</div>
-                </div>
-              ) : products.length > 0 ? (
-                <div className="space-y-3">
-                  {products.map((product) => (
-                    <div key={product.id} className="flex items-center space-x-3 p-2 border rounded-lg">
-                      <img 
-                        src={product.coverImage} 
-                        alt={product.name}
-                        className="w-10 h-10 rounded object-cover"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>
-                        <p className="text-sm text-gray-500">{product.category.name}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium">{product.price.toLocaleString()} Rwf</p>
-                        <p className="text-xs text-gray-500">Stock: {product.stock}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  No products found. <Link to="/admin-products" className="text-blue-600 underline">Create your first product</Link>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Revenue Overview */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-medium">Revenue Overview</CardTitle>
+              <CardTitle className="text-lg font-medium">My Revenue Overview</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Total Revenue</span>
                   <span className="font-semibold">{stats.totalRevenue.toLocaleString()} Rwf</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Paid Revenue</span>
+                  <span className="font-semibold">{stats.paidRevenue.toLocaleString()} Rwf</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Avg. Order Value</span>
@@ -238,30 +157,45 @@ const VendorDashboard = () => {
                   <span className="font-semibold">{stats.totalOrders}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Total Customers</span>
+                  <span className="text-sm text-gray-600">My Customers</span>
                   <span className="font-semibold">{stats.totalCustomers}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Payment Status - ONLY SELLER DATA */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-medium">Payment Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Paid Orders</span>
+                  <span className="font-semibold">{orders.filter((order: any) => order.isPaid).length} orders</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Pending Orders</span>
+                  <span className="font-semibold">{orders.filter((order: any) => !order.isPaid).length} orders</span>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Recent Orders Table */}
+        {/* Recent Orders - ONLY SELLER ORDERS */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg font-medium flex justify-between items-center">
-              Recent Orders
+              My Recent Orders
               <Link to="/orders">
                 <Button variant="ghost" size="sm">View All</Button>
               </Link>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {ordersLoading ? (
-              <div className="flex items-center justify-center h-32">
-                <div className="text-gray-500">Loading orders...</div>
-              </div>
-            ) : recentOrders.length > 0 ? (
+            {orders.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gray-900 text-white">
@@ -275,13 +209,13 @@ const VendorDashboard = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {recentOrders.map((order) => (
+                    {orders.slice(0, 10).map((order: any) => (
                       <tr key={order.id} className="hover:bg-gray-50">
                         <td className="px-4 py-3 text-sm">#{order.id}</td>
-                        <td className="px-4 py-3 text-sm">{order.user.name}</td>
+                        <td className="px-4 py-3 text-sm">{order.user?.name || order.customerName || 'Guest'}</td>
                         <td className="px-4 py-3 text-sm">
                           <div className="flex items-center space-x-2">
-                            {order.items.slice(0, 2).map((item) => (
+                            {order.items.slice(0, 2).map((item: any) => (
                               <img
                                 key={item.id}
                                 src={item.product.coverImage}
@@ -316,54 +250,7 @@ const VendorDashboard = () => {
               </div>
             ) : (
               <div className="text-center py-8 text-gray-500">
-                No orders found
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Recent Customers */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg font-medium flex justify-between items-center">
-              Recent Customers
-              <Link to="/customers">
-                <Button variant="ghost" size="sm">View All</Button>
-              </Link>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {customersLoading ? (
-              <div className="flex items-center justify-center h-32">
-                <div className="text-gray-500">Loading customers...</div>
-              </div>
-            ) : customers.length > 0 ? (
-              <div className="space-y-3">
-                {customers.map((customer: any) => (
-                  <div key={customer.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                        <span className="text-purple-600 font-medium">
-                          {customer.name.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{customer.name}</p>
-                        <p className="text-sm text-gray-500">{customer.email}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium">{customer._count.orders} orders</p>
-                      <p className="text-xs text-gray-500">
-                        Joined {new Date(customer.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                No customers found
+                No orders found for your products
               </div>
             )}
           </CardContent>

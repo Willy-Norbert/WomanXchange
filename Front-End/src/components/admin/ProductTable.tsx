@@ -2,8 +2,9 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, Eye, ExternalLink } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { Link } from 'react-router-dom';
 
 interface ProductTableProps {
   products: any[];
@@ -40,12 +41,29 @@ export const ProductTable: React.FC<ProductTableProps> = ({ products, onEdit, on
                       alt={product.name}
                     />
                   </td>
-                  <td className="px-4 py-3">{product.name}</td>
+                  <td className="px-4 py-3">
+                    <Link 
+                      to={`/products/${product.id}`}
+                      className="text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      {product.name}
+                    </Link>
+                  </td>
                   <td className="px-4 py-3">{product.category?.name || 'N/A'}</td>
                   <td className="px-4 py-3">{product.price.toLocaleString()} Rwf</td>
                   <td className="px-4 py-3">{product.stock}</td>
                   <td className="px-4 py-3">
                     <div className="flex space-x-2">
+                      <Link to={`/products/${product.id}`}>
+                        <Button variant="ghost" size="sm" title="View Product Details">
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                      </Link>
+                      <Link to={`/store`} target="_blank">
+                        <Button variant="ghost" size="sm" title="View on Store" className="text-green-600 hover:text-green-800">
+                          <ExternalLink className="w-4 h-4" />
+                        </Button>
+                      </Link>
                       <Button variant="ghost" size="sm" onClick={() => onEdit(product)}>
                         <Edit className="w-4 h-4" />
                       </Button>

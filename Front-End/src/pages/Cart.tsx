@@ -125,6 +125,7 @@ const Cart = () => {
               </div>
             </div>
 
+
             {/* Checkout Button - Now works for both logged in and guest users */}
             <Link to="/checkout">
               <Button className="w-full bg-purple-500 hover:bg-purple-600 text-white py-4 rounded-full">

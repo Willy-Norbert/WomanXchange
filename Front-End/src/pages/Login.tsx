@@ -1,119 +1,101 @@
 
-import { useState, useContext, FormEvent } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
-import { loginUser, LoginData } from "../api/auth";
-import { AuthContext } from "../contexts/AuthContext";
-import { useLanguage } from "../contexts/LanguageContext";
+import React, { useState, useContext } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useMutation } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import { loginUser } from '@/api/auth';
+import { AuthContext } from '@/contexts/AuthContext';
+import { ShoppingBag } from 'lucide-react';
 
 const Login = () => {
-  const auth = useContext(AuthContext);
-  const { t } = useLanguage();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const { login } = useContext(AuthContext);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
-  if (!auth) throw new Error("AuthContext must be used within AuthProvider");
-
-  const { login } = auth;
-
-  const [formData, setFormData] = useState<LoginData>({
-    email: "",
-    password: "",
+  const loginMutation = useMutation({
+    mutationFn: loginUser,
+    onSuccess: (data) => {
+      login(data.data);
+      toast({
+        title: "Login successful",
+        description: "Welcome back!",
+      });
+      navigate('/dashboard');
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Login failed",
+        description: error.response?.data?.message || "Invalid credentials",
+        variant: "destructive",
+      });
+    },
   });
-  const [rememberMe, setRememberMe] = useState(false);
-  const [error, setError] = useState("");
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-
-    try {
-      const res = await loginUser(formData);
-      login(res.data);
-      navigate("/dashboard");
-    } catch (err: any) {
-      setError(err.response?.data?.message || t('auth.login_failed'));
-    }
+    loginMutation.mutate({ email, password });
   };
 
   return (
-    <div className="min-h-screen bg-purple flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-6xl font-bold text-white mb-8">
-            w<span className="text-purple-200">X</span>c
-          </h1>
-        </div>
-
-        <div className="bg-white rounded-lg p-8 shadow-2xl">
-          <form onSubmit={handleSubmit} className="space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <div className="flex justify-center mb-4">
+            <ShoppingBag className="w-12 h-12 text-purple-600" />
+          </div>
+          <CardTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            Welcome Back
+          </CardTitle>
+          <CardDescription>
+            Sign in to your account to continue
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-purple-600">{t('auth.email')}</label>
+              <Label htmlFor="email">Email</Label>
               <Input
+                id="email"
                 type="email"
-                name="email"
-                placeholder={t('auth.email')}
-                value={formData.email}
-                onChange={handleChange}
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
-
             <div className="space-y-2">
-              <label className="text-sm font-medium text-purple-600">{t('auth.password')}</label>
-              <Input
-                type="password"
-                name="password"
-                placeholder={t('auth.password')}
-                value={formData.password}
-                onChange={handleChange}
+              <Label htmlFor="password">Password</Label>
+              <PasswordInput
+                id="password"
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 required
               />
             </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="remember"
-                checked={rememberMe}
-                onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-                className="data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
-              />
-              <label htmlFor="remember" className="text-sm text-gray-600">
-                {t('auth.remember_me')}
-              </label>
-            </div>
-
-            <div className="text-center">
-              <Link to="/forgot-password" className="text-sm text-purple-600 hover:underline">
-                {t('auth.forgot_password')}
-              </Link>
-            </div>
-
-            {error && <p className="text-red-600 text-sm text-center">{error}</p>}
-
             <Button
               type="submit"
-              className="w-full bg-gray-800 hover:bg-gray-700 text-white py-3 rounded-md transition-colors"
+              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              disabled={loginMutation.isPending}
             >
-              {t('auth.login')}
+              {loginMutation.isPending ? 'Signing in...' : 'Sign In'}
             </Button>
-
-            <div className="text-center">
-              <span className="text-sm text-gray-600">{t('auth.dont_have_account')} </span>
-              <Link to="/register" className="text-sm text-purple-600 hover:underline">
-                {t('auth.register')}
-              </Link>
-            </div>
           </form>
-        </div>
-      </div>
+          <div className="mt-6 text-center text-sm">
+            <span className="text-gray-600">Don't have an account? </span>
+            <Link to="/register" className="text-purple-600 hover:text-purple-500 font-medium">
+              Sign up
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

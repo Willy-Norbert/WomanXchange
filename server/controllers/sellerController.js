@@ -115,17 +115,26 @@ export const updateSellerStatus = asyncHandler(async (req, res) => {
   });
 });
 
-// Get seller's own products
+// Get seller's own products ONLY
 export const getSellerProducts = asyncHandler(async (req, res) => {
   const sellerId = req.user.id;
+  console.log('🔍 Getting products for seller:', sellerId);
 
   const products = await prisma.product.findMany({
-    where: { createdById: sellerId },
+    where: { 
+      createdById: sellerId // ONLY seller's own products
+    },
     include: { 
       category: true,
       _count: {
         select: {
-          orderItems: true,
+          orderItems: {
+            where: {
+              order: {
+                isPaid: true // Only count paid orders
+              }
+            }
+          },
           reviews: true
         }
       }
@@ -133,12 +142,14 @@ export const getSellerProducts = asyncHandler(async (req, res) => {
     orderBy: { createdAt: 'desc' }
   });
 
+  console.log('📦 Seller products found:', products.length);
   res.json(products);
 });
 
-// Get seller's customers (users who bought their products)
+// Get seller's customers ONLY (users who bought their products)
 export const getSellerCustomers = asyncHandler(async (req, res) => {
   const sellerId = req.user.id;
+  console.log('👥 Getting customers for seller:', sellerId);
 
   const customers = await prisma.user.findMany({
     where: {
@@ -147,7 +158,7 @@ export const getSellerCustomers = asyncHandler(async (req, res) => {
           items: {
             some: {
               product: {
-                createdById: sellerId
+                createdById: sellerId // ONLY customers who bought seller's products
               }
             }
           }
@@ -167,7 +178,7 @@ export const getSellerCustomers = asyncHandler(async (req, res) => {
               items: {
                 some: {
                   product: {
-                    createdById: sellerId
+                    createdById: sellerId // ONLY orders containing seller's products
                   }
                 }
               }
@@ -179,19 +190,21 @@ export const getSellerCustomers = asyncHandler(async (req, res) => {
     orderBy: { createdAt: 'desc' }
   });
 
+  console.log('👥 Seller customers found:', customers.length);
   res.json(customers);
 });
 
-// Get seller's orders
+// Get seller's orders ONLY (orders containing their products)
 export const getSellerOrders = asyncHandler(async (req, res) => {
   const sellerId = req.user.id;
+  console.log('📋 Getting orders for seller:', sellerId);
 
   const orders = await prisma.order.findMany({
     where: {
       items: {
         some: {
           product: {
-            createdById: sellerId
+            createdById: sellerId // ONLY orders containing seller's products
           }
         }
       }
@@ -203,7 +216,7 @@ export const getSellerOrders = asyncHandler(async (req, res) => {
       items: {
         where: {
           product: {
-            createdById: sellerId
+            createdById: sellerId // ONLY items that are seller's products
           }
         },
         include: {
@@ -214,19 +227,21 @@ export const getSellerOrders = asyncHandler(async (req, res) => {
     orderBy: { createdAt: 'desc' }
   });
 
+  console.log('📋 Seller orders found:', orders.length);
   res.json(orders);
 });
 
-// Get seller dashboard stats
+// Get seller dashboard stats ONLY for their data
 export const getSellerStats = asyncHandler(async (req, res) => {
   const sellerId = req.user.id;
+  console.log('📊 Getting stats for seller:', sellerId);
 
-  // Get total products
+  // Get total products created by seller ONLY
   const totalProducts = await prisma.product.count({
     where: { createdById: sellerId }
   });
 
-  // Get total orders for seller's products
+  // Get total orders containing seller's products ONLY
   const totalOrders = await prisma.order.count({
     where: {
       items: {
@@ -239,7 +254,7 @@ export const getSellerStats = asyncHandler(async (req, res) => {
     }
   });
 
-  // Get total revenue
+  // Get total revenue from seller's products ONLY (paid orders)
   const revenueData = await prisma.orderItem.aggregate({
     where: {
       product: {
@@ -254,7 +269,22 @@ export const getSellerStats = asyncHandler(async (req, res) => {
     }
   });
 
-  // Get total customers
+  // Get paid revenue separately for better tracking
+  const paidRevenueData = await prisma.orderItem.aggregate({
+    where: {
+      product: {
+        createdById: sellerId
+      },
+      order: {
+        isPaid: true
+      }
+    },
+    _sum: {
+      price: true
+    }
+  });
+
+  // Get total customers who bought from seller ONLY
   const uniqueCustomers = await prisma.user.count({
     where: {
       orders: {
@@ -271,10 +301,14 @@ export const getSellerStats = asyncHandler(async (req, res) => {
     }
   });
 
-  res.json({
+  const stats = {
     totalProducts,
     totalOrders,
     totalRevenue: revenueData._sum.price || 0,
+    paidRevenue: paidRevenueData._sum.price || 0,
     totalCustomers: uniqueCustomers
-  });
+  };
+
+  console.log('📊 Seller stats (ONLY their data):', stats);
+  res.json(stats);
 });

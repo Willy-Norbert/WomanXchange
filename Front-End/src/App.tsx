@@ -13,11 +13,13 @@ import Register from './pages/Register';
 import CommunityChat from './pages/CommunityChat';
 import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
+import ProductStore from './pages/ProductStore';
 import AdminProducts from './pages/AdminProducts';
 import SingleProduct from './pages/SingleProduct';
 import Categories from './pages/Categories';
 import AdminCategories from './pages/AdminCategories';
 import Orders from './pages/Orders';
+import OrderPreview from './pages/OrderPreview';
 import UserManagement from './pages/UserManagement';
 import Customers from './pages/Customers';
 import SellerManagement from './pages/SellerManagement';
@@ -29,6 +31,8 @@ import About from './pages/About';
 import Contact from './pages/Contact';
 import Terms from './pages/Terms';
 import NotFound from './pages/NotFound';
+import VendorDashboard from './pages/VendorDashboard';
+import Reports from './pages/Reports';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -51,6 +55,7 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/products" element={<Products />} />
+              <Route path="/store" element={<ProductStore />} />
               <Route path="/products/:id" element={<SingleProduct />} />
               <Route path="/cart" element={<Cart />} />
               <Route path="/checkout" element={<Checkout />} />
@@ -62,10 +67,14 @@ function App() {
               {/* Protected routes */}
               <Route path="/community-chat" element={<CommunityChat />} />
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/vendor-dashboard" element={<VendorDashboard />} />
+              <Route path="/reports" element={<Reports />} />
     
               <Route path="/admin/categories" element={<AdminCategories />} />
+              <Route path="/admin-products" element={<AdminProducts />} />
               <Route path="/categories" element={<Categories />} />
               <Route path="/orders" element={<Orders />} />
+              <Route path="/orders/:id" element={<OrderPreview />} />
               <Route path="/user-management" element={<UserManagement />} />
               <Route path="/customers" element={<Customers />} />
               <Route path="/seller-management" element={<SellerManagement />} />

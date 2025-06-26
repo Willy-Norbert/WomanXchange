@@ -34,6 +34,9 @@ export interface CreateProductData {
 
 export const getProducts = () => api.get<Product[]>('/products');
 
+// For sellers - get ONLY their own products
+export const getSellerProducts = () => api.get<Product[]>('/sellers/my-products');
+
 export const getProductById = (id: string) => api.get<Product>(`/products/${id}`);
 
 export const createProduct = (data: CreateProductData) => 
