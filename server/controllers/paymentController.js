@@ -3,10 +3,10 @@ import asyncHandler from 'express-async-handler';
 import prisma from '../prismaClient.js';
 import { notify } from '../utils/notify.js';
 
-// Generate MoMo payment code (now returns static code)
+// Generate MoMo payment code (STATIC CODE AS REQUESTED)
 export const generateMoMoPaymentCode = asyncHandler(async (req, res) => {
   const { orderId } = req.params;
-  const userId = req.user.id;
+  const userId = req.user?.id;
 
   console.log('💳 Generating MoMo code for order:', orderId, 'user:', userId);
 
@@ -28,14 +28,14 @@ export const generateMoMoPaymentCode = asyncHandler(async (req, res) => {
     }
 
     // Check if user owns this order or if it's an anonymous order
-    if (order.userId && order.userId !== userId) {
+    if (order.userId && userId && order.userId !== userId) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    // Return static MoMo code as requested
+    // Return STATIC MoMo code as requested: 078374886
     const paymentCode = '078374886';
 
-    console.log('✅ MoMo payment code generated:', paymentCode);
+    console.log('✅ MoMo payment code generated (STATIC):', paymentCode);
 
     res.json({
       message: 'MoMo payment code generated successfully',

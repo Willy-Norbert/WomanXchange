@@ -85,7 +85,7 @@ export const getCart = (cartId?: number | null) => {
   return api.get<Cart>('/orders/cart', { params });
 };
 
-export const addToCart = (productId: number, quantity: number, cartId?: number) => {
+export const addToCart = (productId: number, quantity: number, cartId?: number | null) => {
   const data: any = { productId, quantity };
   if (cartId) {
     data.cartId = cartId;

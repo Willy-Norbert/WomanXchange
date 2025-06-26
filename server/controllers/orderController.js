@@ -3,8 +3,8 @@ import prisma from '../prismaClient.js';
 import { notify } from '../utils/notify.js';
 import nodemailer from 'nodemailer';
 
-// Email configuration
-const transporter = nodemailer.createTransport({
+// Email configuration with your credentials
+const transporter = nodemailer.createTransporter({
   service: 'gmail',
   auth: {
     user: 'byiringirourban20@gmail.com',
@@ -62,7 +62,7 @@ const sendOrderConfirmationEmail = async (email, orderData) => {
   }
 };
 
-// Get or create cart for user
+// Get or create cart for user (FIXED FOR ANONYMOUS USERS)
 export const getCart = asyncHandler(async (req, res) => {
   const { cartId } = req.query;
   const userId = req.user?.id;
@@ -73,7 +73,7 @@ export const getCart = asyncHandler(async (req, res) => {
     let cart;
 
     if (userId) {
-      // For authenticated users
+      // For authenticated users - get or create their cart
       cart = await prisma.cart.findFirst({
         where: { userId },
         include: {
@@ -110,10 +110,10 @@ export const getCart = asyncHandler(async (req, res) => {
             }
           }
         });
-        console.log('🆕 Created new cart for user:', userId);
+        console.log('🆕 Created new cart for authenticated user:', userId);
       }
-    } else if (cartId) {
-      // For anonymous users with existing cart
+    } else if (cartId && !isNaN(parseInt(cartId))) {
+      // For anonymous users with existing cart - REUSE EXISTING CART
       cart = await prisma.cart.findUnique({
         where: { id: parseInt(cartId) },
         include: {
@@ -131,10 +131,14 @@ export const getCart = asyncHandler(async (req, res) => {
           }
         }
       });
+      
+      if (cart) {
+        console.log('🔄 Found existing anonymous cart:', cart.id, 'with', cart.items.length, 'items');
+      }
     }
 
+    // Only create new cart if none exists
     if (!cart) {
-      // Create anonymous cart
       cart = await prisma.cart.create({
         data: { userId: null },
         include: {
@@ -163,7 +167,7 @@ export const getCart = asyncHandler(async (req, res) => {
   }
 });
 
-// Add item to cart
+// Add item to cart (FIXED FOR ANONYMOUS USERS)
 export const addToCart = asyncHandler(async (req, res) => {
   const { productId, quantity = 1, cartId } = req.body;
   const userId = req.user?.id;
@@ -184,18 +188,20 @@ export const addToCart = asyncHandler(async (req, res) => {
           data: { userId }
         });
       }
-    } else if (cartId) {
-      // For anonymous users with existing cart
+    } else if (cartId && !isNaN(parseInt(cartId))) {
+      // For anonymous users with existing cart - REUSE IT
       cart = await prisma.cart.findUnique({
         where: { id: parseInt(cartId) }
       });
+      console.log('🔄 Using existing anonymous cart:', cartId);
     }
 
     if (!cart) {
-      // Create new anonymous cart
+      // Create new anonymous cart ONLY if none exists
       cart = await prisma.cart.create({
         data: { userId: null }
       });
+      console.log('🆕 Created new anonymous cart:', cart.id);
     }
 
     // Check if item already exists in cart
@@ -212,6 +218,7 @@ export const addToCart = asyncHandler(async (req, res) => {
         where: { id: existingItem.id },
         data: { quantity: existingItem.quantity + parseInt(quantity) }
       });
+      console.log('📈 Updated existing item quantity');
     } else {
       // Add new item
       await prisma.cartItem.create({
@@ -221,6 +228,7 @@ export const addToCart = asyncHandler(async (req, res) => {
           quantity: parseInt(quantity)
         }
       });
+      console.log('➕ Added new item to cart');
     }
 
     console.log('✅ Item added to cart:', cart.id);
@@ -273,17 +281,18 @@ export const removeFromCart = asyncHandler(async (req, res) => {
   }
 });
 
-// Place order (works for both authenticated and anonymous users)
+// Place order (FIXED FOR BOTH AUTHENTICATED AND ANONYMOUS USERS)
 export const placeOrder = asyncHandler(async (req, res) => {
-  const { shippingAddress, paymentMethod, customerEmail, customerName } = req.body;
+  const { shippingAddress, paymentMethod, customerEmail, customerName, cartId } = req.body;
   const userId = req.user?.id;
   
-  console.log('📝 placeOrder called:', { userId, shippingAddress, paymentMethod, customerEmail });
+  console.log('📝 placeOrder called:', { userId, shippingAddress, paymentMethod, customerEmail, cartId });
 
   try {
     let cart;
 
     if (userId) {
+      // For authenticated users
       cart = await prisma.cart.findFirst({
         where: { userId },
         include: {
@@ -294,21 +303,18 @@ export const placeOrder = asyncHandler(async (req, res) => {
           }
         }
       });
-    } else {
-      // For anonymous users, get cart from session/localStorage
-      const { cartId } = req.body;
-      if (cartId) {
-        cart = await prisma.cart.findUnique({
-          where: { id: parseInt(cartId) },
-          include: {
-            items: {
-              include: {
-                product: true
-              }
+    } else if (cartId) {
+      // For anonymous users - use provided cartId
+      cart = await prisma.cart.findUnique({
+        where: { id: parseInt(cartId) },
+        include: {
+          items: {
+            include: {
+              product: true
             }
           }
-        });
-      }
+        }
+      });
     }
 
     if (!cart || cart.items.length === 0) {
@@ -458,7 +464,7 @@ export const getAllOrders = asyncHandler(async (req, res) => {
         orderBy: { createdAt: 'desc' }
       });
     } else if (userRole === 'seller') {
-      // Seller sees only orders containing their products
+      // Seller sees ONLY orders containing their products
       orders = await prisma.order.findMany({
         where: {
           items: {

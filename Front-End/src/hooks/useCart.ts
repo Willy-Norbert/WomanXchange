@@ -81,7 +81,7 @@ export const useCart = () => {
       }
       
       console.log('📤 useCart: Request data:', requestData);
-      const response = await addToCart(productId, quantity);
+      const response = await addToCart(productId, quantity, cartId);
       console.log('✅ useCart: Add to cart API response:', response?.data);
       return response;
     },

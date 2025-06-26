@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Link, useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -21,7 +20,6 @@ const Checkout = () => {
   const { toast } = useToast();
   const { cart, isLoading } = useCart();
   const [paymentMethod, setPaymentMethod] = useState('MTN');
-  const [sameAsBilling, setSameAsBilling] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [paymentCode, setPaymentCode] = useState('');
   const [generatingCode, setGeneratingCode] = useState(false);
@@ -34,35 +32,7 @@ const Checkout = () => {
     email: auth?.user?.email || '',
     location: '',
     streetLine: '',
-    shippingAddress: ''
   });
-
-  // Generate MoMo payment code when MTN is selected
-  const handlePaymentMethodChange = async (method: string) => {
-    setPaymentMethod(method);
-    
-    if (method === 'MTN' && currentOrderId) {
-      setGeneratingCode(true);
-      try {
-        const response = await generatePaymentCode(currentOrderId);
-        setPaymentCode(response.data.paymentCode);
-        toast({
-          title: "Payment Code Generated",
-          description: `Your MTN MoMo payment code is: ${response.data.paymentCode}`,
-        });
-      } catch (error: any) {
-        toast({
-          title: "Error",
-          description: error.response?.data?.message || "Failed to generate payment code",
-          variant: "destructive",
-        });
-      } finally {
-        setGeneratingCode(false);
-      }
-    } else {
-      setPaymentCode('');
-    }
-  };
 
   const handleCompleteOrder = async () => {
     if (!cart || cart.items.length === 0) {
@@ -97,10 +67,7 @@ const Checkout = () => {
 
     setProcessing(true);
     try {
-      const shippingAddress = sameAsBilling 
-        ? `${formData.streetLine}, ${formData.location}`
-        : formData.shippingAddress || `${formData.streetLine}, ${formData.location}`;
-
+      const shippingAddress = `${formData.streetLine}, ${formData.location}`;
       const customerName = `${formData.firstName} ${formData.lastName}`;
 
       // Get cart ID for anonymous users
@@ -124,7 +91,7 @@ const Checkout = () => {
       console.log('✅ Order created:', orderId);
 
       if (paymentMethod === 'MTN') {
-        // Generate payment code (static: 078374886)
+        // Generate payment code (STATIC: 078374886)
         const codeResponse = await generatePaymentCode(orderId);
         setPaymentCode(codeResponse.data.paymentCode);
         
@@ -162,10 +129,6 @@ const Checkout = () => {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleSameAsBillingChange = (checked: boolean | "indeterminate") => {
-    setSameAsBilling(checked === true);
   };
 
   if (isLoading) {
@@ -291,13 +254,13 @@ const Checkout = () => {
                   <h2 className="text-xl font-semibold">Payment Method</h2>
                 </div>
                 
-                <RadioGroup value={paymentMethod} onValueChange={handlePaymentMethodChange}>
+                <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
                   <div className="flex items-center space-x-2 p-4 border rounded-lg">
                     <RadioGroupItem value="MTN" id="mtn" />
                     <Label htmlFor="mtn" className="flex-1">
                       <div className="flex items-center justify-between">
                         <span className="font-medium">MTN Mobile Money</span>
-                        <span className="text-sm text-gray-500">Pay via MTN MoMo</span>
+                        <span className="text-sm text-gray-500">Pay via MTN MoMo (Code: 078374886)</span>
                       </div>
                     </Label>
                   </div>
@@ -313,10 +276,10 @@ const Checkout = () => {
                   </div>
                 </RadioGroup>
 
-                {paymentMethod === 'MTN' && paymentCode && (
+                {paymentMethod === 'MTN' && (
                   <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                     <h3 className="font-medium text-yellow-800 mb-2">MTN MoMo Payment Code</h3>
-                    <p className="text-2xl font-bold text-yellow-900 mb-2">{paymentCode}</p>
+                    <p className="text-2xl font-bold text-yellow-900 mb-2">078374886</p>
                     <p className="text-sm text-yellow-700">Use this code to complete your MTN MoMo payment</p>
                   </div>
                 )}
@@ -372,11 +335,6 @@ const Checkout = () => {
                     <div className="flex items-center space-x-2">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                       <span>Processing Order...</span>
-                    </div>
-                  ) : generatingCode ? (
-                    <div className="flex items-center space-x-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>Generating Payment Code...</span>
                     </div>
                   ) : (
                     `Complete Order - ${total.toLocaleString()} Rwf`
