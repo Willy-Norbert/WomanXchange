@@ -6,12 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getAllUsers } from '@/api/users';
+import { getAllUsers, createUser } from '@/api/users';
 import { getProducts } from '@/api/products';
 import { createOrder, CreateOrderData } from '@/api/orders';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Minus, X } from 'lucide-react';
+import { Plus, Minus, X, UserPlus } from 'lucide-react';
 
 interface OrderCreationProps {
   isOpen: boolean;
@@ -25,6 +26,14 @@ interface OrderItem {
   quantity: number;
   price: number;
   productName: string;
+  productImage?: string;
+}
+
+interface NewUser {
+  name: string;
+  email: string;
+  phone?: string;
+  address?: string;
 }
 
 export const OrderCreation: React.FC<OrderCreationProps> = ({ 
@@ -36,9 +45,12 @@ export const OrderCreation: React.FC<OrderCreationProps> = ({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
+  const [orderType, setOrderType] = useState<'existing' | 'new'>('existing');
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [newUser, setNewUser] = useState<NewUser>({ name: '', email: '', phone: '', address: '' });
   const [shippingAddress, setShippingAddress] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
+  const [deliveryFee, setDeliveryFee] = useState(1200);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
 
   // Fetch users for admin
@@ -74,6 +86,21 @@ export const OrderCreation: React.FC<OrderCreationProps> = ({
     },
   });
 
+  const createUserMutation = useMutation({
+    mutationFn: createUser,
+    onSuccess: (data) => {
+      console.log('New user created:', data.data);
+      return data.data;
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to create user",
+        variant: "destructive",
+      });
+    },
+  });
+
   const users = usersData?.data || [];
   const products = productsData?.data || [];
   
@@ -83,7 +110,7 @@ export const OrderCreation: React.FC<OrderCreationProps> = ({
     : products;
 
   const addOrderItem = () => {
-    setOrderItems([...orderItems, { productId: 0, quantity: 1, price: 0, productName: '' }]);
+    setOrderItems([...orderItems, { productId: 0, quantity: 1, price: 0, productName: '', productImage: '' }]);
   };
 
   const removeOrderItem = (index: number) => {
@@ -94,24 +121,29 @@ export const OrderCreation: React.FC<OrderCreationProps> = ({
     const updated = [...orderItems];
     updated[index] = { ...updated[index], [field]: value };
     
-    // Update product name and price when product is selected
+    // Update product name, price, and image when product is selected
     if (field === 'productId') {
       const product = availableProducts.find((p: any) => p.id === value);
       if (product) {
         updated[index].productName = product.name;
         updated[index].price = product.price;
+        updated[index].productImage = product.coverImage;
       }
     }
     
     setOrderItems(updated);
   };
 
-  const calculateTotal = () => {
+  const calculateSubtotal = () => {
     return orderItems.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
-  const handleSubmit = () => {
-    if (!selectedUserId || !shippingAddress || !paymentMethod || orderItems.length === 0) {
+  const calculateTotal = () => {
+    return calculateSubtotal() + deliveryFee;
+  };
+
+  const handleSubmit = async () => {
+    if (!shippingAddress || !paymentMethod || orderItems.length === 0) {
       toast({
         title: "Error",
         description: "Please fill in all required fields and add at least one item",
@@ -130,8 +162,42 @@ export const OrderCreation: React.FC<OrderCreationProps> = ({
       return;
     }
 
+    let finalUserId = selectedUserId;
+
+    // Create new user if needed
+    if (orderType === 'new') {
+      if (!newUser.name || !newUser.email) {
+        toast({
+          title: "Error",
+          description: "Please provide name and email for new user",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      try {
+        const createdUser = await createUserMutation.mutateAsync({
+          ...newUser,
+          role: 'buyer',
+          password: 'tempPassword123' // You might want to handle this differently
+        });
+        finalUserId = createdUser.id;
+      } catch (error) {
+        return; // Error already handled in mutation
+      }
+    }
+
+    if (!finalUserId) {
+      toast({
+        title: "Error",
+        description: "Please select a customer or create a new one",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const orderData: CreateOrderData = {
-      userId: selectedUserId,
+      userId: finalUserId,
       shippingAddress,
       paymentMethod,
       items: validItems.map(item => ({
@@ -139,43 +205,96 @@ export const OrderCreation: React.FC<OrderCreationProps> = ({
         quantity: item.quantity,
         price: item.price
       })),
-      totalPrice: calculateTotal()
+      totalPrice: calculateTotal(),
+      shippingPrice: deliveryFee
     };
 
     createOrderMutation.mutate(orderData);
   };
 
   const handleClose = () => {
+    setOrderType('existing');
     setSelectedUserId(null);
+    setNewUser({ name: '', email: '', phone: '', address: '' });
     setShippingAddress('');
     setPaymentMethod('');
+    setDeliveryFee(1200);
     setOrderItems([]);
     onClose();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create New Order</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-6">
           {/* Customer Selection */}
-          <div className="space-y-2">
-            <Label>Customer *</Label>
-            <Select value={selectedUserId?.toString() || ''} onValueChange={(value) => setSelectedUserId(parseInt(value))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select customer" />
-              </SelectTrigger>
-              <SelectContent>
-                {users.filter((user: any) => user.role.toLowerCase() === 'buyer').map((user: any) => (
-                  <SelectItem key={user.id} value={user.id.toString()}>
-                    {user.name} ({user.email})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="space-y-4">
+            <Label>Customer Selection *</Label>
+            <RadioGroup value={orderType} onValueChange={(value: 'existing' | 'new') => setOrderType(value)}>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="existing" id="existing" />
+                <Label htmlFor="existing">Select Existing Customer</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="new" id="new" />
+                <Label htmlFor="new">Create New Customer</Label>
+              </div>
+            </RadioGroup>
+
+            {orderType === 'existing' ? (
+              <Select value={selectedUserId?.toString() || ''} onValueChange={(value) => setSelectedUserId(parseInt(value))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select customer" />
+                </SelectTrigger>
+                <SelectContent>
+                  {users.filter((user: any) => user.role.toLowerCase() === 'buyer').map((user: any) => (
+                    <SelectItem key={user.id} value={user.id.toString()}>
+                      {user.name} ({user.email})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="grid grid-cols-2 gap-4 p-4 border rounded-lg bg-gray-50">
+                <div className="space-y-2">
+                  <Label>Name *</Label>
+                  <Input
+                    value={newUser.name}
+                    onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                    placeholder="Customer name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Email *</Label>
+                  <Input
+                    type="email"
+                    value={newUser.email}
+                    onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                    placeholder="Customer email"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Phone</Label>
+                  <Input
+                    value={newUser.phone}
+                    onChange={(e) => setNewUser({ ...newUser, phone: e.target.value })}
+                    placeholder="Customer phone"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Address</Label>
+                  <Input
+                    value={newUser.address}
+                    onChange={(e) => setNewUser({ ...newUser, address: e.target.value })}
+                    placeholder="Customer address"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Shipping Address */}
@@ -204,6 +323,17 @@ export const OrderCreation: React.FC<OrderCreationProps> = ({
             </Select>
           </div>
 
+          {/* Delivery Fee */}
+          <div className="space-y-2">
+            <Label>Delivery Fee (Rwf)</Label>
+            <Input
+              type="number"
+              value={deliveryFee}
+              onChange={(e) => setDeliveryFee(parseInt(e.target.value) || 0)}
+              placeholder="Delivery fee"
+            />
+          </div>
+
           {/* Order Items */}
           <div className="space-y-4">
             <div className="flex justify-between items-center">
@@ -216,7 +346,7 @@ export const OrderCreation: React.FC<OrderCreationProps> = ({
 
             {orderItems.map((item, index) => (
               <div key={index} className="grid grid-cols-12 gap-4 items-end border p-4 rounded">
-                <div className="col-span-5">
+                <div className="col-span-4">
                   <Label>Product</Label>
                   <Select 
                     value={item.productId.toString()} 
@@ -228,7 +358,10 @@ export const OrderCreation: React.FC<OrderCreationProps> = ({
                     <SelectContent>
                       {availableProducts.map((product: any) => (
                         <SelectItem key={product.id} value={product.id.toString()}>
-                          {product.name} - {product.price.toLocaleString()} Rwf
+                          <div className="flex items-center gap-2">
+                            <img src={product.coverImage} alt={product.name} className="w-8 h-8 object-cover rounded" />
+                            <span>{product.name} - {product.price.toLocaleString()} Rwf</span>
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -254,7 +387,7 @@ export const OrderCreation: React.FC<OrderCreationProps> = ({
                   />
                 </div>
 
-                <div className="col-span-2">
+                <div className="col-span-3">
                   <Label>Subtotal</Label>
                   <div className="h-10 flex items-center text-sm font-medium">
                     {(item.price * item.quantity).toLocaleString()} Rwf
@@ -276,9 +409,18 @@ export const OrderCreation: React.FC<OrderCreationProps> = ({
             ))}
 
             {orderItems.length > 0 && (
-              <div className="text-right">
-                <div className="text-lg font-bold">
-                  Total: {calculateTotal().toLocaleString()} Rwf
+              <div className="text-right space-y-2 border-t pt-4">
+                <div className="flex justify-between">
+                  <span>Subtotal:</span>
+                  <span className="font-medium">{calculateSubtotal().toLocaleString()} Rwf</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Delivery Fee:</span>
+                  <span className="font-medium">{deliveryFee.toLocaleString()} Rwf</span>
+                </div>
+                <div className="flex justify-between text-lg font-bold">
+                  <span>Total:</span>
+                  <span>{calculateTotal().toLocaleString()} Rwf</span>
                 </div>
               </div>
             )}
@@ -288,10 +430,10 @@ export const OrderCreation: React.FC<OrderCreationProps> = ({
           <div className="flex gap-4">
             <Button
               onClick={handleSubmit}
-              disabled={createOrderMutation.isPending}
+              disabled={createOrderMutation.isPending || createUserMutation.isPending}
               className="flex-1"
             >
-              {createOrderMutation.isPending ? 'Creating...' : 'Create Order'}
+              {createOrderMutation.isPending || createUserMutation.isPending ? 'Creating...' : 'Create Order'}
             </Button>
             <Button
               variant="outline"

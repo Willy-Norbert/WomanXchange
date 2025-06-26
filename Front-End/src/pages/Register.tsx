@@ -1,154 +1,125 @@
-import { useState, useContext, FormEvent, ChangeEvent } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft } from "lucide-react";
-import { registerUser, RegisterData } from '../api/auth';
-import { AuthContext } from '../contexts/AuthContext';
-import { Link, useNavigate } from "react-router-dom";
 
-const Register: React.FC = () => {
-  const auth = useContext(AuthContext);
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useMutation } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import { registerUser } from '@/api/auth';
+import { ShoppingBag } from 'lucide-react';
+
+const Register = () => {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState<'buyer' | 'seller' | 'admin'>('buyer');
   const navigate = useNavigate();
+  const { toast } = useToast();
 
-  if (!auth) throw new Error('AuthContext must be used within AuthProvider');
-  const { login } = auth;
-
-  const [formData, setFormData] = useState<RegisterData>({
-    name: "",
-    email: "",
-    password: "",
-    role: "buyer",
+  const registerMutation = useMutation({
+    mutationFn: registerUser,
+    onSuccess: () => {
+      toast({
+        title: "Registration successful",
+        description: "Please login with your credentials",
+      });
+      navigate('/login');
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Registration failed",
+        description: error.response?.data?.message || "Something went wrong",
+        variant: "destructive",
+      });
+    },
   });
 
-  const [error, setError] = useState<string>('');
-  const [agreeTerms, setAgreeTerms] = useState(false);
-
-  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    try {
-      const res = await registerUser(formData);
-      login(res.data);
-
-      // Redirect based on role
-      if (formData.role === "buyer") {
-        navigate('/');
-      } else {
-        navigate('/dashboard');
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Registration failed');
-    }
+    registerMutation.mutate({ name, email, password, role });
   };
 
   return (
-    <div className="min-h-screen bg-purple flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-lg p-8 shadow-2xl">
-          <div className="mb-6">
-            <Link to="/" className="inline-flex items-center text-gray-600 hover:text-gray-800 mb-4">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Home
-            </Link>
-
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-2xl font-bold text-gray-800">Register</h2>
-              <div className="flex items-center space-x-1">
-                <span className="text-sm text-gray-500">Join As Seller</span>
-                <Link to="/seller-request" className="text-sm text-purple-600 hover:underline">
-                  Register
-                </Link>
-              </div>
-            </div>
-
-            <div className="text-sm text-gray-600">
-              <span>Already have an account? </span>
-              <Link to="/login" className="text-purple-600 hover:underline">
-                Log In
-              </Link>
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <div className="flex justify-center mb-4">
+            <ShoppingBag className="w-12 h-12 text-purple-600" />
           </div>
-
-          {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
-
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <CardTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            Create Account
+          </CardTitle>
+          <CardDescription>
+            Join our marketplace today
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
+              <Label htmlFor="name">Full Name</Label>
               <Input
+                id="name"
                 type="text"
-                name="name"
-                placeholder="Name"
-                value={formData.name}
-                onChange={handleChange}
+                placeholder="Enter your full name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 required
               />
             </div>
-
             <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
               <Input
+                id="email"
                 type="email"
-                name="email"
-                placeholder="Email Address"
-                value={formData.email}
-                onChange={handleChange}
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
-
             <div className="space-y-2">
-              <select
-                name="role"
-                value={formData.role}
-                onChange={handleChange}
-                className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              >
-                <option value="buyer">Buyer</option>
-                <option value="seller">Seller</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <Input
-                type="password"
-                name="password"
-                placeholder="Password"
-                value={formData.password}
-                onChange={handleChange}
+              <Label htmlFor="password">Password</Label>
+              <PasswordInput
+                id="password"
+                placeholder="Create a password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 required
               />
             </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="terms"
-                checked={agreeTerms}
-                onCheckedChange={(checked) => setAgreeTerms(checked as boolean)}
-                className="data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
-              />
-              <label htmlFor="terms" className="text-sm text-gray-600">
-                I have read the{" "}
-                <Link to="/terms" className="text-purple-600 hover:underline">
-                  Terms and Conditions
-                </Link>
-              </label>
+            <div className="space-y-2">
+              <Label htmlFor="role">Account Type</Label>
+              <Select value={role} onValueChange={(value: any) => setRole(value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select account type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="buyer">Buyer</SelectItem>
+                  <SelectItem value="seller">Seller</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-
             <Button
               type="submit"
-              disabled={!agreeTerms}
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-md transition-colors"
+              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              disabled={registerMutation.isPending}
             >
-              Register
+              {registerMutation.isPending ? 'Creating Account...' : 'Create Account'}
             </Button>
           </form>
-        </div>
-      </div>
+          <div className="mt-6 text-center text-sm">
+            <span className="text-gray-600">Already have an account? </span>
+            <Link to="/login" className="text-purple-600 hover:text-purple-500 font-medium">
+              Sign in
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

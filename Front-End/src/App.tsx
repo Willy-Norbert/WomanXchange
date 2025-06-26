@@ -13,6 +13,7 @@ import Register from './pages/Register';
 import CommunityChat from './pages/CommunityChat';
 import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
+import ProductStore from './pages/ProductStore';
 import AdminProducts from './pages/AdminProducts';
 import SingleProduct from './pages/SingleProduct';
 import Categories from './pages/Categories';
@@ -51,6 +52,7 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/products" element={<Products />} />
+              <Route path="/store" element={<ProductStore />} />
               <Route path="/products/:id" element={<SingleProduct />} />
               <Route path="/cart" element={<Cart />} />
               <Route path="/checkout" element={<Checkout />} />

@@ -1,3 +1,4 @@
+
 import asyncHandler from 'express-async-handler';
 import prisma from '../prismaClient.js';
 import { notify } from '../utils/notify.js';
@@ -299,7 +300,7 @@ export const placeOrder = asyncHandler(async (req, res) => {
 
 // Create Order by Admin/Seller
 export const createOrder = asyncHandler(async (req, res) => {
-  const { userId, shippingAddress, paymentMethod, items, totalPrice } = req.body;
+  const { userId, shippingAddress, paymentMethod, items, totalPrice, shippingPrice = 0 } = req.body;
 
   console.log('Creating order for user:', userId, 'by:', req.user.role);
 
@@ -326,13 +327,18 @@ export const createOrder = asyncHandler(async (req, res) => {
     }
   }
 
+  // Generate order number
+  const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+
   const order = await prisma.order.create({
     data: {
       userId,
+      orderNumber,
       shippingAddress,
       paymentMethod,
       totalPrice,
-      isPaid: false,
+      shippingPrice: shippingPrice || 0,
+      isPaid: false, // Never automatically mark as paid
       items: {
         create: items
       }
@@ -347,7 +353,9 @@ export const createOrder = asyncHandler(async (req, res) => {
 
   await notify({
     userId: req.user.id,
-    message: `Order #${order.id} created by ${req.user.role} for user ${user.name}.`,
+    title: 'Order Created',
+    message: `Order #${order.orderNumber} created by ${req.user.role} for user ${user.name}.`,
+    type: 'SUCCESS',
     recipientRole: 'BUYER',
     relatedOrderId: order.id,
   });

@@ -1,4 +1,3 @@
-
 import api from './api';
 
 export interface CartItem {
@@ -65,6 +64,7 @@ export interface CreateOrderData {
     price: number;
   }[];
   totalPrice: number;
+  shippingPrice?: number;
 }
 
 export const getCart = (cartId?: number | null) => {
