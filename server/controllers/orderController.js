@@ -66,7 +66,7 @@ export const getOrderById = asyncHandler(async (req, res) => {
 export const addToCart = asyncHandler(async (req, res) => {
   const { productId, quantity } = req.body;
   
-  console.log('🛒 addToCart called with:', { productId, quantity, hasUser: !!req.user });
+  console.log('🛒 addToCart called with:', { productId, quantity, hasUser: !!req.user, userId: req.user?.id });
   
   const product = await prisma.product.findUnique({ where: { id: productId } });
   if (!product) {
@@ -187,7 +187,7 @@ export const removeFromCart = asyncHandler(async (req, res) => {
 // Get User Cart (no authentication required)
 export const getCart = asyncHandler(async (req, res) => {
   const { cartId } = req.query;
-  console.log('🔍 getCart called with hasUser:', !!req.user, 'cartId:', cartId);
+  console.log('🔍 getCart called with hasUser:', !!req.user, 'userId:', req.user?.id, 'cartId:', cartId);
   
   let cart;
   if (req.user) {

@@ -11,6 +11,8 @@ export const useCart = () => {
   const queryClient = useQueryClient();
   const [cartId, setCartId] = useState<number | null>(null);
 
+  console.log('🛒 useCart hook - user state:', { hasUser: !!user, userId: user?.id, userRole: user?.role });
+
   // Get cartId from localStorage for unauthenticated users
   useEffect(() => {
     if (!user) {
@@ -38,7 +40,7 @@ export const useCart = () => {
     queryKey,
     queryFn: async () => {
       try {
-        console.log('🔍 useCart query: calling getCart with cartId:', cartId, 'user:', !!user);
+        console.log('🔍 useCart query: calling getCart with user:', !!user, 'cartId:', cartId);
         const response = await getCart(cartId);
         console.log('📦 useCart query: Cart response received:', response?.data);
         return response;
@@ -61,6 +63,7 @@ export const useCart = () => {
 
   console.log('🛒 useCart hook state:', {
     user: !!user,
+    userId: user?.id,
     cartId,
     isLoading,
     cartResponse: cartResponse?.data,
@@ -72,7 +75,7 @@ export const useCart = () => {
 
   const addToCartMutation = useMutation({
     mutationFn: async ({ productId, quantity }: { productId: number; quantity: number }) => {
-      console.log('➕ useCart: Adding to cart:', { productId, quantity, currentCartId: cartId });
+      console.log('➕ useCart: Adding to cart:', { productId, quantity, hasUser: !!user, userId: user?.id });
       const response = await addToCart(productId, quantity);
       console.log('✅ useCart: Add to cart API response:', response?.data);
       return response;
@@ -116,7 +119,7 @@ export const useCart = () => {
 
   const removeFromCartMutation = useMutation({
     mutationFn: (productId: number) => {
-      console.log('➖ useCart: Removing from cart:', { productId, cartId });
+      console.log('➖ useCart: Removing from cart:', { productId, cartId, hasUser: !!user });
       return removeFromCart(productId, cartId);
     },
     onSuccess: () => {
