@@ -37,8 +37,10 @@ import Contact from './pages/Contact';
 import Terms from './pages/Terms';
 import NotFound from './pages/NotFound';
 import CommunityChat from './pages/CommunityChat';
-
+import ProductStore from './pages/ProductStore';
+import process from 'process';
 import './index.css';
+import OrderPreview from './pages/OrderPreview';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -67,7 +69,7 @@ const App = () => {
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/terms" element={<Terms />} />
-              
+              <Route path="/store" element={<ProductStore />} />
               {/* Auth Routes */}
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
@@ -78,7 +80,7 @@ const App = () => {
               <Route path="/settings" element={<Settings />} />
               <Route path="/orders" element={<Orders />} />
               <Route path="/chat" element={<CommunityChat />} />
-              
+              <Route path="/orders/:id" element={<OrderPreview />} />
               {/* Dashboard Routes */}
               <Route path="/community-chat" element={<CommunityChat />} />
               <Route path="/dashboard" element={<Dashboard />} />

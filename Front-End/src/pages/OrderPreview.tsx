@@ -1,4 +1,3 @@
-
 import React, { useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -7,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Package, User, MapPin, CreditCard, Truck } from 'lucide-react';
+import { ArrowLeft, Package, User, MapPin, CreditCard } from 'lucide-react';
 import { getOrderById, updateOrderStatus } from '@/api/orders';
 import { AuthContext } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -79,22 +78,27 @@ const OrderPreview = () => {
     updateStatusMutation.mutate({ isDelivered });
   };
 
+  const formatShippingAddress = (address: any) => {
+    if (typeof address === 'object' && address !== null) {
+      const { street, city, district, sector } = address;
+      return [street, city, district, sector].filter(Boolean).join(', ');
+    }
+    return String(address);
+  };
+
   return (
     <DashboardLayout currentPage="orders">
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <Button 
-              variant="ghost" 
-              onClick={() => navigate('/orders')}
-              className="p-2"
-            >
+            <Button variant="ghost" onClick={() => navigate('/orders')} className="p-2">
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Order #{order.id}</h1>
-              <p className="text-gray-600">Order placed on {new Date(order.createdAt).toLocaleDateString()}</p>
+              <p className="text-gray-600">
+                Order placed on {new Date(order.createdAt).toLocaleDateString()}
+              </p>
             </div>
           </div>
           <div className="flex space-x-2">
@@ -108,7 +112,6 @@ const OrderPreview = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Order Status Controls */}
           <div className="lg:col-span-1">
             <Card>
               <CardHeader>
@@ -129,7 +132,7 @@ const OrderPreview = () => {
                     disabled={updateStatusMutation.isPending}
                   />
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium">Delivery Status</p>
@@ -144,11 +147,10 @@ const OrderPreview = () => {
 
                 {order.isConfirmedByAdmin && (
                   <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <p className="text-sm font-medium text-green-800">
-                      ✓ Admin Confirmed
-                    </p>
+                    <p className="text-sm font-medium text-green-800">✓ Admin Confirmed</p>
                     <p className="text-xs text-green-600">
-                      {order.confirmedAt && `Confirmed on ${new Date(order.confirmedAt).toLocaleDateString()}`}
+                      {order.confirmedAt &&
+                        `Confirmed on ${new Date(order.confirmedAt).toLocaleDateString()}`}
                     </p>
                   </div>
                 )}
@@ -156,9 +158,7 @@ const OrderPreview = () => {
             </Card>
           </div>
 
-          {/* Order Details */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Customer Information */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
@@ -180,7 +180,6 @@ const OrderPreview = () => {
               </CardContent>
             </Card>
 
-            {/* Shipping & Payment */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
@@ -192,7 +191,7 @@ const OrderPreview = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <p className="text-sm text-gray-600 mb-2">Shipping Address</p>
-                    <p className="font-medium">{order.shippingAddress}</p>
+                    <p className="font-medium">{formatShippingAddress(order.shippingAddress)}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600 mb-2">Payment Method</p>
@@ -205,7 +204,6 @@ const OrderPreview = () => {
               </CardContent>
             </Card>
 
-            {/* Order Items */}
             <Card>
               <CardHeader>
                 <CardTitle>Order Items</CardTitle>
@@ -222,7 +220,9 @@ const OrderPreview = () => {
                       <div className="flex-1">
                         <h4 className="font-medium">{item.product?.name}</h4>
                         <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
-                        <p className="text-sm text-gray-600">Unit Price: {item.price?.toLocaleString()} Rwf</p>
+                        <p className="text-sm text-gray-600">
+                          Unit Price: {item.price?.toLocaleString()} Rwf
+                        </p>
                       </div>
                       <div className="text-right">
                         <p className="font-medium">
@@ -232,7 +232,7 @@ const OrderPreview = () => {
                     </div>
                   ))}
                 </div>
-                
+
                 <div className="border-t pt-4 mt-4">
                   <div className="flex justify-between items-center text-lg font-bold">
                     <span>Total Amount</span>
