@@ -138,7 +138,7 @@ export const useDashboardData = (userRole?: string) => {
   });
 
   if (isSeller) {
-    // Return seller-specific data with proper array handling and error checking
+    // Return seller-specific data with proper number calculation
     const sellerStats = sellerStatsData?.data || { totalProducts: 0, totalOrders: 0, totalRevenue: 0, totalCustomers: 0 };
     const sellerOrders = Array.isArray(sellerOrdersData?.data) ? sellerOrdersData.data : [];
     const sellerProducts = Array.isArray(sellerProductsData?.data) ? sellerProductsData.data : [];
@@ -157,7 +157,12 @@ export const useDashboardData = (userRole?: string) => {
       }
     });
 
-    // Handle any seller data fetch errors
+    // Calculate revenue properly with Number() to ensure addition not concatenation
+    const totalRevenue = Number(sellerStats.totalRevenue) || 0;
+    const paidRevenue = sellerOrders.filter((order: any) => order.isPaid).reduce((sum: number, order: any) => {
+      return sum + Number(order.totalPrice || 0);
+    }, 0);
+
     const hasSellerError = sellerStatsError || sellerOrdersError || sellerProductsError || sellerCustomersError;
     const isSellerLoading = sellerStatsLoading || sellerOrdersLoading || sellerProductsLoading || sellerCustomersLoading;
 
@@ -171,7 +176,7 @@ export const useDashboardData = (userRole?: string) => {
     }
 
     return {
-      totalSales: Math.round((sellerStats.totalRevenue || 0) / 1000),
+      totalSales: Math.round(totalRevenue / 1000),
       dailySales: sellerOrders.filter((order: any) => {
         try {
           const orderDate = new Date(order.createdAt);
@@ -182,17 +187,17 @@ export const useDashboardData = (userRole?: string) => {
         }
       }).length,
       dailyUsers: sellerCustomers.length,
-      totalProducts: sellerStats.totalProducts || 0,
+      totalProducts: Number(sellerStats.totalProducts) || 0,
       recentOrders: sellerOrders.slice(0, 10),
-      totalRevenue: sellerStats.totalRevenue || 0,
-      paidRevenue: sellerOrders.filter((order: any) => order.isPaid).reduce((sum: number, order: any) => sum + (order.totalPrice || 0), 0),
-      totalOrders: sellerStats.totalOrders || 0,
-      totalUsers: sellerStats.totalCustomers || 0,
-      buyers: sellerStats.totalCustomers || 0,
+      totalRevenue,
+      paidRevenue,
+      totalOrders: Number(sellerStats.totalOrders) || 0,
+      totalUsers: Number(sellerStats.totalCustomers) || 0,
+      buyers: Number(sellerStats.totalCustomers) || 0,
       sellers: 0,
       admins: 0,
       userRoleData: [
-        { name: 'My Customers', value: sellerStats.totalCustomers || 0 }
+        { name: 'My Customers', value: Number(sellerStats.totalCustomers) || 0 }
       ],
       monthlyOrdersData: [],
       paymentStatusData: [
@@ -204,7 +209,7 @@ export const useDashboardData = (userRole?: string) => {
     };
   }
 
-  // Admin data (existing logic) with proper array handling and error checking
+  // Admin data with proper number calculation
   const orders = Array.isArray(ordersData?.data) ? ordersData.data : [];
   const users = Array.isArray(usersData?.data) ? usersData.data : [];
   const products = Array.isArray(productsData?.data) ? productsData.data : [];
@@ -220,10 +225,15 @@ export const useDashboardData = (userRole?: string) => {
     }
   });
 
-  // Calculate statistics with error handling
-  const totalRevenue = orders.reduce((sum: number, order: any) => sum + (order.totalPrice || 0), 0);
+  // Calculate statistics with proper number handling
+  const totalRevenue = orders.reduce((sum: number, order: any) => {
+    return sum + Number(order.totalPrice || 0);
+  }, 0);
+  
   const paidOrders = orders.filter((order: any) => order.isPaid);
-  const paidRevenue = paidOrders.reduce((sum: number, order: any) => sum + (order.totalPrice || 0), 0);
+  const paidRevenue = paidOrders.reduce((sum: number, order: any) => {
+    return sum + Number(order.totalPrice || 0);
+  }, 0);
   
   const totalSales = Math.round(totalRevenue / 1000);
   const dailySales = orders.filter((order: any) => {
@@ -267,7 +277,7 @@ export const useDashboardData = (userRole?: string) => {
       return {
         name: month,
         orders: monthOrders.length,
-        revenue: monthOrders.reduce((sum: number, order: any) => sum + (order.totalPrice || 0), 0)
+        revenue: monthOrders.reduce((sum: number, order: any) => sum + Number(order.totalPrice || 0), 0)
       };
     });
     
@@ -287,6 +297,8 @@ export const useDashboardData = (userRole?: string) => {
     dailySales,
     totalOrders: orders.length,
     totalUsers: users.length,
+    totalRevenue,
+    paidRevenue,
     loading,
     error: error ? 'Failed to load dashboard data' : null
   });

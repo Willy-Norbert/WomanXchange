@@ -31,6 +31,8 @@ import About from './pages/About';
 import Contact from './pages/Contact';
 import Terms from './pages/Terms';
 import NotFound from './pages/NotFound';
+import VendorDashboard from './pages/VendorDashboard';
+import Reports from './pages/Reports';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -65,8 +67,11 @@ function App() {
               {/* Protected routes */}
               <Route path="/community-chat" element={<CommunityChat />} />
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/vendor-dashboard" element={<VendorDashboard />} />
+              <Route path="/reports" element={<Reports />} />
     
               <Route path="/admin/categories" element={<AdminCategories />} />
+              <Route path="/admin-products" element={<AdminProducts />} />
               <Route path="/categories" element={<Categories />} />
               <Route path="/orders" element={<Orders />} />
               <Route path="/orders/:id" element={<OrderPreview />} />
