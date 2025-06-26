@@ -9,7 +9,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { AuthContext } from '@/contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import api from '@/api/api';
+import { getSellerProducts } from '@/api/products';
 
 const VendorDashboard = () => {
   const { t } = useLanguage();
@@ -30,12 +30,16 @@ const VendorDashboard = () => {
     }
   }, [user, loading, navigate]);
 
-  // Fetch ONLY seller-specific data
+  // Fetch ONLY seller-specific data using the seller-specific API endpoint
   const { data: sellerStats, isLoading: statsLoading } = useQuery({
     queryKey: ['seller-stats'],
     queryFn: async () => {
-      const response = await api.get('/sellers/my-stats');
-      return response.data;
+      const response = await fetch('/api/sellers/my-stats', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      return response.json();
     },
     enabled: !!user && user.role === 'SELLER',
   });
@@ -43,9 +47,19 @@ const VendorDashboard = () => {
   const { data: sellerOrders, isLoading: ordersLoading } = useQuery({
     queryKey: ['seller-orders'],
     queryFn: async () => {
-      const response = await api.get('/sellers/my-orders');
-      return response.data;
+      const response = await fetch('/api/sellers/my-orders', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      return response.json();
     },
+    enabled: !!user && user.role === 'SELLER',
+  });
+
+  const { data: sellerProducts, isLoading: productsLoading } = useQuery({
+    queryKey: ['seller-products'],
+    queryFn: () => getSellerProducts(),
     enabled: !!user && user.role === 'SELLER',
   });
 
@@ -53,7 +67,7 @@ const VendorDashboard = () => {
     return null;
   }
 
-  if (statsLoading || ordersLoading) {
+  if (statsLoading || ordersLoading || productsLoading) {
     return (
       <DashboardLayout currentPage="dashboard">
         <div className="flex items-center justify-center min-h-[400px]">
@@ -65,6 +79,7 @@ const VendorDashboard = () => {
 
   const stats = sellerStats || { totalProducts: 0, totalOrders: 0, totalRevenue: 0, paidRevenue: 0, totalCustomers: 0 };
   const orders = Array.isArray(sellerOrders) ? sellerOrders : [];
+  const products = Array.isArray(sellerProducts?.data) ? sellerProducts.data : [];
 
   return (
     <DashboardLayout currentPage="dashboard">
@@ -109,7 +124,7 @@ const VendorDashboard = () => {
           />
           <StatsCard
             title="My Products"
-            value={stats.totalProducts.toString()}
+            value={products.length.toString()}
             icon={Package}
             color="text-purple-500"
           />

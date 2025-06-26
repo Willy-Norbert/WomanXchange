@@ -70,6 +70,7 @@ const App = () => {
               <Route path="/contact" element={<Contact />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/store" element={<ProductStore />} />
+              
               {/* Auth Routes */}
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
@@ -81,18 +82,25 @@ const App = () => {
               <Route path="/orders" element={<Orders />} />
               <Route path="/chat" element={<CommunityChat />} />
               <Route path="/orders/:id" element={<OrderPreview />} />
+              
               {/* Dashboard Routes */}
               <Route path="/community-chat" element={<CommunityChat />} />
+              
+              {/* Admin Dashboard Routes */}
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/user-management" element={<UserManagement />} />
+              <Route path="/seller-management" element={<SellerManagement />} />
+              <Route path="/vendors" element={<Vendors />} />
+              <Route path="/analytics" element={<Analytics />} />
+              
+              {/* Seller Dashboard Routes */}
+              <Route path="/vendor-dashboard" element={<VendorDashboard />} />
+              <Route path="/seller-customers" element={<SellerCustomers />} />
+              
+              {/* Shared Admin/Seller Routes */}
               <Route path="/admin-products" element={<AdminProducts />} />
               <Route path="/admin-categories" element={<AdminCategories />} />
               <Route path="/customers" element={<Customers />} />
-              <Route path="/user-management" element={<UserManagement />} />
-              <Route path="/seller-management" element={<SellerManagement />} />
-              <Route path="/seller-customers" element={<SellerCustomers />} />
-              <Route path="/vendor-dashboard" element={<VendorDashboard />} />
-              <Route path="/vendors" element={<Vendors />} />
-              <Route path="/analytics" element={<Analytics />} />
               <Route path="/reports" element={<Reports />} />
               
               {/* 404 Route */}
