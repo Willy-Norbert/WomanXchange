@@ -11,7 +11,7 @@ export const useCart = () => {
   const queryClient = useQueryClient();
   const [cartId, setCartId] = useState<number | null>(null);
 
-  // Get cartId from localStorage for unauthenticated users
+  // Get cartId from localStorage for unauthenticated users OR initialize cart
   useEffect(() => {
     if (!user) {
       const storedCartId = localStorage.getItem('anonymous_cart_id');
@@ -20,7 +20,7 @@ export const useCart = () => {
         setCartId(parsedCartId);
         console.log('🛒 useCart: Loaded cart ID from localStorage:', parsedCartId);
       } else {
-        console.log('🛒 useCart: No valid stored cart ID found for anonymous user');
+        console.log('🛒 useCart: No stored cart ID, will create on first add');
         setCartId(null);
       }
     } else {
@@ -31,7 +31,7 @@ export const useCart = () => {
     }
   }, [user]);
 
-  // Create a stable query key that changes when user auth state changes
+  // Create a stable query key
   const queryKey = user ? ['cart', 'authenticated', user.id] : ['cart', 'anonymous', cartId];
 
   const { data: cartResponse, isLoading, error, refetch } = useQuery({
@@ -65,7 +65,7 @@ export const useCart = () => {
     enabled: true,
   });
 
-  // Extract cart data with better error handling
+  // Extract cart data
   const cart = cartResponse?.data?.data || { id: null, items: [] };
 
   console.log('🛒 useCart hook state:', {
@@ -80,16 +80,8 @@ export const useCart = () => {
 
   const addToCartMutation = useMutation({
     mutationFn: async ({ productId, quantity }: { productId: number; quantity: number }) => {
-      console.log('➕ useCart: Adding to cart:', { productId, quantity, currentCartId: cartId });
+      console.log('➕ useCart: Adding to cart:', { productId, quantity, currentCartId: cartId, hasUser: !!user });
       
-      const requestData: any = { productId, quantity };
-      
-      // For anonymous users, include cartId if available
-      if (!user && cartId) {
-        requestData.cartId = cartId;
-      }
-      
-      console.log('📤 useCart: Request data:', requestData);
       const response = await addToCart(productId, quantity, cartId);
       console.log('✅ useCart: Add to cart API response:', response?.data);
       return response;

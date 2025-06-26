@@ -125,25 +125,13 @@ const Cart = () => {
               </div>
             </div>
 
-            {/* Checkout Button */}
-            {auth?.user ? (
-              <Link to="/checkout">
-                <Button className="w-full bg-purple-500 hover:bg-purple-600 text-white py-4 rounded-full">
-                  {t('cart.go_to_checkout') || 'Go to Checkout'}
-                  <ArrowRight className="w-5 h-5 ml-2" />
-                </Button>
-              </Link>
-            ) : (
-              <div className="text-center">
-                <p className="text-gray-600 mb-4">Please log in to proceed to checkout</p>
-                <Link to="/login">
-                  <Button className="w-full bg-purple-500 hover:bg-purple-600 text-white py-4 rounded-full">
-                    Log In to Checkout
-                    <ArrowRight className="w-5 h-5 ml-2" />
-                  </Button>
-                </Link>
-              </div>
-            )}
+            {/* Checkout Button - NO LOGIN REQUIRED */}
+            <Link to="/checkout">
+              <Button className="w-full bg-purple-500 hover:bg-purple-600 text-white py-4 rounded-full">
+                {t('cart.go_to_checkout') || 'Go to Checkout'}
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </Button>
+            </Link>
           </>
         )}
       </div>

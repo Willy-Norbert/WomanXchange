@@ -8,15 +8,13 @@ import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { AuthContext } from '@/contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { useDashboardData } from '@/hooks/useDashboardData';
+import { useQuery } from '@tanstack/react-query';
+import api from '@/api/api';
 
 const VendorDashboard = () => {
   const { t } = useLanguage();
   const { user, loading } = useContext(AuthContext);
   const navigate = useNavigate();
-
-  // Use the centralized dashboard data hook for sellers
-  const dashboardData = useDashboardData(user?.role);
 
   useEffect(() => {
     if (loading) return;
@@ -32,11 +30,30 @@ const VendorDashboard = () => {
     }
   }, [user, loading, navigate]);
 
+  // Fetch ONLY seller-specific data
+  const { data: sellerStats, isLoading: statsLoading } = useQuery({
+    queryKey: ['seller-stats'],
+    queryFn: async () => {
+      const response = await api.get('/sellers/my-stats');
+      return response.data;
+    },
+    enabled: !!user && user.role === 'SELLER',
+  });
+
+  const { data: sellerOrders, isLoading: ordersLoading } = useQuery({
+    queryKey: ['seller-orders'],
+    queryFn: async () => {
+      const response = await api.get('/sellers/my-orders');
+      return response.data;
+    },
+    enabled: !!user && user.role === 'SELLER',
+  });
+
   if (loading || !user || user.role !== 'SELLER') {
     return null;
   }
 
-  if (dashboardData.loading) {
+  if (statsLoading || ordersLoading) {
     return (
       <DashboardLayout currentPage="dashboard">
         <div className="flex items-center justify-center min-h-[400px]">
@@ -45,6 +62,9 @@ const VendorDashboard = () => {
       </DashboardLayout>
     );
   }
+
+  const stats = sellerStats || { totalProducts: 0, totalOrders: 0, totalRevenue: 0, paidRevenue: 0, totalCustomers: 0 };
+  const orders = Array.isArray(sellerOrders) ? sellerOrders : [];
 
   return (
     <DashboardLayout currentPage="dashboard">
@@ -71,25 +91,25 @@ const VendorDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatsCard
             title="My Orders"
-            value={dashboardData.totalOrders.toString()}
+            value={stats.totalOrders.toString()}
             icon={BarChart3}
             color="text-red-500"
           />
           <StatsCard
             title="My Revenue"
-            value={`${dashboardData.totalRevenue.toLocaleString()} Rwf`}
+            value={`${stats.totalRevenue.toLocaleString()} Rwf`}
             icon={Clock}
             color="text-green-500"
           />
           <StatsCard
             title="My Customers"
-            value={dashboardData.totalUsers.toString()}
+            value={stats.totalCustomers.toString()}
             icon={Users}
             color="text-blue-500"
           />
           <StatsCard
             title="My Products"
-            value={dashboardData.totalProducts.toString()}
+            value={stats.totalProducts.toString()}
             icon={Package}
             color="text-purple-500"
           />
@@ -105,25 +125,25 @@ const VendorDashboard = () => {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Total Revenue</span>
-                  <span className="font-semibold">{dashboardData.totalRevenue.toLocaleString()} Rwf</span>
+                  <span className="font-semibold">{stats.totalRevenue.toLocaleString()} Rwf</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Paid Revenue</span>
-                  <span className="font-semibold">{dashboardData.paidRevenue.toLocaleString()} Rwf</span>
+                  <span className="font-semibold">{stats.paidRevenue.toLocaleString()} Rwf</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Avg. Order Value</span>
                   <span className="font-semibold">
-                    {dashboardData.totalOrders > 0 ? (dashboardData.totalRevenue / dashboardData.totalOrders).toFixed(0) : '0'} Rwf
+                    {stats.totalOrders > 0 ? (stats.totalRevenue / stats.totalOrders).toFixed(0) : '0'} Rwf
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Total Orders</span>
-                  <span className="font-semibold">{dashboardData.totalOrders}</span>
+                  <span className="font-semibold">{stats.totalOrders}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">My Customers</span>
-                  <span className="font-semibold">{dashboardData.totalUsers}</span>
+                  <span className="font-semibold">{stats.totalCustomers}</span>
                 </div>
               </div>
             </CardContent>
@@ -136,12 +156,14 @@ const VendorDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {dashboardData.paymentStatusData.map((item, index) => (
-                  <div key={index} className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">{item.name}</span>
-                    <span className="font-semibold">{item.value} orders</span>
-                  </div>
-                ))}
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Paid Orders</span>
+                  <span className="font-semibold">{orders.filter((order: any) => order.isPaid).length} orders</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Pending Orders</span>
+                  <span className="font-semibold">{orders.filter((order: any) => !order.isPaid).length} orders</span>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -158,7 +180,7 @@ const VendorDashboard = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {dashboardData.recentOrders.length > 0 ? (
+            {orders.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gray-900 text-white">
@@ -172,7 +194,7 @@ const VendorDashboard = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {dashboardData.recentOrders.map((order: any) => (
+                    {orders.slice(0, 10).map((order: any) => (
                       <tr key={order.id} className="hover:bg-gray-50">
                         <td className="px-4 py-3 text-sm">#{order.id}</td>
                         <td className="px-4 py-3 text-sm">{order.user?.name || order.customerName || 'Guest'}</td>

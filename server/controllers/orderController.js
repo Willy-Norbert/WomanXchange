@@ -137,7 +137,7 @@ export const getCart = asyncHandler(async (req, res) => {
       }
     }
 
-    // Only create new cart if none exists
+    // Only create new cart if none exists AND not providing existing cartId
     if (!cart) {
       cart = await prisma.cart.create({
         data: { userId: null },
@@ -167,12 +167,12 @@ export const getCart = asyncHandler(async (req, res) => {
   }
 });
 
-// Add item to cart (FIXED FOR ANONYMOUS USERS - REUSE EXISTING CART)
+// Add item to cart (FIXED FOR BOTH AUTHENTICATED AND ANONYMOUS USERS)
 export const addToCart = asyncHandler(async (req, res) => {
   const { productId, quantity = 1, cartId } = req.body;
   const userId = req.user?.id;
   
-  console.log('➕ addToCart called:', { userId, productId, quantity, cartId });
+  console.log('➕ addToCart called:', { userId, productId, quantity, cartId, hasUser: !!userId });
 
   try {
     let cart;
@@ -187,6 +187,7 @@ export const addToCart = asyncHandler(async (req, res) => {
         cart = await prisma.cart.create({
           data: { userId }
         });
+        console.log('🆕 Created new cart for authenticated user:', userId);
       }
     } else if (cartId && !isNaN(parseInt(cartId))) {
       // For anonymous users with existing cart - REUSE IT
@@ -439,6 +440,7 @@ export const getUserOrders = asyncHandler(async (req, res) => {
   res.json(orders);
 });
 
+// GET ALL ORDERS - FIXED FOR SELLER DATA ISOLATION
 export const getAllOrders = asyncHandler(async (req, res) => {
   const userRole = req.user.role.toLowerCase();
   const userId = req.user.id;
