@@ -167,7 +167,7 @@ export const getCart = asyncHandler(async (req, res) => {
   }
 });
 
-// Add item to cart (FIXED FOR ANONYMOUS USERS)
+// Add item to cart (FIXED FOR ANONYMOUS USERS - REUSE EXISTING CART)
 export const addToCart = asyncHandler(async (req, res) => {
   const { productId, quantity = 1, cartId } = req.body;
   const userId = req.user?.id;
@@ -193,7 +193,7 @@ export const addToCart = asyncHandler(async (req, res) => {
       cart = await prisma.cart.findUnique({
         where: { id: parseInt(cartId) }
       });
-      console.log('🔄 Using existing anonymous cart:', cartId);
+      console.log('🔄 Reusing existing anonymous cart:', cartId);
     }
 
     if (!cart) {

@@ -41,6 +41,15 @@ export const useCart = () => {
         console.log('🔍 useCart query: calling getCart with cartId:', cartId, 'user:', !!user);
         const response = await getCart(cartId);
         console.log('📦 useCart query: Cart response received:', response?.data);
+        
+        // Store cartId for anonymous users if we get one back
+        if (!user && response?.data?.data?.id && !cartId) {
+          const newCartId = response.data.data.id;
+          localStorage.setItem('anonymous_cart_id', newCartId.toString());
+          setCartId(newCartId);
+          console.log('💾 useCart: Stored cart ID from response:', newCartId);
+        }
+        
         return response;
       } catch (err) {
         console.error('❌ useCart query error:', err);
