@@ -1,4 +1,3 @@
-
 import { Request, Response } from 'express';
 import { db } from '../lib/database';
 import nodemailer from 'nodemailer';
@@ -19,16 +18,29 @@ export const createOrder = async (req: Request, res: Response) => {
     
     console.log('📦 Creating order with data:', { customer_info, cart_id, user_id });
 
-    if (!customer_info || !cart_id) {
-      return res.status(400).json({ message: 'Customer info and cart ID are required' });
+    if (!customer_info) {
+      return res.status(400).json({ message: 'Customer info is required' });
     }
 
-    // Get cart items
-    const cartQuery = user_id 
-      ? 'SELECT * FROM cart_items ci JOIN products p ON ci.product_id = p.id WHERE ci.user_id = ?'
-      : 'SELECT * FROM cart_items ci JOIN products p ON ci.product_id = p.id WHERE ci.cart_id = ?';
+    if (!cart_id && !user_id) {
+      return res.status(400).json({ message: 'Cart ID or User ID is required' });
+    }
+
+    // Get cart items - prioritize user_id for authenticated users, cart_id for guests
+    let cartQuery;
+    let cartParam;
     
-    const cartParam = user_id || cart_id;
+    if (user_id) {
+      cartQuery = 'SELECT * FROM cart_items ci JOIN products p ON ci.product_id = p.id WHERE ci.user_id = ?';
+      cartParam = user_id;
+    } else if (cart_id) {
+      cartQuery = 'SELECT * FROM cart_items ci JOIN products p ON ci.product_id = p.id WHERE ci.cart_id = ?';
+      cartParam = cart_id;
+    } else {
+      return res.status(400).json({ message: 'No valid cart identifier provided' });
+    }
+    
+    console.log('📦 Fetching cart with query:', cartQuery, 'param:', cartParam);
     const cartItems = await db.query(cartQuery, [cartParam]);
 
     console.log('📦 Found cart items:', cartItems.length);
@@ -65,10 +77,10 @@ export const createOrder = async (req: Request, res: Response) => {
       );
     }
 
-    // Clear cart
+    // Clear cart - use appropriate identifier
     if (user_id) {
       await db.query('DELETE FROM cart_items WHERE user_id = ?', [user_id]);
-    } else {
+    } else if (cart_id) {
       await db.query('DELETE FROM cart_items WHERE cart_id = ?', [cart_id]);
     }
 

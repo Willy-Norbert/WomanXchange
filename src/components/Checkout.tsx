@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useCart } from '../hooks/useCart';
 import { useAuth } from '../hooks/useAuth';
@@ -62,9 +61,18 @@ export const Checkout = () => {
       console.log('🛒 Cart items count:', cart?.items?.length || 0);
       console.log('🛒 User authenticated:', !!user);
 
+      // Ensure cartId is properly included for guest users
+      const effectiveCartId = user ? cart?.id : cartId;
+      console.log('🛒 Effective cart ID for order:', effectiveCartId);
+
+      if (!effectiveCartId && !user) {
+        toast.error('Cart session expired. Please refresh and try again.');
+        return;
+      }
+
       const orderData = {
         customer_info: orderForm,
-        cart_id: cartId, // Ensure cart ID is included
+        cart_id: effectiveCartId,
         user_id: user?.id || null,
       };
 
@@ -82,7 +90,7 @@ export const Checkout = () => {
           body: JSON.stringify(orderData),
         });
       } else {
-        // Guest user
+        // Guest user - ensure cart_id is included
         response = await fetch('/api/orders', {
           method: 'POST',
           headers: {
