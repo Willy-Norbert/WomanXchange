@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useContext } from 'react';
 import { ArrowLeft, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -19,18 +20,18 @@ const Checkout = () => {
   const auth = useContext(AuthContext);
   const { toast } = useToast();
   const { cart, isLoading } = useCart();
-  const [paymentMethod, setPaymentMethod] = useState('CARD');
+  const [paymentMethod, setPaymentMethod] = useState('MTN');
   const [sameAsBilling, setSameAsBilling] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [paymentCode, setPaymentCode] = useState('');
   const [generatingCode, setGeneratingCode] = useState(false);
   const [currentOrderId, setCurrentOrderId] = useState<number | null>(null);
   
-  // Form data
+  // Form data for both authenticated and anonymous users
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
+    firstName: auth?.user?.name?.split(' ')[0] || '',
+    lastName: auth?.user?.name?.split(' ')[1] || '',
+    email: auth?.user?.email || '',
     location: '',
     streetLine: '',
     shippingAddress: ''
@@ -47,7 +48,7 @@ const Checkout = () => {
         setPaymentCode(response.data.paymentCode);
         toast({
           title: "Payment Code Generated",
-          description: "Your MoMo payment code is ready",
+          description: `Your MTN MoMo payment code is: ${response.data.paymentCode}`,
         });
       } catch (error: any) {
         toast({
@@ -73,10 +74,22 @@ const Checkout = () => {
       return;
     }
 
-    if (!formData.firstName || !formData.lastName || !formData.location || !formData.streetLine) {
+    // Validate required fields
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.location || !formData.streetLine) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid email address",
         variant: "destructive",
       });
       return;
@@ -88,41 +101,58 @@ const Checkout = () => {
         ? `${formData.streetLine}, ${formData.location}`
         : formData.shippingAddress || `${formData.streetLine}, ${formData.location}`;
 
-      // First, create the order
-      const orderResponse = await placeOrder({
+      const customerName = `${formData.firstName} ${formData.lastName}`;
+
+      // Get cart ID for anonymous users
+      const cartId = localStorage.getItem('anonymous_cart_id');
+
+      // Create the order
+      const orderData = {
         shippingAddress,
-        paymentMethod
-      });
-      
+        paymentMethod,
+        customerEmail: formData.email,
+        customerName,
+        ...(cartId && !auth?.user && { cartId: parseInt(cartId) })
+      };
+
+      console.log('🛒 Placing order with data:', orderData);
+
+      const orderResponse = await placeOrder(orderData);
       const orderId = orderResponse.data.id;
       setCurrentOrderId(orderId);
 
+      console.log('✅ Order created:', orderId);
+
       if (paymentMethod === 'MTN') {
-        // For MTN MoMo, generate payment code if not already generated
-        if (!paymentCode) {
-          const codeResponse = await generatePaymentCode(orderId);
-          setPaymentCode(codeResponse.data.paymentCode);
-        }
+        // Generate payment code (static: 078374886)
+        const codeResponse = await generatePaymentCode(orderId);
+        setPaymentCode(codeResponse.data.paymentCode);
         
         // Confirm client payment
         await confirmClientPayment(orderId);
         
         toast({
-          title: "Payment Submitted",
-          description: "Your payment has been submitted for admin confirmation",
+          title: "Order Placed Successfully!",
+          description: `Your MTN MoMo payment code is: ${codeResponse.data.paymentCode}. Please use this code to complete your payment. A confirmation email has been sent to ${formData.email}`,
         });
       } else {
         toast({
-          title: "Success",
-          description: "Order placed successfully!",
+          title: "Order Placed Successfully!",
+          description: `Your order will be delivered and you can pay upon delivery. A confirmation email has been sent to ${formData.email}`,
         });
+      }
+
+      // Clear cart for anonymous users
+      if (!auth?.user && cartId) {
+        localStorage.removeItem('anonymous_cart_id');
       }
 
       navigate('/order-complete');
     } catch (error: any) {
+      console.error('❌ Checkout error:', error);
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to place order",
+        description: error.response?.data?.message || "Failed to place order. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -138,22 +168,6 @@ const Checkout = () => {
     setSameAsBilling(checked === true);
   };
 
-  if (!auth?.user) {
-    return (
-      <div className="min-h-screen bg-white">
-        <Header />
-        <div className="container mx-auto px-4 py-8 text-center">
-          <h1 className="text-2xl font-bold mb-4">Please Login</h1>
-          <p className="mb-4">You need to be logged in to checkout.</p>
-          <Link to="/login">
-            <Button>Login</Button>
-          </Link>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white">
@@ -168,7 +182,7 @@ const Checkout = () => {
 
   const cartItems = cart?.items || [];
   const subtotal = cartItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-  const shippingTax = 12000; // Consistent delivery fee
+  const shippingTax = 12000; // Delivery fee
   const total = subtotal + shippingTax;
 
   return (
@@ -195,46 +209,48 @@ const Checkout = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Left Side - Forms */}
             <div className="space-y-8">
-              {/* Billing Address */}
+              {/* Customer Information */}
               <div>
                 <div className="flex items-center mb-4">
                   <span className="w-6 h-6 bg-black text-white rounded-full flex items-center justify-center text-sm mr-3">1</span>
-                  <h2 className="text-xl font-semibold">Billing Address</h2>
+                  <h2 className="text-xl font-semibold">Customer Information</h2>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4 mb-4">
-                  <Input 
-                    placeholder="First Name" 
-                    value={formData.firstName}
-                    onChange={(e) => handleInputChange('firstName', e.target.value)}
-                  />
-                  <Input 
-                    placeholder="Last Name" 
-                    value={formData.lastName}
-                    onChange={(e) => handleInputChange('lastName', e.target.value)}
-                  />
+                  <div>
+                    <Label htmlFor="firstName">First Name *</Label>
+                    <Input 
+                      id="firstName"
+                      placeholder="First Name" 
+                      value={formData.firstName}
+                      onChange={(e) => handleInputChange('firstName', e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="lastName">Last Name *</Label>
+                    <Input 
+                      id="lastName"
+                      placeholder="Last Name" 
+                      value={formData.lastName}
+                      onChange={(e) => handleInputChange('lastName', e.target.value)}
+                      required
+                    />
+                  </div>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="mb-4">
+                  <Label htmlFor="email">Email Address *</Label>
                   <Input 
-                    placeholder="Email" 
+                    id="email"
+                    placeholder="Email Address" 
                     type="email" 
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
+                    required
                   />
-                  <Input 
-                    placeholder="Location" 
-                    value={formData.location}
-                    onChange={(e) => handleInputChange('location', e.target.value)}
-                  />
+                  <p className="text-sm text-gray-500 mt-1">Order confirmation will be sent to this email</p>
                 </div>
-                
-                <Input 
-                  placeholder="Street Line" 
-                  className="mb-4" 
-                  value={formData.streetLine}
-                  onChange={(e) => handleInputChange('streetLine', e.target.value)}
-                />
               </div>
 
               {/* Shipping Address */}
@@ -244,22 +260,28 @@ const Checkout = () => {
                   <h2 className="text-xl font-semibold">Shipping Address</h2>
                 </div>
                 
-                <div className="flex items-center space-x-2 mb-4">
-                  <Checkbox 
-                    id="same-address" 
-                    checked={sameAsBilling}
-                    onCheckedChange={handleSameAsBillingChange}
-                  />
-                  <Label htmlFor="same-address" className="text-purple-600">Same as billing address</Label>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <Label htmlFor="location">Location *</Label>
+                    <Input 
+                      id="location"
+                      placeholder="City/District" 
+                      value={formData.location}
+                      onChange={(e) => handleInputChange('location', e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="streetLine">Street Address *</Label>
+                    <Input 
+                      id="streetLine"
+                      placeholder="Street Line" 
+                      value={formData.streetLine}
+                      onChange={(e) => handleInputChange('streetLine', e.target.value)}
+                      required
+                    />
+                  </div>
                 </div>
-
-                {!sameAsBilling && (
-                  <Input 
-                    placeholder="Shipping Address" 
-                    value={formData.shippingAddress}
-                    onChange={(e) => handleInputChange('shippingAddress', e.target.value)}
-                  />
-                )}
               </div>
 
               {/* Payment Method */}
@@ -269,89 +291,102 @@ const Checkout = () => {
                   <h2 className="text-xl font-semibold">Payment Method</h2>
                 </div>
                 
-                <RadioGroup value={paymentMethod} onValueChange={handlePaymentMethodChange} className="mb-4">
-                  <div className="flex items-center space-x-2">
-                    {/* <RadioGroupItem value="CARD" id="card" />
-                    <Label htmlFor="card">CARD</Label> */}
-                    <RadioGroupItem value="MTN" id="mtn" className="ml-8" />
-                    <Label htmlFor="mtn">MTN MOMO</Label>
+                <RadioGroup value={paymentMethod} onValueChange={handlePaymentMethodChange}>
+                  <div className="flex items-center space-x-2 p-4 border rounded-lg">
+                    <RadioGroupItem value="MTN" id="mtn" />
+                    <Label htmlFor="mtn" className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">MTN Mobile Money</span>
+                        <span className="text-sm text-gray-500">Pay via MTN MoMo</span>
+                      </div>
+                    </Label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2 p-4 border rounded-lg">
+                    <RadioGroupItem value="PAY_ON_DELIVERY" id="pod" />
+                    <Label htmlFor="pod" className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">Pay on Delivery</span>
+                        <span className="text-sm text-gray-500">Pay when you receive your order</span>
+                      </div>
+                    </Label>
                   </div>
                 </RadioGroup>
 
-                {/* MoMo Payment Code Display */}
-                {paymentMethod === 'MTN' && (
-                  <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                    <h3 className="font-semibold mb-2">MoMo Payment Code</h3>
-                    {generatingCode ? (
-                      <div className="flex items-center space-x-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-500"></div>
-                        <span className="text-gray-600">Generating payment code...</span>
-                      </div>
-                    ) : paymentCode ? (
-                      <div className="bg-white p-3 rounded border-2 border-green-500">
-                        <div className="text-lg font-bold text-green-600">{paymentCode}</div>
-                        <p className="text-sm text-gray-600 mt-1">
-                          Use this code to complete your MoMo payment
-                        </p>
-                      </div>
-                    ) : (
-                      <p className="text-gray-600">Payment code will be generated after placing order</p>
-                    )}
+                {paymentMethod === 'MTN' && paymentCode && (
+                  <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <h3 className="font-medium text-yellow-800 mb-2">MTN MoMo Payment Code</h3>
+                    <p className="text-2xl font-bold text-yellow-900 mb-2">{paymentCode}</p>
+                    <p className="text-sm text-yellow-700">Use this code to complete your MTN MoMo payment</p>
                   </div>
                 )}
-
-                <div className="flex items-center space-x-2 mt-4">
-                  <Shield className="w-4 h-4 text-green-500" />
-                  <span className="text-sm text-gray-600">Secure Payment</span>
-                </div>
-                
-                <p className="text-xs text-gray-500 mt-2">
-                  Your purchases are secured by industry-standard encryption
-                </p>
               </div>
-
-              <Button 
-                onClick={handleCompleteOrder}
-                disabled={processing}
-                className="w-full bg-purple-500 hover:bg-purple-600 text-white py-3 rounded-lg"
-              >
-                {processing ? "Processing..." : paymentMethod === 'MTN' ? "Submit Payment for Confirmation →" : "Complete Order →"}
-              </Button>
             </div>
 
             {/* Right Side - Order Summary */}
-            <div className="lg:pl-8">
-              <h2 className="text-xl font-semibold mb-6">Order Summary</h2>
-              
-              <div className="space-y-4 mb-6">
-                {cartItems.map((item) => (
-                  <div key={item.id} className="flex items-center space-x-4 p-4 border rounded-lg">
-                    <img 
-                      src={item.product.coverImage} 
-                      alt={item.product.name}
-                      className="w-16 h-16 object-cover rounded"
-                    />
-                    <div className="flex-1">
-                      <h3 className="font-medium">{item.product.name}</h3>
-                      <p className="text-gray-600">{item.product.price.toLocaleString()} Rwf</p>
+            <div className="space-y-6">
+              <div className="bg-gray-50 p-6 rounded-lg">
+                <h2 className="text-xl font-bold mb-4">Order Summary</h2>
+                
+                {/* Cart Items */}
+                <div className="space-y-4 mb-6">
+                  {cartItems.map((item) => (
+                    <div key={item.id} className="flex items-center space-x-4">
+                      <img 
+                        src={item.product.coverImage} 
+                        alt={item.product.name}
+                        className="w-16 h-16 object-cover rounded"
+                      />
+                      <div className="flex-1">
+                        <h3 className="font-medium">{item.product.name}</h3>
+                        <p className="text-sm text-gray-600">Qty: {item.quantity}</p>
+                      </div>
+                      <p className="font-semibold">{(item.product.price * item.quantity).toLocaleString()} Rwf</p>
                     </div>
-                    <span className="font-semibold">{item.quantity} ×</span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
 
-              <div className="space-y-3 pt-4 border-t">
-                <div className="flex justify-between">
-                  <span>Subtotal</span>
-                  <span>{subtotal.toLocaleString()} Rwf</span>
+                {/* Pricing */}
+                <div className="space-y-3 border-t pt-4">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Subtotal</span>
+                    <span className="font-semibold">{subtotal.toLocaleString()} Rwf</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Delivery Fee</span>
+                    <span className="font-semibold">{shippingTax.toLocaleString()} Rwf</span>
+                  </div>
+                  <div className="border-t pt-3 flex justify-between text-lg font-bold">
+                    <span>Total</span>
+                    <span>{total.toLocaleString()} Rwf</span>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span>Delivery Fee</span>
-                  <span>{shippingTax.toLocaleString()} Rwf</span>
-                </div>
-                <div className="flex justify-between font-bold text-lg pt-2 border-t">
-                  <span>Total</span>
-                  <span>{total.toLocaleString()} Rwf</span>
+
+                {/* Complete Order Button */}
+                <Button 
+                  onClick={handleCompleteOrder}
+                  disabled={processing || generatingCode}
+                  className="w-full mt-6 bg-purple-500 hover:bg-purple-600 text-white py-4 rounded-full"
+                >
+                  {processing ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Processing Order...</span>
+                    </div>
+                  ) : generatingCode ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Generating Payment Code...</span>
+                    </div>
+                  ) : (
+                    `Complete Order - ${total.toLocaleString()} Rwf`
+                  )}
+                </Button>
+
+                {/* Security Note */}
+                <div className="flex items-center space-x-2 mt-4 text-sm text-gray-600">
+                  <Shield className="w-4 h-4" />
+                  <span>Your information is secure and encrypted</span>
                 </div>
               </div>
             </div>

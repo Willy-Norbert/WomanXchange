@@ -1,3 +1,4 @@
+
 import api from './api';
 
 export interface CartItem {
@@ -20,16 +21,20 @@ export interface Cart {
 
 export interface Order {
   id: number;
-  userId: number;
+  userId?: number;
+  customerEmail?: string;
+  customerName?: string;
   shippingAddress: string;
   paymentMethod: string;
   totalPrice: number;
   isPaid: boolean;
   isDelivered: boolean;
   isConfirmedByAdmin?: boolean;
+  clientConfirmedPayment?: boolean;
   paidAt?: Date;
   deliveredAt?: Date;
   confirmedAt?: Date;
+  clientConfirmedAt?: Date;
   createdAt: string;
   user?: {
     id: number;
@@ -52,6 +57,9 @@ export interface Order {
 export interface PlaceOrderData {
   shippingAddress: string;
   paymentMethod: string;
+  customerEmail?: string;
+  customerName?: string;
+  cartId?: number;
 }
 
 export interface CreateOrderData {
@@ -77,19 +85,27 @@ export const getCart = (cartId?: number | null) => {
   return api.get<Cart>('/orders/cart', { params });
 };
 
-export const addToCart = (productId: number, quantity: number) => {
-  const data = { productId, quantity };
+export const addToCart = (productId: number, quantity: number, cartId?: number) => {
+  const data: any = { productId, quantity };
+  if (cartId) {
+    data.cartId = cartId;
+  }
   console.log('📤 API addToCart: Request data:', data);
   return api.post('/orders/cart', data);
 };
 
 export const removeFromCart = (productId: number, cartId?: number | null) => {
-  const data = { productId, ...(cartId && { cartId }) };
+  const data: any = { productId };
+  if (cartId) {
+    data.cartId = cartId;
+  }
   return api.delete('/orders/cart', { data });
 };
 
-export const placeOrder = (data: PlaceOrderData) =>
-  api.post<Order>('/orders', data);
+export const placeOrder = (data: PlaceOrderData) => {
+  console.log('📤 API placeOrder: Request data:', data);
+  return api.post<Order>('/orders', data);
+};
 
 // Create order by admin/seller
 export const createOrder = (data: CreateOrderData) =>
@@ -103,11 +119,6 @@ export const getAllOrders = async (userRole?: string, userId?: number) => {
   try {
     const response = await api.get<Order[]>('/orders/all');
     console.log('✅ getAllOrders API response:', response);
-    console.log('📊 Response structure:', {
-      hasData: !!response.data,
-      isArray: Array.isArray(response.data),
-      length: Array.isArray(response.data) ? response.data.length : 'not array'
-    });
     return response;
   } catch (error) {
     console.error('❌ getAllOrders API error:', error);

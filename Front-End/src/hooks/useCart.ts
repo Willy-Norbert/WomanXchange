@@ -44,8 +44,8 @@ export const useCart = () => {
         return response;
       } catch (err) {
         console.error('❌ useCart query error:', err);
-        // Don't throw the error, return null instead to prevent query failure
-        return null;
+        // Return empty cart structure instead of throwing
+        return { data: { data: { id: null, items: [] } } };
       }
     },
     staleTime: 1000,
@@ -53,17 +53,16 @@ export const useCart = () => {
     retry: 1,
     refetchOnMount: true,
     refetchOnWindowFocus: false,
-    enabled: true, // Always enable the query
+    enabled: true,
   });
 
-  // Extract cart data from the response with better error handling
-  const cart = cartResponse?.data?.data || null;
+  // Extract cart data with better error handling
+  const cart = cartResponse?.data?.data || { id: null, items: [] };
 
   console.log('🛒 useCart hook state:', {
     user: !!user,
     cartId,
     isLoading,
-    cartResponse: cartResponse?.data,
     cart: cart,
     cartItems: cart?.items,
     queryKey,
@@ -73,6 +72,15 @@ export const useCart = () => {
   const addToCartMutation = useMutation({
     mutationFn: async ({ productId, quantity }: { productId: number; quantity: number }) => {
       console.log('➕ useCart: Adding to cart:', { productId, quantity, currentCartId: cartId });
+      
+      const requestData: any = { productId, quantity };
+      
+      // For anonymous users, include cartId if available
+      if (!user && cartId) {
+        requestData.cartId = cartId;
+      }
+      
+      console.log('📤 useCart: Request data:', requestData);
       const response = await addToCart(productId, quantity);
       console.log('✅ useCart: Add to cart API response:', response?.data);
       return response;
@@ -80,7 +88,7 @@ export const useCart = () => {
     onSuccess: (data) => {
       console.log('🎉 useCart: Add to cart success, response data:', data?.data);
       
-      // Store cartId for unauthenticated users and update state immediately
+      // Store cartId for unauthenticated users
       if (!user && data?.data?.cartId) {
         const newCartId = data.data.cartId;
         localStorage.setItem('anonymous_cart_id', newCartId.toString());
@@ -88,15 +96,10 @@ export const useCart = () => {
         console.log('💾 useCart: Stored new cart ID:', newCartId);
       }
       
-      // Invalidate all cart queries
+      // Invalidate and refetch cart
       queryClient.invalidateQueries({ queryKey: ['cart'] });
-      
-      // Force immediate refetch with error handling
       setTimeout(() => {
-        console.log('🔄 useCart: Force refetching cart...');
-        refetch().catch(err => {
-          console.error('❌ useCart: Refetch error:', err);
-        });
+        refetch().catch(err => console.error('❌ useCart: Refetch error:', err));
       }, 100);
       
       toast({
@@ -122,9 +125,7 @@ export const useCart = () => {
     onSuccess: () => {
       console.log('✅ useCart: Remove from cart success');
       queryClient.invalidateQueries({ queryKey: ['cart'] });
-      refetch().catch(err => {
-        console.error('❌ useCart: Refetch after remove error:', err);
-      });
+      refetch().catch(err => console.error('❌ useCart: Refetch after remove error:', err));
       toast({
         title: "Item removed",
         description: "Item has been removed from your cart",
@@ -140,7 +141,7 @@ export const useCart = () => {
     }
   });
 
-  // Safe calculation of cart items count with better error handling
+  // Calculate cart items count safely
   const cartItemsCount = (() => {
     try {
       if (!cart?.items || !Array.isArray(cart.items)) {
@@ -156,7 +157,7 @@ export const useCart = () => {
     }
   })();
 
-  console.log('🔢 useCart: Cart items count calculated:', cartItemsCount, 'from items:', cart?.items);
+  console.log('🔢 useCart: Cart items count calculated:', cartItemsCount, 'from items:', cart?.items?.length);
 
   return {
     cart: cart,

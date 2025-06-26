@@ -6,77 +6,17 @@ import api from '@/api/api';
 export const useDashboardData = (userRole?: string) => {
   console.log('useDashboardData called with role:', userRole);
   
-  // Only fetch admin data if user is admin
   const isAdmin = userRole?.toLowerCase() === 'admin';
   const isSeller = userRole?.toLowerCase() === 'seller';
   
-  const { data: ordersData, isLoading: ordersLoading, error: ordersError } = useQuery({
-    queryKey: ['dashboard-orders', userRole],
-    queryFn: async () => {
-      console.log('Fetching orders for role:', userRole);
-      try {
-        const result = await getAllOrders();
-        console.log('Dashboard orders fetched:', result);
-        return result;
-      } catch (error) {
-        console.error('Dashboard orders fetch error:', error);
-        throw error;
-      }
-    },
-    enabled: isAdmin || isSeller,
-    retry: 2,
-    staleTime: 30000,
-  });
-
-  const { data: usersData, isLoading: usersLoading, error: usersError } = useQuery({
-    queryKey: ['dashboard-users'],
-    queryFn: async () => {
-      console.log('Fetching users data');
-      try {
-        const result = await api.get('/auth/users');
-        console.log('Dashboard users fetched:', result);
-        return result;
-      } catch (error) {
-        console.error('Dashboard users fetch error:', error);
-        throw error;
-      }
-    },
-    enabled: isAdmin,
-    retry: 2,
-    staleTime: 30000,
-  });
-
-  const { data: productsData, isLoading: productsLoading, error: productsError } = useQuery({
-    queryKey: ['dashboard-products', userRole],
-    queryFn: async () => {
-      console.log('Fetching products data');
-      try {
-        const result = await api.get('/products');
-        console.log('Dashboard products fetched:', result);
-        return result;
-      } catch (error) {
-        console.error('Dashboard products fetch error:', error);
-        throw error;
-      }
-    },
-    enabled: isAdmin || isSeller,
-    retry: 2,
-    staleTime: 30000,
-  });
-
-  // For sellers, fetch their specific data
+  // For sellers, use seller-specific endpoints
   const { data: sellerStatsData, isLoading: sellerStatsLoading, error: sellerStatsError } = useQuery({
     queryKey: ['seller-stats'],
     queryFn: async () => {
-      console.log('Fetching seller stats');
-      try {
-        const result = await api.get('/sellers/my-stats');
-        console.log('Seller stats fetched:', result);
-        return result;
-      } catch (error) {
-        console.error('Seller stats fetch error:', error);
-        throw error;
-      }
+      console.log('🔍 Fetching seller stats');
+      const result = await api.get('/sellers/my-stats');
+      console.log('📊 Seller stats received:', result.data);
+      return result;
     },
     enabled: isSeller,
     retry: 2,
@@ -86,15 +26,10 @@ export const useDashboardData = (userRole?: string) => {
   const { data: sellerOrdersData, isLoading: sellerOrdersLoading, error: sellerOrdersError } = useQuery({
     queryKey: ['seller-orders'],
     queryFn: async () => {
-      console.log('Fetching seller orders');
-      try {
-        const result = await api.get('/sellers/my-orders');
-        console.log('Seller orders fetched:', result);
-        return result;
-      } catch (error) {
-        console.error('Seller orders fetch error:', error);
-        throw error;
-      }
+      console.log('🔍 Fetching seller orders');
+      const result = await api.get('/sellers/my-orders');
+      console.log('📋 Seller orders received:', result.data);
+      return result;
     },
     enabled: isSeller,
     retry: 2,
@@ -104,15 +39,10 @@ export const useDashboardData = (userRole?: string) => {
   const { data: sellerProductsData, isLoading: sellerProductsLoading, error: sellerProductsError } = useQuery({
     queryKey: ['seller-products'],
     queryFn: async () => {
-      console.log('Fetching seller products');
-      try {
-        const result = await api.get('/sellers/my-products');
-        console.log('Seller products fetched:', result);
-        return result;
-      } catch (error) {
-        console.error('Seller products fetch error:', error);
-        throw error;
-      }
+      console.log('🔍 Fetching seller products');
+      const result = await api.get('/sellers/my-products');
+      console.log('📦 Seller products received:', result.data);
+      return result;
     },
     enabled: isSeller,
     retry: 2,
@@ -122,110 +52,146 @@ export const useDashboardData = (userRole?: string) => {
   const { data: sellerCustomersData, isLoading: sellerCustomersLoading, error: sellerCustomersError } = useQuery({
     queryKey: ['seller-customers'],
     queryFn: async () => {
-      console.log('Fetching seller customers');
-      try {
-        const result = await api.get('/sellers/my-customers');
-        console.log('Seller customers fetched:', result);
-        return result;
-      } catch (error) {
-        console.error('Seller customers fetch error:', error);
-        throw error;
-      }
+      console.log('🔍 Fetching seller customers');
+      const result = await api.get('/sellers/my-customers');
+      console.log('👥 Seller customers received:', result.data);
+      return result;
     },
     enabled: isSeller,
     retry: 2,
     staleTime: 30000,
   });
 
+  // Admin data queries
+  const { data: ordersData, isLoading: ordersLoading, error: ordersError } = useQuery({
+    queryKey: ['admin-orders'],
+    queryFn: async () => {
+      console.log('🔍 Fetching admin orders');
+      const result = await getAllOrders();
+      console.log('📋 Admin orders received:', result);
+      return result;
+    },
+    enabled: isAdmin,
+    retry: 2,
+    staleTime: 30000,
+  });
+
+  const { data: usersData, isLoading: usersLoading, error: usersError } = useQuery({
+    queryKey: ['admin-users'],
+    queryFn: async () => {
+      console.log('🔍 Fetching admin users');
+      const result = await api.get('/auth/users');
+      console.log('👥 Admin users received:', result);
+      return result;
+    },
+    enabled: isAdmin,
+    retry: 2,
+    staleTime: 30000,
+  });
+
+  const { data: productsData, isLoading: productsLoading, error: productsError } = useQuery({
+    queryKey: ['admin-products'],
+    queryFn: async () => {
+      console.log('🔍 Fetching admin products');
+      const result = await api.get('/products');
+      console.log('📦 Admin products received:', result);
+      return result;
+    },
+    enabled: isAdmin,
+    retry: 2,
+    staleTime: 30000,
+  });
+
   if (isSeller) {
-    // Return seller-specific data with proper number calculation
-    const sellerStats = sellerStatsData?.data || { totalProducts: 0, totalOrders: 0, totalRevenue: 0, totalCustomers: 0 };
+    // Return seller-specific data
+    const sellerStats = sellerStatsData?.data || { 
+      totalProducts: 0, 
+      totalOrders: 0, 
+      totalRevenue: 0, 
+      paidRevenue: 0,
+      totalCustomers: 0 
+    };
     const sellerOrders = Array.isArray(sellerOrdersData?.data) ? sellerOrdersData.data : [];
     const sellerProducts = Array.isArray(sellerProductsData?.data) ? sellerProductsData.data : [];
     const sellerCustomers = Array.isArray(sellerCustomersData?.data) ? sellerCustomersData.data : [];
 
-    console.log('Seller data processed:', { 
-      sellerStats, 
-      sellerOrders: sellerOrders.length, 
-      sellerProducts: sellerProducts.length, 
-      sellerCustomers: sellerCustomers.length,
-      errors: {
-        stats: sellerStatsError,
-        orders: sellerOrdersError,
-        products: sellerProductsError,
-        customers: sellerCustomersError
-      }
+    console.log('🔄 Processing seller data:', { 
+      stats: sellerStats,
+      ordersCount: sellerOrders.length, 
+      productsCount: sellerProducts.length, 
+      customersCount: sellerCustomers.length,
     });
-
-    // Calculate revenue properly with Number() to ensure addition not concatenation
-    const totalRevenue = Number(sellerStats.totalRevenue) || 0;
-    const paidRevenue = sellerOrders.filter((order: any) => order.isPaid).reduce((sum: number, order: any) => {
-      return sum + Number(order.totalPrice || 0);
-    }, 0);
 
     const hasSellerError = sellerStatsError || sellerOrdersError || sellerProductsError || sellerCustomersError;
     const isSellerLoading = sellerStatsLoading || sellerOrdersLoading || sellerProductsLoading || sellerCustomersLoading;
 
-    if (hasSellerError) {
-      console.error('Seller data fetch errors:', {
-        stats: sellerStatsError,
-        orders: sellerOrdersError,
-        products: sellerProductsError,
-        customers: sellerCustomersError,
-      });
-    }
+    // Calculate seller metrics
+    const totalRevenue = Number(sellerStats.totalRevenue) || 0;
+    const paidRevenue = Number(sellerStats.paidRevenue) || 0;
+    const totalOrders = Number(sellerStats.totalOrders) || 0;
+    const totalProducts = Number(sellerStats.totalProducts) || 0;
+    const totalCustomers = Number(sellerStats.totalCustomers) || 0;
+
+    // Today's orders
+    const dailyOrders = sellerOrders.filter((order: any) => {
+      try {
+        const orderDate = new Date(order.createdAt);
+        const today = new Date();
+        return orderDate.toDateString() === today.toDateString();
+      } catch {
+        return false;
+      }
+    }).length;
 
     return {
+      // Main metrics
       totalSales: Math.round(totalRevenue / 1000),
-      dailySales: sellerOrders.filter((order: any) => {
-        try {
-          const orderDate = new Date(order.createdAt);
-          const today = new Date();
-          return orderDate.toDateString() === today.toDateString();
-        } catch {
-          return false;
-        }
-      }).length,
-      dailyUsers: sellerCustomers.length,
-      totalProducts: Number(sellerStats.totalProducts) || 0,
-      recentOrders: sellerOrders.slice(0, 10),
       totalRevenue,
       paidRevenue,
-      totalOrders: Number(sellerStats.totalOrders) || 0,
-      totalUsers: Number(sellerStats.totalCustomers) || 0,
-      buyers: Number(sellerStats.totalCustomers) || 0,
+      totalOrders,
+      totalProducts,
+      totalUsers: totalCustomers,
+      
+      // Daily metrics
+      dailySales: dailyOrders,
+      dailyUsers: totalCustomers,
+      
+      // User breakdown (seller-specific)
+      buyers: totalCustomers,
       sellers: 0,
       admins: 0,
+      
+      // Recent data
+      recentOrders: sellerOrders.slice(0, 10),
+      
+      // Chart data
       userRoleData: [
-        { name: 'My Customers', value: Number(sellerStats.totalCustomers) || 0 }
+        { name: 'My Customers', value: totalCustomers }
       ],
       monthlyOrdersData: [],
       paymentStatusData: [
         { name: 'Paid', value: sellerOrders.filter((order: any) => order.isPaid).length },
         { name: 'Pending', value: sellerOrders.filter((order: any) => !order.isPaid).length }
       ],
+      
+      // Loading and error states
       loading: isSellerLoading,
       error: hasSellerError ? 'Failed to load seller data' : null
     };
   }
 
-  // Admin data with proper number calculation
+  // Admin data processing
   const orders = Array.isArray(ordersData?.data) ? ordersData.data : [];
   const users = Array.isArray(usersData?.data) ? usersData.data : [];
   const products = Array.isArray(productsData?.data) ? productsData.data : [];
 
-  console.log('Admin data processed:', { 
-    orders: orders.length, 
-    users: users.length, 
-    products: products.length,
-    errors: {
-      orders: ordersError,
-      users: usersError,
-      products: productsError
-    }
+  console.log('🔄 Processing admin data:', { 
+    ordersCount: orders.length, 
+    usersCount: users.length, 
+    productsCount: products.length,
   });
 
-  // Calculate statistics with proper number handling
+  // Calculate admin statistics
   const totalRevenue = orders.reduce((sum: number, order: any) => {
     return sum + Number(order.totalPrice || 0);
   }, 0);
@@ -254,7 +220,7 @@ export const useDashboardData = (userRole?: string) => {
   const totalProducts = products.length;
   const recentOrders = orders.slice(0, 10);
 
-  // Chart data
+  // Chart data for admin
   const userRoleData = [
     { name: 'Buyers', value: buyers.length },
     { name: 'Sellers', value: sellers.length },
@@ -292,15 +258,13 @@ export const useDashboardData = (userRole?: string) => {
   const loading = ordersLoading || usersLoading || productsLoading;
   const error = ordersError || usersError || productsError;
 
-  console.log('Final admin dashboard data:', {
+  console.log('📊 Final admin dashboard data:', {
     totalSales,
     dailySales,
     totalOrders: orders.length,
     totalUsers: users.length,
     totalRevenue,
     paidRevenue,
-    loading,
-    error: error ? 'Failed to load dashboard data' : null
   });
 
   return {

@@ -1,641 +1,686 @@
-
 import asyncHandler from 'express-async-handler';
 import prisma from '../prismaClient.js';
 import { notify } from '../utils/notify.js';
+import nodemailer from 'nodemailer';
 
-// Get Order by ID (Admin/Seller)
-export const getOrderById = asyncHandler(async (req, res) => {
-  const orderId = parseInt(req.params.id);
+// Email configuration
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: 'byiringirourban20@gmail.com',
+    pass: 'zljw hslg rxpb mqpu'
+  }
+});
 
-  console.log('Getting order by ID:', orderId, 'for user role:', req.user?.role);
+// Send order confirmation email
+const sendOrderConfirmationEmail = async (email, orderData) => {
+  try {
+    const mailOptions = {
+      from: 'byiringirourban20@gmail.com',
+      to: email,
+      subject: `Order Confirmation #${orderData.id}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #7c3aed;">Order Confirmation</h2>
+          <p>Thank you for your order! Here are the details:</p>
+          
+          <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3>Order #${orderData.id}</h3>
+            <p><strong>Total Amount:</strong> ${orderData.totalPrice.toLocaleString()} Rwf</p>
+            <p><strong>Payment Method:</strong> ${orderData.paymentMethod}</p>
+            <p><strong>Shipping Address:</strong> ${orderData.shippingAddress}</p>
+            <p><strong>Order Date:</strong> ${new Date(orderData.createdAt).toLocaleDateString()}</p>
+          </div>
 
-  let whereClause = { id: orderId };
-  
-  // If seller, only get orders for their products
-  if (req.user.role.toLowerCase() === 'seller') {
-    whereClause = {
-      id: orderId,
-      items: {
-        some: {
-          product: {
-            createdById: req.user.id
-          }
-        }
-      }
+          <div style="margin: 20px 0;">
+            <h3>Order Items:</h3>
+            ${orderData.items.map(item => `
+              <div style="border-bottom: 1px solid #e5e7eb; padding: 10px 0;">
+                <p><strong>${item.product.name}</strong></p>
+                <p>Quantity: ${item.quantity} | Price: ${item.price.toLocaleString()} Rwf</p>
+              </div>
+            `).join('')}
+          </div>
+
+          ${orderData.paymentMethod === 'MTN' ? `
+            <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0;">
+              <h3 style="color: #d97706;">MTN MoMo Payment</h3>
+              <p><strong>Payment Code:</strong> 078374886</p>
+              <p>Please use this code to complete your payment via MTN MoMo.</p>
+            </div>
+          ` : ''}
+
+          <p>Thank you for shopping with us!</p>
+        </div>
+      `
     };
+
+    await transporter.sendMail(mailOptions);
+    console.log('✅ Order confirmation email sent to:', email);
+  } catch (error) {
+    console.error('❌ Error sending email:', error);
   }
+};
 
-  const order = await prisma.order.findFirst({
-    where: whereClause,
-    include: {
-      user: { select: { id: true, name: true, email: true } },
-      items: { 
-        include: { 
-          product: {
-            include: {
-              createdBy: {
-                select: {
-                  id: true,
-                  name: true,
-                  businessName: true
-                }
-              }
-            }
-          }
-        } 
-      }
-    }
-  });
-
-  if (!order) {
-    res.status(404);
-    throw new Error('Order not found');
-  }
-
-  console.log('Order found:', order.id);
-  res.json(order);
-});
-
-// Add or Update Product in Cart (no authentication required)
-export const addToCart = asyncHandler(async (req, res) => {
-  const { productId, quantity } = req.body;
-  
-  console.log('🛒 addToCart called with:', { productId, quantity, hasUser: !!req.user });
-  
-  const product = await prisma.product.findUnique({ where: { id: productId } });
-  if (!product) {
-    res.status(404);
-    throw new Error('Product not found');
-  }
-
-  let cart;
-  
-  // Check if user is logged in
-  if (req.user) {
-    // Logged in user - find or create user cart
-    const userId = req.user.id;
-    console.log('👤 Handling authenticated user cart for userId:', userId);
-    cart = await prisma.cart.findUnique({ where: { userId } });
-    if (!cart) {
-      cart = await prisma.cart.create({ data: { userId } });
-      console.log('📦 Created new user cart:', cart.id);
-    }
-  } else {
-    // Unauthenticated user - create anonymous cart
-    console.log('👻 Creating anonymous cart for unauthenticated user');
-    cart = await prisma.cart.create({ data: {} });
-    console.log('📦 Created anonymous cart with ID:', cart.id);
-  }
-
-  const existingItem = await prisma.cartItem.findFirst({
-    where: { cartId: cart.id, productId }
-  });
-
-  if (existingItem) {
-    await prisma.cartItem.update({
-      where: { id: existingItem.id },
-      data: { quantity: existingItem.quantity + quantity }
-    });
-    console.log('✅ Updated existing cart item quantity');
-  } else {
-    await prisma.cartItem.create({
-      data: { cartId: cart.id, productId, quantity }
-    });
-    console.log('✅ Created new cart item');
-  }
-
-  const updatedCart = await prisma.cart.findUnique({
-    where: { id: cart.id },
-    include: { 
-      items: { 
-        include: { 
-          product: {
-            select: {
-              id: true,
-              name: true,
-              price: true,
-              coverImage: true,
-              description: true,
-              stock: true
-            }
-          }
-        } 
-      } 
-    }
-  });
-
-  console.log('📦 Returning updated cart with cartId:', cart.id, 'items count:', updatedCart?.items?.length);
-  res.json({ data: updatedCart, cartId: cart.id });
-});
-
-// Remove Product from Cart (no authentication required)
-export const removeFromCart = asyncHandler(async (req, res) => {
-  const { productId, cartId } = req.body;
-
-  let cart;
-  if (req.user) {
-    // Authenticated user
-    const userId = req.user.id;
-    cart = await prisma.cart.findUnique({ where: { userId } });
-  } else {
-    // Unauthenticated user - use cartId from request
-    if (!cartId) {
-      res.status(400);
-      throw new Error('Cart ID required for unauthenticated users');
-    }
-    cart = await prisma.cart.findUnique({ where: { id: cartId } });
-  }
-
-  if (!cart) {
-    res.status(404);
-    throw new Error('Cart not found');
-  }
-
-  await prisma.cartItem.deleteMany({
-    where: { cartId: cart.id, productId }
-  });
-
-  const updatedCart = await prisma.cart.findUnique({
-    where: { id: cart.id },
-    include: { 
-      items: { 
-        include: { 
-          product: {
-            select: {
-              id: true,
-              name: true,
-              price: true,
-              coverImage: true,
-              description: true,
-              stock: true
-            }
-          }
-        } 
-      } 
-    }
-  });
-
-  res.json({ data: updatedCart, cartId: cart.id });
-});
-
-// Get User Cart (no authentication required)
+// Get or create cart for user
 export const getCart = asyncHandler(async (req, res) => {
   const { cartId } = req.query;
-  console.log('🔍 getCart called with hasUser:', !!req.user, 'cartId:', cartId);
+  const userId = req.user?.id;
   
-  let cart;
-  if (req.user) {
-    // Authenticated user
-    const userId = req.user.id;
-    console.log('👤 Getting authenticated user cart for userId:', userId);
-    cart = await prisma.cart.findUnique({
-      where: { userId },
-      include: { 
-        items: { 
-          include: { 
-            product: {
-              select: {
-                id: true,
-                name: true,
-                price: true,
-                coverImage: true,
-                description: true,
-                stock: true
-              }
-            }
-          } 
-        } 
-      }
-    });
-  } else {
-    // Unauthenticated user
-    if (cartId) {
-      const parsedCartId = parseInt(cartId);
-      console.log('👻 Getting anonymous cart with ID:', parsedCartId);
-      cart = await prisma.cart.findUnique({
-        where: { id: parsedCartId },
-        include: { 
-          items: { 
-            include: { 
+  console.log('🛒 getCart called - userId:', userId, 'cartId:', cartId);
+
+  try {
+    let cart;
+
+    if (userId) {
+      // For authenticated users
+      cart = await prisma.cart.findFirst({
+        where: { userId },
+        include: {
+          items: {
+            include: {
               product: {
                 select: {
                   id: true,
                   name: true,
                   price: true,
-                  coverImage: true,
-                  description: true,
-                  stock: true
+                  coverImage: true
                 }
               }
-            } 
-          } 
-        }
-      });
-    } else {
-      console.log('👻 No cartId provided for anonymous user');
-    }
-  }
-
-  console.log('📦 Returning cart data with items:', cart?.items?.length || 0, 'cartId:', cart?.id);
-  res.json({ data: cart || { items: [] }, cartId: cart?.id });
-});
-
-// Place an Order (from Cart) - requires authentication
-export const placeOrder = asyncHandler(async (req, res) => {
-  const userId = req.user.id;
-  const { shippingAddress, paymentMethod } = req.body;
-
-  console.log('Placing order for user:', userId);
-
-  const cart = await prisma.cart.findUnique({
-    where: { userId },
-    include: { items: { include: { product: true } } }
-  });
-
-  if (!cart || cart.items.length === 0) {
-    res.status(400);
-    throw new Error('Cart is empty');
-  }
-
-  const orderItemsData = cart.items.map(item => ({
-    productId: item.productId,
-    quantity: item.quantity,
-    price: item.product.price,
-  }));
-
-  const totalPrice = orderItemsData.reduce(
-    (acc, item) => acc + item.price * item.quantity, 0
-  );
-
-  const order = await prisma.order.create({
-    data: {
-      userId,
-      shippingAddress,
-      paymentMethod,
-      totalPrice,
-      isPaid: false,
-      items: {
-        create: orderItemsData
-      }
-    },
-    include: {
-      items: { include: { product: true } },
-      user: { select: { id: true, name: true, email: true } }
-    }
-  });
-
-  await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
-
-  console.log('Order created successfully:', order.id);
-
-  await notify({
-    userId,
-    message: `New order placed by user ${req.user.name}.`,
-    recipientRole: 'ADMIN',
-    relatedOrderId: order.id,
-  });
-
-  res.status(201).json(order);
-});
-
-// Create Order by Admin/Seller
-export const createOrder = asyncHandler(async (req, res) => {
-  const { userId, shippingAddress, paymentMethod, items, totalPrice, shippingPrice = 0 } = req.body;
-
-  console.log('Creating order for user:', userId, 'by:', req.user.role);
-
-  // Validate user exists
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) {
-    res.status(404);
-    throw new Error('User not found');
-  }
-
-  // If seller, validate they can only create orders with their products
-  if (req.user.role.toLowerCase() === 'seller') {
-    const productIds = items.map(item => item.productId);
-    const products = await prisma.product.findMany({
-      where: { 
-        id: { in: productIds },
-        createdById: req.user.id
-      }
-    });
-    
-    if (products.length !== productIds.length) {
-      res.status(403);
-      throw new Error('You can only create orders with your own products');
-    }
-  }
-
-  // Generate order number
-  const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-
-  const order = await prisma.order.create({
-    data: {
-      userId,
-      orderNumber,
-      shippingAddress,
-      paymentMethod,
-      totalPrice,
-      shippingPrice: shippingPrice || 0,
-      isPaid: false, // Never automatically mark as paid
-      items: {
-        create: items
-      }
-    },
-    include: {
-      items: { include: { product: true } },
-      user: { select: { id: true, name: true, email: true } }
-    }
-  });
-
-  console.log('Order created successfully by admin/seller:', order.id);
-
-  await notify({
-    userId: req.user.id,
-    title: 'Order Created',
-    message: `Order #${order.orderNumber} created by ${req.user.role} for user ${user.name}.`,
-    type: 'SUCCESS',
-    recipientRole: 'BUYER',
-    relatedOrderId: order.id,
-  });
-
-  res.status(201).json(order);
-});
-
-// Get User Orders
-export const getUserOrders = asyncHandler(async (req, res) => {
-  const userId = req.user.id;
-
-  console.log('Getting orders for user:', userId);
-
-  const orders = await prisma.order.findMany({
-    where: { userId },
-    include: {
-      items: { include: { product: true } },
-      user: { select: { id: true, name: true, email: true } }
-    },
-    orderBy: { createdAt: 'desc' }
-  });
-
-  console.log('User orders found:', orders.length);
-  res.json(orders);
-});
-
-// Admin: Get All Orders
-export const getAllOrders = asyncHandler(async (req, res) => {
-  console.log('🔍 getAllOrders called - user role:', req.user?.role, 'user ID:', req.user?.id);
-  
-  let whereClause = {};
-  
-  // If seller, only get orders for their products
-  if (req.user.role.toLowerCase() === 'seller') {
-    console.log('🏪 Seller filtering orders for their products');
-    whereClause = {
-      items: {
-        some: {
-          product: {
-            createdById: req.user.id
+            }
           }
         }
-      }
-    };
-  } else {
-    console.log('👑 Admin getting all orders');
-  }
-  
-  try {
-    console.log('📊 Prisma query whereClause:', JSON.stringify(whereClause, null, 2));
-    
-    const orders = await prisma.order.findMany({
-      where: whereClause,
-      include: {
-        user: { select: { id: true, name: true, email: true } },
-        items: { 
-          include: { 
-            product: {
+      });
+
+      if (!cart) {
+        cart = await prisma.cart.create({
+          data: { userId },
+          include: {
+            items: {
               include: {
-                createdBy: {
+                product: {
                   select: {
                     id: true,
                     name: true,
-                    businessName: true
+                    price: true,
+                    coverImage: true
                   }
                 }
               }
             }
-          } 
+          }
+        });
+        console.log('🆕 Created new cart for user:', userId);
+      }
+    } else if (cartId) {
+      // For anonymous users with existing cart
+      cart = await prisma.cart.findUnique({
+        where: { id: parseInt(cartId) },
+        include: {
+          items: {
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  price: true,
+                  coverImage: true
+                }
+              }
+            }
+          }
         }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-    
-    console.log('✅ Orders found:', orders.length);
-    console.log('📋 Order IDs:', orders.map(o => o.id));
-    
-    res.json(orders);
+      });
+    }
+
+    if (!cart) {
+      // Create anonymous cart
+      cart = await prisma.cart.create({
+        data: { userId: null },
+        include: {
+          items: {
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  price: true,
+                  coverImage: true
+                }
+              }
+            }
+          }
+        }
+      });
+      console.log('🆕 Created new anonymous cart:', cart.id);
+    }
+
+    console.log('📦 Returning cart with items:', cart.items.length);
+    res.json({ data: cart });
   } catch (error) {
-    console.error('❌ Error in getAllOrders:', error);
-    throw error;
+    console.error('❌ Error getting cart:', error);
+    res.status(500).json({ message: 'Failed to get cart' });
   }
 });
 
-// Update Order (Admin/Seller)
-export const updateOrder = asyncHandler(async (req, res) => {
-  const orderId = parseInt(req.params.id);
-  const { userId, shippingAddress, paymentMethod, items, totalPrice } = req.body;
-
-  console.log('Updating order:', orderId);
-
-  let whereClause = { id: orderId };
+// Add item to cart
+export const addToCart = asyncHandler(async (req, res) => {
+  const { productId, quantity = 1, cartId } = req.body;
+  const userId = req.user?.id;
   
-  // If seller, only update orders for their products
-  if (req.user.role.toLowerCase() === 'seller') {
-    whereClause = {
-      id: orderId,
-      items: {
-        some: {
-          product: {
-            createdById: req.user.id
+  console.log('➕ addToCart called:', { userId, productId, quantity, cartId });
+
+  try {
+    let cart;
+
+    if (userId) {
+      // For authenticated users
+      cart = await prisma.cart.findFirst({
+        where: { userId }
+      });
+
+      if (!cart) {
+        cart = await prisma.cart.create({
+          data: { userId }
+        });
+      }
+    } else if (cartId) {
+      // For anonymous users with existing cart
+      cart = await prisma.cart.findUnique({
+        where: { id: parseInt(cartId) }
+      });
+    }
+
+    if (!cart) {
+      // Create new anonymous cart
+      cart = await prisma.cart.create({
+        data: { userId: null }
+      });
+    }
+
+    // Check if item already exists in cart
+    const existingItem = await prisma.cartItem.findFirst({
+      where: {
+        cartId: cart.id,
+        productId: parseInt(productId)
+      }
+    });
+
+    if (existingItem) {
+      // Update quantity
+      await prisma.cartItem.update({
+        where: { id: existingItem.id },
+        data: { quantity: existingItem.quantity + parseInt(quantity) }
+      });
+    } else {
+      // Add new item
+      await prisma.cartItem.create({
+        data: {
+          cartId: cart.id,
+          productId: parseInt(productId),
+          quantity: parseInt(quantity)
+        }
+      });
+    }
+
+    console.log('✅ Item added to cart:', cart.id);
+    res.json({ 
+      message: 'Item added to cart',
+      cartId: cart.id
+    });
+  } catch (error) {
+    console.error('❌ Error adding to cart:', error);
+    res.status(500).json({ message: 'Failed to add item to cart' });
+  }
+});
+
+// Remove item from cart
+export const removeFromCart = asyncHandler(async (req, res) => {
+  const { productId, cartId } = req.body;
+  const userId = req.user?.id;
+  
+  console.log('➖ removeFromCart called:', { userId, productId, cartId });
+
+  try {
+    let cart;
+
+    if (userId) {
+      cart = await prisma.cart.findFirst({
+        where: { userId }
+      });
+    } else if (cartId) {
+      cart = await prisma.cart.findUnique({
+        where: { id: parseInt(cartId) }
+      });
+    }
+
+    if (!cart) {
+      return res.status(404).json({ message: 'Cart not found' });
+    }
+
+    await prisma.cartItem.deleteMany({
+      where: {
+        cartId: cart.id,
+        productId: parseInt(productId)
+      }
+    });
+
+    console.log('✅ Item removed from cart');
+    res.json({ message: 'Item removed from cart' });
+  } catch (error) {
+    console.error('❌ Error removing from cart:', error);
+    res.status(500).json({ message: 'Failed to remove item from cart' });
+  }
+});
+
+// Place order (works for both authenticated and anonymous users)
+export const placeOrder = asyncHandler(async (req, res) => {
+  const { shippingAddress, paymentMethod, customerEmail, customerName } = req.body;
+  const userId = req.user?.id;
+  
+  console.log('📝 placeOrder called:', { userId, shippingAddress, paymentMethod, customerEmail });
+
+  try {
+    let cart;
+
+    if (userId) {
+      cart = await prisma.cart.findFirst({
+        where: { userId },
+        include: {
+          items: {
+            include: {
+              product: true
+            }
           }
         }
+      });
+    } else {
+      // For anonymous users, get cart from session/localStorage
+      const { cartId } = req.body;
+      if (cartId) {
+        cart = await prisma.cart.findUnique({
+          where: { id: parseInt(cartId) },
+          include: {
+            items: {
+              include: {
+                product: true
+              }
+            }
+          }
+        });
       }
-    };
+    }
+
+    if (!cart || cart.items.length === 0) {
+      return res.status(400).json({ message: 'Cart is empty' });
+    }
+
+    // Calculate total price
+    const totalPrice = cart.items.reduce((sum, item) => {
+      return sum + (item.product.price * item.quantity);
+    }, 0);
+
+    // Create order
+    const order = await prisma.order.create({
+      data: {
+        userId: userId || null,
+        shippingAddress,
+        paymentMethod,
+        totalPrice,
+        isPaid: false,
+        isDelivered: false,
+        customerEmail: customerEmail || req.user?.email,
+        customerName: customerName || req.user?.name,
+        items: {
+          create: cart.items.map(item => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            price: item.product.price
+          }))
+        }
+      },
+      include: {
+        items: {
+          include: {
+            product: true
+          }
+        },
+        user: true
+      }
+    });
+
+    // Clear cart after order
+    await prisma.cartItem.deleteMany({
+      where: { cartId: cart.id }
+    });
+
+    // Send confirmation email
+    const emailAddress = customerEmail || req.user?.email;
+    if (emailAddress) {
+      await sendOrderConfirmationEmail(emailAddress, order);
+    }
+
+    // Notify admin
+    await notify({
+      userId: null,
+      message: `New order #${order.id} placed by ${order.customerName || 'Anonymous'}`,
+      recipientRole: 'ADMIN',
+      relatedOrderId: order.id,
+    });
+
+    console.log('✅ Order placed successfully:', order.id);
+    res.status(201).json(order);
+  } catch (error) {
+    console.error('❌ Error placing order:', error);
+    res.status(500).json({ message: 'Failed to place order' });
   }
+});
 
-  const order = await prisma.order.findFirst({
-    where: whereClause,
-    include: { user: true, items: true }
-  });
-
-  if (!order) {
-    res.status(404);
-    throw new Error('Order not found or unauthorized');
-  }
-
-  // Update order details
-  const updateData = {};
-  if (userId) updateData.userId = userId;
-  if (shippingAddress) updateData.shippingAddress = shippingAddress;
-  if (paymentMethod) updateData.paymentMethod = paymentMethod;
-  if (totalPrice) updateData.totalPrice = totalPrice;
-
-  // Update order
-  const updatedOrder = await prisma.order.update({
-    where: { id: orderId },
-    data: updateData,
+export const createOrder = asyncHandler(async (req, res) => {
+  const { userId, shippingAddress, paymentMethod, items, totalPrice } = req.body;
+  
+  const order = await prisma.order.create({
+    data: {
+      userId: parseInt(userId),
+      shippingAddress,
+      paymentMethod,
+      totalPrice: parseFloat(totalPrice),
+      isPaid: false,
+      isDelivered: false,
+      items: {
+        create: items.map(item => ({
+          productId: parseInt(item.productId),
+          quantity: parseInt(item.quantity),
+          price: parseFloat(item.price)
+        }))
+      }
+    },
     include: {
-      user: { select: { id: true, name: true, email: true } },
-      items: { include: { product: true } }
+      items: {
+        include: {
+          product: true
+        }
+      },
+      user: true
     }
   });
-  // Clear user's cart after payment confirmation
-  const userCart = await prisma.cart.findUnique({ where: { userId: order.userId } });
-  if (userCart) {
-    await prisma.cartItem.deleteMany({ where: { cartId: userCart.id } });
-  }
 
   await notify({
-    userId: order.userId,
-    message: `Your payment for Order #${order.id} has been confirmed by admin.`,
+    userId: parseInt(userId),
+    message: `Order #${order.id} has been created by admin`,
     recipientRole: 'BUYER',
     relatedOrderId: order.id,
   });
-  // Update items if provided
-  if (items && items.length > 0) {
-    // Delete existing items
-    await prisma.orderItem.deleteMany({
-      where: { orderId }
-    });
 
-    // Create new items
-    await prisma.orderItem.createMany({
-      data: items.map(item => ({
-        orderId,
-        productId: item.productId,
-        quantity: item.quantity,
-        price: item.price
-      }))
-    });
-  }
-
-  console.log('Order updated successfully');
-
-  res.json(updatedOrder);
+  res.status(201).json(order);
 });
 
-// Delete Order (Admin only)
-export const deleteOrder = asyncHandler(async (req, res) => {
-  const orderId = parseInt(req.params.id);
-
-  console.log('Deleting order:', orderId);
-
-  const order = await prisma.order.findUnique({
-    where: { id: orderId }
-  });
-
-  if (!order) {
-    res.status(404);
-    throw new Error('Order not found');
-  }
-
-  // Delete order items first
-  await prisma.orderItem.deleteMany({
-    where: { orderId }
-  });
-
-  // Delete order
-  await prisma.order.delete({
-    where: { id: orderId }
-  });
-
-  console.log('Order deleted successfully');
-  res.json({ message: 'Order deleted successfully' });
-});
-
-// Update Order Status (Admin/Seller)
-export const updateOrderStatus = asyncHandler(async (req, res) => {
-  const orderId = parseInt(req.params.id);
-  const { isPaid, isDelivered } = req.body;
-
-  console.log('Updating order status:', orderId, { isPaid, isDelivered });
-
-  let whereClause = { id: orderId };
+export const getUserOrders = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
   
-  // If seller, only update orders for their products
-  if (req.user.role.toLowerCase() === 'seller') {
-    whereClause = {
-      id: orderId,
+  const orders = await prisma.order.findMany({
+    where: { userId },
+    include: {
       items: {
-        some: {
-          product: {
-            createdById: req.user.id
+        include: {
+          product: true
+        }
+      }
+    },
+    orderBy: { createdAt: 'desc' }
+  });
+  
+  res.json(orders);
+});
+
+export const getAllOrders = asyncHandler(async (req, res) => {
+  const userRole = req.user.role.toLowerCase();
+  const userId = req.user.id;
+  
+  console.log('🔍 getAllOrders - Role:', userRole, 'UserId:', userId);
+  
+  try {
+    let orders;
+    
+    if (userRole === 'admin') {
+      // Admin sees all orders
+      orders = await prisma.order.findMany({
+        include: {
+          user: {
+            select: { id: true, name: true, email: true }
+          },
+          items: {
+            include: {
+              product: true
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+    } else if (userRole === 'seller') {
+      // Seller sees only orders containing their products
+      orders = await prisma.order.findMany({
+        where: {
+          items: {
+            some: {
+              product: {
+                createdById: userId
+              }
+            }
+          }
+        },
+        include: {
+          user: {
+            select: { id: true, name: true, email: true }
+          },
+          items: {
+            where: {
+              product: {
+                createdById: userId
+              }
+            },
+            include: {
+              product: true
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+    } else {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+    
+    console.log('📋 Orders found:', orders.length);
+    res.json(orders);
+  } catch (error) {
+    console.error('❌ Error fetching orders:', error);
+    res.status(500).json({ message: 'Failed to fetch orders' });
+  }
+});
+
+export const getOrderById = asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+  const userRole = req.user.role.toLowerCase();
+  const userId = req.user.id;
+  
+  if (isNaN(id)) {
+    res.status(400);
+    throw new Error('Invalid order ID');
+  }
+  
+  try {
+    let whereClause = { id };
+    
+    // If seller, only show orders containing their products
+    if (userRole === 'seller') {
+      whereClause = {
+        id,
+        items: {
+          some: {
+            product: {
+              createdById: userId
+            }
+          }
+        }
+      };
+    }
+    
+    const order = await prisma.order.findFirst({
+      where: whereClause,
+      include: {
+        user: {
+          select: { id: true, name: true, email: true }
+        },
+        items: {
+          ...(userRole === 'seller' && {
+            where: {
+              product: {
+                createdById: userId
+              }
+            }
+          }),
+          include: {
+            product: true
           }
         }
       }
-    };
-  }
+    });
 
-  const order = await prisma.order.findFirst({
-    where: whereClause,
-    include: { user: true }
-  });
-
-  if (!order) {
-    res.status(404);
-    throw new Error('Order not found or unauthorized');
-  }
-
-  const updateData = {};
-  if (typeof isPaid === 'boolean') {
-    updateData.isPaid = isPaid;
-    if (isPaid) updateData.paidAt = new Date();
-  }
-  if (typeof isDelivered === 'boolean') {
-    updateData.isDelivered = isDelivered;
-    if (isDelivered) updateData.deliveredAt = new Date();
-  }
-
-  const updatedOrder = await prisma.order.update({
-    where: { id: orderId },
-    data: updateData,
-    include: {
-      user: { select: { id: true, name: true, email: true } },
-      items: { include: { product: true } }
+    if (!order) {
+      res.status(404);
+      throw new Error('Order not found');
     }
-  });
 
-  console.log('Order status updated successfully');
-
-  // Notify user of status change
-  await notify({
-    userId: req.user.id,
-    message: `Order #${orderId} status updated.`,
-    recipientRole: 'BUYER',
-    relatedOrderId: orderId,
-  });
-
-  res.json(updatedOrder);
+    res.json({ data: order });
+  } catch (error) {
+    console.error('Error fetching order by ID:', error);
+    res.status(500);
+    throw new Error('Failed to fetch order');
+  }
 });
 
-// Confirm Order Payment (Admin)
-export const confirmOrderPayment = asyncHandler(async (req, res) => {
-  const orderId = parseInt(req.params.id);
-
-  console.log('Confirming payment for order:', orderId);
-
-  const order = await prisma.order.findUnique({
-    where: { id: orderId },
-    include: { user: true }
-  });
-
-  if (!order) {
-    res.status(404);
-    throw new Error('Order not found');
+export const updateOrderStatus = asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+  const { isPaid, isDelivered } = req.body;
+  const userRole = req.user.role.toLowerCase();
+  const userId = req.user.id;
+  
+  if (isNaN(id)) {
+    res.status(400);
+    throw new Error('Invalid order ID');
   }
+  
+  try {
+    // Check if seller has access to this order
+    if (userRole === 'seller') {
+      const orderCheck = await prisma.order.findFirst({
+        where: {
+          id,
+          items: {
+            some: {
+              product: {
+                createdById: userId
+              }
+            }
+          }
+        }
+      });
+      
+      if (!orderCheck) {
+        res.status(403);
+        throw new Error('Access denied to this order');
+      }
+    }
+    
+    const updateData = {};
+    if (typeof isPaid === 'boolean') {
+      updateData.isPaid = isPaid;
+      updateData.paidAt = isPaid ? new Date() : null;
+    }
+    if (typeof isDelivered === 'boolean') {
+      updateData.isDelivered = isDelivered;
+      updateData.deliveredAt = isDelivered ? new Date() : null;
+    }
+    
+    const order = await prisma.order.update({
+      where: { id },
+      data: updateData,
+      include: {
+        user: {
+          select: { id: true, name: true, email: true }
+        },
+        items: {
+          include: {
+            product: true
+          }
+        }
+      }
+    });
 
-  const updatedOrder = await prisma.order.update({
-    where: { id: orderId },
+    await notify({
+      userId: order.userId,
+      message: `Order #${order.id} status updated`,
+      recipientRole: 'BUYER',
+      relatedOrderId: order.id,
+    });
+
+    res.json(order);
+  } catch (error) {
+    console.error('Error updating order status:', error);
+    res.status(500);
+    throw new Error('Failed to update order status');
+  }
+});
+
+export const updateOrder = asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+  const updates = req.body;
+  
+  if (isNaN(id)) {
+    res.status(400);
+    throw new Error('Invalid order ID');
+  }
+  
+  const order = await prisma.order.update({
+    where: { id },
+    data: updates,
+    include: {
+      items: {
+        include: {
+          product: true
+        }
+      },
+      user: true
+    }
+  });
+  
+  res.json(order);
+});
+
+export const deleteOrder = asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+  
+  if (isNaN(id)) {
+    res.status(400);
+    throw new Error('Invalid order ID');
+  }
+  
+  await prisma.orderItem.deleteMany({ where: { orderId: id } });
+  await prisma.order.delete({ where: { id } });
+  
+  res.json({ message: 'Order deleted successfully' });
+});
+
+export const confirmOrderPayment = asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+  
+  if (isNaN(id)) {
+    res.status(400);
+    throw new Error('Invalid order ID');
+  }
+  
+  const order = await prisma.order.update({
+    where: { id },
     data: {
       isPaid: true,
       paidAt: new Date(),
@@ -643,26 +688,23 @@ export const confirmOrderPayment = asyncHandler(async (req, res) => {
       confirmedAt: new Date()
     },
     include: {
-      user: { select: { id: true, name: true, email: true } },
-      items: { include: { product: true } }
+      user: {
+        select: { id: true, name: true, email: true }
+      },
+      items: {
+        include: {
+          product: true
+        }
+      }
     }
   });
 
-  console.log('Payment confirmed successfully');
-
-  // Clear user's cart after payment confirmation
-  const userCart = await prisma.cart.findUnique({ where: { userId: order.userId } });
-  if (userCart) {
-    await prisma.cartItem.deleteMany({ where: { cartId: userCart.id } });
-  }
-
-  // Notify user of payment confirmation
   await notify({
-    userId: req.user.id,
-    message: `Your payment for Order #${orderId} has been confirmed by admin.`,
+    userId: order.userId,
+    message: `Payment confirmed for order #${order.id}`,
     recipientRole: 'BUYER',
-    relatedOrderId: orderId,
+    relatedOrderId: order.id,
   });
 
-  res.json(updatedOrder);
+  res.json(order);
 });
